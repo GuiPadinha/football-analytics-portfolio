@@ -26,11 +26,13 @@ def plot_shot_map(shots, predicted_xg, title=None, ax=None):
     Returns:
         matplotlib.axes.Axes: the axes the shots were drawn on.
     """
+    pitch = Pitch(pitch_type="statsbomb", pitch_color="grass", line_color="white")
     if ax is None:
-        pitch = Pitch(pitch_type="statsbomb", pitch_color="grass", line_color="white")
         _, ax = pitch.draw(figsize=(10, 7))
     else:
-        pitch = Pitch(pitch_type="statsbomb", pitch_color="grass", line_color="white")
+        # Draw the pitch markings onto the caller's axes too — otherwise a passed-in
+        # ax that wasn't already a pitch would get bare scatter points on blank axes.
+        pitch.draw(ax=ax)
 
     outcomes = shots["is_goal"].map({True: "Goal", False: "No Goal"})
     sizes = 100 + predicted_xg * 1500

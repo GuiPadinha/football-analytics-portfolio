@@ -102,10 +102,17 @@ football-analytics-portfolio/
 │
 ├── CLAUDE.md                  ← this file
 ├── README.md                  ← project narrative (written for non-technical audience)
-├── requirements.txt           ← all Python dependencies
+├── ML_LEARNING_LOG.md         ← ML/stats concepts, gotchas, theory reference
+├── requirements.txt           ← pinned Python dependencies
+├── conftest.py                ← pytest bootstrap (puts repo root on sys.path)
+│
+├── docs/
+│   ├── FRAMEWORK.md           ← what the tool is for (purpose, user story, scope)
+│   └── INITIATIVE.md          ← hardening & expansion initiative tracker
 │
 ├── data/
-│   └── .gitkeep               ← raw StatsBomb JSON ignored via .gitignore
+│   ├── .gitkeep
+│   └── cache/                 ← per-match pulls (pickle) + Parquet feature tables (gitignored)
 │
 ├── notebooks/
 │   ├── 01_data_exploration.ipynb
@@ -114,11 +121,14 @@ football-analytics-portfolio/
 │
 ├── src/
 │   ├── __init__.py
-│   ├── data_loader.py         ← StatsBomb data ingestion via statsbombpy
+│   ├── config.py              ← named dataset definitions (competition/season ids, has_360)
+│   ├── data_loader.py         ← StatsBomb + SkillCorner ingestion (per-match disk cache)
 │   ├── features.py            ← feature engineering for xG and clustering
 │   ├── models.py              ← xG model training and evaluation
 │   ├── similarity.py          ← clustering and PCA logic
 │   └── visualisation.py       ← all pitch plots and charts (mplsoccer)
+│
+├── tests/                     ← pytest unit tests (geometry, assist classification, minutes)
 │
 └── outputs/
     └── .gitkeep               ← saved plots, model artifacts
@@ -284,6 +294,15 @@ Update the status column at the end of each session.
 | **S7** | Radar charts + visuals | Radar chart per player (event-based per-90s), PCA scatter plot (already built in S6), "players like X" function output | ✅ Done |
 | **S8** | README + polish | Full README narrative, outputs committed, repo clean, links ready for CV/LinkedIn | ✅ Done |
 | **S9 (future, unscheduled)** | Module C — PUP | Match-importance data sourcing, PUP score, league↔tournament validation for the 51-player overlap — see [ML_LEARNING_LOG.md](ML_LEARNING_LOG.md) | 💡 Scoped only |
+
+### Active initiative — Framework Hardening & Expansion (post-S8)
+
+A multi-phase initiative started 2026-06-29 to fix code-review findings, clarify the product story,
+add a 360-context xG model, and bring in more data. **Read [docs/FRAMEWORK.md](docs/FRAMEWORK.md)
+for what the framework is for (the conceptual anchor), and [docs/INITIATIVE.md](docs/INITIATIVE.md)
+for phase-by-phase status.** Phases: 0 charter · 1 foundation (config/cache/penalty fix/tests) ·
+2 ML rigor · 3 360 xG · 4 more data · 5 product layer · 6 alt models. This runs in parallel to /
+ahead of the still-scoped-only Module C above.
 
 ### Next Session (S7) — Checklist
 - [x] S1: folder structure, requirements.txt, .gitignore, `data_loader.py`, notebook 01 (incl. bonus mplsoccer shot map) — runs clean
@@ -466,6 +485,37 @@ Update this section at the end of every session.
   the baseline, and the Michail Antonio mislabelled-position cluster. Closed with a short "What's
   next" pointing at Module C/PUP (scoped, not started) and a possible front-end. All S1-S8 work is
   still uncommitted locally — git remains Guilherme's responsibility via GitHub Desktop.
+- **2026-06-29 (cont. 6)** — Guilherme committed and pushed S7+S8
+  ("S6/7 - Radar charts + visuals + final polish + README"). S5 and S6 were already committed
+  separately in an earlier session. All of S1 through S8 are now committed and pushed.
+- **2026-06-29 (cont. 7)** — Kicked off the **Framework Hardening & Expansion** initiative (post-S8)
+  after a full code review. **Phase 0 (charter):** wrote `docs/FRAMEWORK.md` — the conceptual anchor
+  resolving the "what is this tool for / does the user input anything" confusion (recruitment-led;
+  similarity = scouting lens where the user inputs a player name, xG = valuation lens with no user
+  input; youth scouting explicitly out of scope) — plus `docs/INITIATIVE.md` (phase tracker) and a
+  roadmap entry here. **Phase 1 (foundation):** `src/config.py` with named `Dataset` constants
+  replacing the magic `(9, 281, 'league')` id tuples (notebook 02 rewired to `TRAIN_SETS`/`TEST_SETS`/
+  `PL_2015_16.comp_id`); per-match disk cache in `data_loader.py` (pickle, immutable open data → the
+  full-season pull is now incremental/crash-resilient instead of 8-min all-or-nothing); **real
+  correctness fix — penalty-shootout shots (period 5) are now dropped in `extract_shot_features`**,
+  they were contaminating the EURO 2024 test set (~75% conversion inflating the penalty base rate) —
+  the cached `shots_test.pkl` must be rebuilt for the fix to land, flagged in the notebook; null-
+  location guard added; `plot_shot_map` now draws the pitch when handed an existing `ax`. Pinned
+  `requirements.txt` to verified versions (+ `pyarrow`, `pytest`). Added `tests/` (14 pytest unit
+  tests, all green), including a regression test for the truthy-NaN assist bug. Deliberately left the
+  pickle→parquet notebook-cache migration out (pickle is correct for the nested raw cache; pyarrow
+  not installed). Phases 2-6 (ML rigor, 360 xG, more data, product layer, alt models) still to do —
+  see `docs/INITIATIVE.md`. Uncommitted local work.
+- **2026-06-30** — Followed up: installed/pinned pyarrow and migrated the notebook-02 shot caches to
+  **Parquet** (the processed shot tables are flat, so they're parquet-safe; only the raw per-match
+  cache stays pickle). Rebuilt the caches through the fixed pipeline by executing notebook 02
+  end-to-end on the 3.10 interpreter — **the penalty-shootout fix landed: EURO 2024 test 1,340→1,316
+  shots, logistic test ROC-AUC 0.798→0.765** (the old number was inflated by trivially-rankable
+  shootout penalties; calibration slightly better at Brier 0.065). Updated the README table/narrative
+  to the honest 0.765 and noted why. Also fixed the IDE Jupyter kernel (was defaulting to conda base
+  Python 3.9.12 — the cause of the failed in-IDE run): filtered that interpreter out via
+  `.vscode/settings.json` `jupyter.kernels.filter` and normalized all three notebooks' kernelspec to
+  the portable `python3`. Uncommitted local work.
 - [x] S1 — Scaffold + data loader
 - [x] S2 — xG feature engineering
 - [x] S3 — xG baseline model

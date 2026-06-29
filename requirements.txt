@@ -1,10 +1,21 @@
-statsbombpy
-kloppy
-pandas
-numpy
-scikit-learn
-mplsoccer
-matplotlib
-seaborn
-plotly
-jupyter
+# Pinned to the versions this project was developed and verified against (Python 3.10).
+# Open-data libraries (statsbombpy, kloppy) in particular ship breaking changes between
+# releases; left unpinned, a future clone off the CV/LinkedIn link silently rots.
+statsbombpy==1.19.0
+kloppy==3.19.0
+pandas==2.3.3
+numpy==2.2.6
+scikit-learn==1.7.2
+mplsoccer==1.6.1
+matplotlib==3.10.9
+seaborn==0.13.2
+plotly==6.8.0
+jupyter==1.1.1
+
+# Added in the Hardening & Expansion initiative.
+# pyarrow: Parquet for the flat processed shot/per-90 tables cached in notebooks.
+#   (The raw per-match StatsBomb cache in data_loader stays pickle on purpose — events
+#    carry nested list/dict columns that don't round-trip through columnar parquet.)
+pyarrow==24.0.0
+# pytest: unit tests in tests/.
+pytest==9.1.1

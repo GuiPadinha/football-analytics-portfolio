@@ -85,6 +85,8 @@ def _compute_score_diff_before_shot(events):
     score_diff_by_index = {}
 
     for idx, row in events.iterrows():
+        if row.get("period") == 5:  # penalty shootout — not part of in-game score state
+            continue
         if row["type"] != "Shot":
             continue
         team = row["team"]
@@ -105,11 +107,26 @@ def extract_shot_features(events):
 
     Returns:
         pandas.DataFrame: one row per shot, with engineered features and
-            the `is_goal` target. Penalties and free kicks are kept but
-            flagged via `is_penalty`/`is_free_kick` rather than dropped,
-            since they're a meaningful chunk of high-xG shots.
+            the `is_goal` target. In-game penalties and free kicks are kept
+            but flagged via `is_penalty`/`is_free_kick` rather than dropped,
+            since they're a meaningful chunk of high-xG shots — but
+            penalty-shootout attempts (period 5) ARE dropped: they convert
+            at ~75%, aren't part of open/in-game play, and would otherwise
+            inflate the penalty base rate and contaminate any tournament
+            test set with knockout shootouts (e.g. EURO 2024). For a
+            non-penalty xG (npxG) view, filter the returned `is_penalty`
+            column — npxG is the recommended headline for player rankings.
     """
     shots = events[events["type"] == "Shot"].copy()
+
+    # Drop penalty-shootout attempts (period 5) — see docstring. Guarded because
+    # `period` is always present in StatsBomb events, but a malformed/empty stream
+    # shouldn't hard-crash here.
+    if "period" in shots.columns:
+        shots = shots[shots["period"] != 5]
+    # Guard against the rare shot logged without a location (would crash the
+    # loc[0]/loc[1] unpacking below); such rows can't be placed on the pitch anyway.
+    shots = shots[shots["location"].notna()].copy()
 
     shots["x"] = shots["location"].apply(lambda loc: loc[0])
     shots["y"] = shots["location"].apply(lambda loc: loc[1])
@@ -160,21 +177,30 @@ def extract_shot_features(events):
     return shots.reindex(columns=feature_columns)
 
 
-def build_training_dataset(competition_season_league_ids):
+def build_training_dataset(datasets):
     """Build a combined shot-feature dataset across multiple competitions/seasons.
 
     Args:
-        competition_season_league_ids (list[tuple[int, int, str]]): list of
-            (competition_id, season_id, league_context) triples, e.g.
-            `(9, 281, "league")` for Bundesliga 2023/24. `league_context` is
-            carried through so league and tournament shots can be separated
-            later (see CLAUDE.md's train/test split rationale).
+        datasets: iterable of `config.Dataset` objects (preferred), e.g.
+            `config.TRAIN_SETS`. The `context` ("league"/"tournament") is carried
+            through as `league_context` so the two can be separated later (see
+            CLAUDE.md's train/test split rationale). Plain
+            `(competition_id, season_id, context)` tuples are still accepted for
+            backward compatibility.
 
     Returns:
-        pandas.DataFrame: one row per shot across all requested matches.
+        pandas.DataFrame: one row per shot across all requested matches, with
+            `competition_id` and `league_context` columns attached.
     """
     all_shots = []
-    for competition_id, season_id, league_context in competition_season_league_ids:
+    for dataset in datasets:
+        # Accept either a config.Dataset or a legacy (comp_id, season_id, context) tuple.
+        competition_id = getattr(dataset, "comp_id", None)
+        if competition_id is None:
+            competition_id, season_id, league_context = dataset
+        else:
+            season_id, league_context = dataset.season_id, dataset.context
+
         matches = load_matches(competition_id, season_id)
         for match_id in matches["match_id"]:
             events = load_events(match_id)

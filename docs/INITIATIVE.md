@@ -1,0 +1,63 @@
+# Initiative — Framework Hardening & Expansion
+
+Tracks the multi-phase improvement work that follows the S1–S8 build. Mirrors the Progress Log
+style in `CLAUDE.md`. The full plan and rationale live in the approved plan file; this is the
+where-are-we tracker.
+
+**Why this initiative exists:** a code review surfaced correctness, methodology, structure, and
+scaling gaps, and the product story was unclear. Each phase below is independently executable in
+its own session. Conceptual framing is settled in [FRAMEWORK.md](FRAMEWORK.md).
+
+**Framing decisions (locked):** recruitment-led, both modules kept; product layer specified now and
+built later; StatsBomb 360 on data we already pull is the headline new model.
+
+---
+
+## Phases
+
+| Phase | Focus | Status |
+|---|---|---|
+| **0** | Framework charter (FRAMEWORK.md, this tracker, CLAUDE.md roadmap entry) | ✅ Done |
+| **1** | Foundation: `config.py`, per-match cache, penalty/shootout fix, pinned deps, robustness fixes, first tests | ✅ Done |
+| **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | ⬜ Not started |
+| **3** | New model: 360-context xG + post-shot xG (xGOT) | ⬜ Not started |
+| **4** | More data + cross-league/season normalization | ⬜ Not started |
+| **5** | Product layer: interface spec + lightweight Streamlit app | ⬜ Not started |
+| **6** | Alternative models (GMM, hierarchical, cosine, monotonic GBM) — exploratory | ⬜ Not started |
+
+Execution order: 0 → 1 → 2 → 3 → 4 → 5, with 6 opportunistic.
+
+---
+
+## Log
+
+- **2026-06-29** — Initiative kicked off. Code review (correctness/methodology/structure/scaling)
+  written up; conceptual confusion about the framework's purpose resolved in `FRAMEWORK.md`
+  (recruitment-led, two lenses: similarity = scouting/user-input, xG = valuation/no-input).
+  Confirmed via web research that StatsBomb 360 freeze-frames are free for the Leverkusen 2023/24
+  and EURO 2024 data already in use (Phase 3 fuel), and that Women's EURO 2025 (comp 53 / season
+  315) is newly released with events + 360 (Phase 4 candidate). Phase 0 started.
+- **2026-06-29** — Phases 0 and 1 completed in one session. Phase 0: `FRAMEWORK.md` charter +
+  this tracker + CLAUDE.md roadmap entry. Phase 1: `src/config.py` (named `Dataset` constants),
+  per-match pickle cache in `data_loader.py`, penalty-shootout (period 5) + null-location fixes in
+  `features.py` (cached test set needs rebuilding to apply), `plot_shot_map` ax fix, pinned
+  `requirements.txt` (+pyarrow/pytest), and `tests/` with 14 green unit tests (incl. a truthy-NaN
+  assist regression test). Notebook 02 rewired to config. **Next: Phase 2 (ML rigor).**
+- **2026-06-30** — Rebuilt the caches as Parquet through the fixed pipeline (notebook 02 executed
+  end-to-end on the 3.10 interpreter via nbconvert). Penalty-shootout fix confirmed in the numbers:
+  EURO 2024 test set 1,340 → 1,316 shots (24 shootout pens dropped), logistic test ROC-AUC
+  0.798 → **0.765** (the old figure was inflated by trivially-rankable shootout penalties),
+  calibration slightly better (Brier 0.067 → 0.065); README updated to match. Also fixed the IDE
+  Jupyter kernel — it was defaulting to conda base (Python 3.9.12); filtered that interpreter out in
+  `.vscode/settings.json` and normalized all three notebooks' kernelspec to the portable `python3`.
+  pyarrow/pytest pinned. **Next: Phase 2 (ML rigor).**
+
+---
+
+## How to resume
+
+1. Read `CLAUDE.md` (project source of truth) and `docs/FRAMEWORK.md` (what the tool is for).
+2. Check this table for the first ⬜ phase.
+3. Open the plan file for that phase's detailed task list.
+4. Close the session by updating the Status column above, adding a Log entry, and following the
+   standard CLAUDE.md session close-out (summary + suggested commit message + Progress Log).

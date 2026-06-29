@@ -1,3 +1,9 @@
 {
-    "python.defaultInterpreterPath": "C:\\Users\\guilh\\AppData\\Local\\Programs\\Python\\Python310\\python.exe"
+    "python.defaultInterpreterPath": "C:\\Users\\guilh\\AppData\\Local\\Programs\\Python\\Python310\\python.exe",
+    "jupyter.kernels.filter": [
+        {
+            "path": "C:\\Users\\guilh\\miniconda3\\python.exe",
+            "type": "pythonEnvironment"
+        }
+    ]
 }

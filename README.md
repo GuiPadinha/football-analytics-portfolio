@@ -9,6 +9,9 @@ two questions a recruitment or performance analysis team actually asks:
 Together these form a lightweight **Player Evaluation Framework** — the same kind of question set
 used by recruitment and analytics teams at top-level clubs and data providers.
 
+> New here? **[docs/FRAMEWORK.md](docs/FRAMEWORK.md)** explains in one page who the tool is for,
+> what you put in, and what you get out.
+
 Built by **Guilherme Padinha** — Data Engineer with a semi-professional football background,
 pivoting into football analytics.
 
@@ -28,7 +31,7 @@ the two.
 - Trained on **10,824 shots** from Bayer Leverkusen 2023/24 (a tactically distinctive unbeaten
   season) and Premier League 2015/16 (high shot volume, a well-known season as a sanity-check
   benchmark).
-- Tested on **1,340 shots** from EURO 2024 — deliberately a different context (tournament
+- Tested on **1,316 shots** from EURO 2024 — deliberately a different context (tournament
   football: fewer games, higher stakes, more conservative shot selection) to check whether a
   league-trained model actually generalises rather than just memorising one competition's shot
   profile.
@@ -42,17 +45,23 @@ the two.
 
 | Model | Train ROC-AUC | Test ROC-AUC (EURO 2024) | Train Brier | Test Brier |
 |---|---|---|---|---|
-| Logistic regression | 0.786 | **0.798** | 0.077 | **0.067** |
-| Gradient boosting (tuned) | 0.796 | 0.793 | — | — |
+| Logistic regression | 0.786 | **0.765** | 0.077 | **0.065** |
+| Gradient boosting (tuned) | 0.796 | 0.760 | — | — |
 
 Gradient boosting did **not** clearly beat the simpler model here, even after a tuning sweep —
 logistic regression is the recommended model. Reporting that honestly matters more than picking
 whichever number looks better: a model that's harder to explain to a coaching staff needs to earn
 that cost with a real performance gain, and this one didn't.
 
-The model also **generalises league → tournament without retraining** — test performance on
-EURO 2024 was as good as or better than training performance, evidence the model is learning real
-shot-quality signal rather than something specific to one competition.
+The model **generalises league → tournament without retraining**: test ROC-AUC on EURO 2024 (0.765)
+sits just below training (0.786) — a small, expected gap for out-of-distribution data — while its
+*calibration* is actually better on the tournament test (Brier 0.065 vs. 0.077), so the predicted
+probabilities hold up even where ranking is marginally harder.
+
+> An earlier version of this table showed **0.798** on test. That figure was inflated by
+> penalty-shootout attempts — trivially predictable ~75% conversions — which are now excluded as
+> part of a data-integrity pass. **0.765 is the honest measure on open/in-game shots**, and finding
+> and removing that flaw is exactly the kind of rigour this project is meant to demonstrate.
 
 ![Calibration curve](outputs/calibration_curve.png)
 ![Feature importance](outputs/feature_importance.png)
@@ -159,16 +168,21 @@ football-analytics-portfolio/
 ├── CLAUDE.md                  ← full project log, ML reasoning, session-by-session decisions
 ├── ML_LEARNING_LOG.md         ← theory reference + concepts exercised + tooling gotchas
 ├── requirements.txt
+├── docs/
+│   ├── FRAMEWORK.md            ← what the tool is for (purpose, user story, scope)
+│   └── INITIATIVE.md           ← hardening & expansion initiative tracker
 ├── notebooks/
 │   ├── 01_data_exploration.ipynb
 │   ├── 02_xg_model.ipynb
 │   └── 03_player_similarity.ipynb
 ├── src/
-│   ├── data_loader.py          ← StatsBomb + SkillCorner ingestion
+│   ├── config.py               ← named dataset definitions (competition/season ids)
+│   ├── data_loader.py          ← StatsBomb + SkillCorner ingestion (per-match cache)
 │   ├── features.py             ← xG feature engineering
 │   ├── models.py                ← xG model training and evaluation
 │   ├── similarity.py            ← clustering, PCA, nearest-neighbour lookup
 │   └── visualisation.py         ← pitch plots, radar charts, all chart functions
+├── tests/                      ← pytest unit tests
 └── outputs/                    ← saved plots (shown above)
 ```
 

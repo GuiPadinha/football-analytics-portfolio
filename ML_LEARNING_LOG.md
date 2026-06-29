@@ -48,6 +48,15 @@ This file is the one to reread before starting a new module, or before an interv
   added specifically because `distance_to_goal` alone can't distinguish a shot dead-center from one
   on the byline at the same distance — angle captures "how much of the goal is reachable," which
   distance can't. (S2)
+- **ROC-AUC is inflated by trivially-rankable cases — a data-integrity lesson with a number on it.**
+  The EURO 2024 test set silently included penalty-shootout attempts (period 5): ~75% converters,
+  all flagged `is_penalty`, which the model ranked confidently and correctly. They aren't open/
+  in-game shots, so they shouldn't be graded by an xG model at all — and dropping them *lowered*
+  test ROC-AUC from 0.798 to 0.765. Removing easy, correct rankings makes the metric look worse
+  precisely because they were padding it. The 0.765 is the honest measure of ranking on real
+  in-play shots; the 0.798 was flattered. General lesson: a discrimination metric is only as
+  meaningful as the population it's computed over — deciding *which cases belong in the evaluation
+  set* is itself a modelling decision, not a given. (Hardening Phase 1, 2026-06-30)
 
 ### Module C (candidate) — "PUP" (Performance Under Pressure), recovered and scoped 2026-06-29
 
@@ -216,6 +225,24 @@ home so they don't get silently re-solved (or re-broken) every few sessions.
   `plt.subplots()` axes with no `subplot_kw`, let `Radar.setup_axis(ax=ax)` handle the projection.
   General lesson: check a plotting library's actual expected input type from its own usage
   examples/docstring rather than inferring it from what the output visually looks like.
+- **VS Code ran notebooks on the wrong interpreter (conda base 3.9.12), not the project's 3.10 env.**
+  Cells failed with *"Running cells with 'base (Python 3.9.12)' requires the ipykernel package"*
+  even though the workspace interpreter was pinned to 3.10 in `.vscode/settings.json`. Root cause:
+  the Jupyter **kernel** is chosen and remembered separately from the Python **interpreter**, and
+  the `.ipynb` files had a `base` kernelspec baked into their metadata, so VS Code kept reselecting
+  conda base. Two-part fix: (1) `jupyter.kernels.filter` in `.vscode/settings.json` to hide the
+  conda-base interpreter from the kernel picker; (2) normalize every notebook's
+  `metadata.kernelspec` to the portable `python3` (via `nbformat`). Separately, to execute a
+  notebook *headless* on a chosen interpreter, register it as a kernel
+  (`python -m ipykernel install --user --name ...`) and pass `--ExecutePreprocessor.kernel_name=...`
+  to `nbconvert` — otherwise nbconvert inherits the notebook's stale kernelspec and runs on the
+  wrong env. (Hardening Phase 1, 2026-06-30)
+- **Parquet vs. pickle for caching depends on whether the columns are nested.** The processed shot
+  tables are flat (scalars only) → Parquet round-trips cleanly, is faster, and is portable. The
+  *raw* per-match StatsBomb events carry nested list/dict columns (locations, 360 freeze-frames) →
+  those do **not** round-trip through columnar Parquet, so the per-match `data_loader` cache stays
+  pickle. Same project, two cache layers, two different correct serialization choices for a concrete
+  structural reason — not a blanket "always use Parquet." (Hardening Phase 1, 2026-06-30)
 
 ---
 
@@ -268,7 +295,11 @@ when the goal is understanding the concept itself, not just what was decided her
   ranking). It is *threshold-independent* and *scale-independent* — a model could output garbled
   probabilities (e.g. always between 0.01 and 0.02) and still get a perfect ROC-AUC as long as the
   relative ordering is right. This is precisely why it doesn't tell you anything about calibration —
-  a second, independent metric is needed for that (next entry).
+  a second, independent metric is needed for that (next entry). A practical corollary this project
+  hit: ROC-AUC is also *inflated by easy, unambiguous cases* in the test set — penalty-shootout
+  shots padded the xG test AUC to 0.798, and removing them (they aren't in-play shots) dropped it to
+  an honest 0.765. The metric "got worse" by deleting trivially-correct rankings, a reminder that a
+  headline AUC always has to be read together with *what population it was computed over*.
 - **Calibration (Brier score, log loss, calibration curve).** A well-calibrated model's predicted
   probabilities match real-world frequencies: among all shots predicted at 0.10 xG, roughly 10%
   should actually be goals. Brier score is mean squared error between predicted probability and

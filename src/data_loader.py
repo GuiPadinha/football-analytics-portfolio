@@ -3,10 +3,51 @@
 Wraps statsbombpy (event data, open data, no API key required) and kloppy's
 SkillCorner loader (open broadcast tracking data) behind a small, consistent
 interface used across the xG and player similarity modules.
+
+Per-match StatsBomb pulls (events, lineups, 360) are cached to disk by match id.
+StatsBomb open data is immutable, so a match's data never changes once cached —
+this turns `build_training_dataset`'s full-season pull from an ~8-minute,
+all-or-nothing network operation into an incremental, crash-resilient one
+(re-running after a failure reuses everything already fetched, and adding a new
+season doesn't re-pull existing ones). Caching uses pickle rather than parquet
+on purpose: StatsBomb events carry nested list/dict columns (locations, freeze
+frames) and lineups is a dict of DataFrames — both round-trip cleanly through
+pickle but not through columnar parquet.
 """
+
+import pickle
+from pathlib import Path
 
 from statsbombpy import sb
 from kloppy import skillcorner
+
+# data/ is gitignored; the cache lives under it so cached pulls never get committed.
+CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "cache"
+
+
+def _disk_cached(kind, match_id, producer, use_cache=True):
+    """Return `producer()`'s result, reading from / writing to a per-match pickle cache.
+
+    Args:
+        kind (str): cache namespace ("events", "lineups", "360"), used in the filename.
+        match_id (int): StatsBomb match id, the cache key.
+        producer (callable): zero-arg function that fetches the data if not cached.
+        use_cache (bool): set False to force a fresh fetch and overwrite the cache
+            (e.g. after a statsbombpy upgrade changes the schema).
+
+    Returns:
+        The cached or freshly produced object.
+    """
+    path = CACHE_DIR / f"{kind}_{match_id}.pkl"
+    if use_cache and path.exists():
+        with open(path, "rb") as cache_file:
+            return pickle.load(cache_file)
+
+    result = producer()
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    with open(path, "wb") as cache_file:
+        pickle.dump(result, cache_file)
+    return result
 
 
 def load_competitions():
@@ -31,46 +72,52 @@ def load_matches(competition_id, season_id):
     return sb.matches(competition_id=competition_id, season_id=season_id)
 
 
-def load_events(match_id):
+def load_events(match_id, use_cache=True):
     """Return granular event data (shots, passes, pressures, etc.) for a match.
 
     Args:
         match_id (int): StatsBomb match id.
+        use_cache (bool): read from / write to the per-match disk cache (default True).
 
     Returns:
         pandas.DataFrame: one row per event.
     """
-    return sb.events(match_id=match_id)
+    return _disk_cached("events", match_id, lambda: sb.events(match_id=match_id), use_cache)
 
 
-def load_lineups(match_id):
+def load_lineups(match_id, use_cache=True):
     """Return player lineups for a match.
 
     Args:
         match_id (int): StatsBomb match id.
+        use_cache (bool): read from / write to the per-match disk cache (default True).
 
     Returns:
         dict[str, pandas.DataFrame]: lineup per team, keyed by team name.
     """
-    return sb.lineups(match_id=match_id)
+    return _disk_cached("lineups", match_id, lambda: sb.lineups(match_id=match_id), use_cache)
 
 
-def load_360_frames(match_id):
+def load_360_frames(match_id, use_cache=True):
     """Return 360 freeze-frame data (visible player positions per event) for a match.
 
-    Only available for a subset of StatsBomb matches.
+    Only available for a subset of StatsBomb matches (see `src/config.py` `has_360` flags).
 
     Args:
         match_id (int): StatsBomb match id.
+        use_cache (bool): read from / write to the per-match disk cache (default True).
 
     Returns:
         pandas.DataFrame: one row per freeze frame.
     """
-    return sb.frames(match_id=match_id)
+    return _disk_cached("360", match_id, lambda: sb.frames(match_id=match_id), use_cache)
 
 
 def load_skillcorner_tracking(match_id):
     """Return SkillCorner open broadcast tracking data for a match via kloppy.
+
+    Not disk-cached here: kloppy already streams from the SkillCorner open-data repo and
+    returns a rich dataset object rather than a plain DataFrame.
 
     Args:
         match_id (int): SkillCorner open data match id.
