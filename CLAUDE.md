@@ -271,7 +271,7 @@ Update the status column at the end of each session.
 | **S2** | xG feature engineering | `features.py` with distance, angle, body part, assist type, game state features using EURO 2024 + Leverkusen data; feature validation in notebook 02 | ✅ Done |
 | **S3** | xG model — baseline | Logistic regression in `models.py`, ROC-AUC + calibration evaluation, shot map visualisation | ✅ Done |
 | **S4** | xG model — upgrade + visuals | Gradient boosting, feature importance, player xG rankings, overperformer/underperformer table; PL 2015/16 as era benchmark | ✅ Done |
-| **S5** | Player similarity — features | Per-90 metrics per player/position from event data + SkillCorner physical metrics (speed, sprints, acceleration), `similarity.py` skeleton | ⬜ Not started |
+| **S5** | Player similarity — features | Per-90 metrics per player/position from event data + SkillCorner physical metrics (speed, sprints, acceleration), `similarity.py` skeleton | ✅ Done |
 | **S6** | Player similarity — clustering | K-means, PCA, elbow method, player archetype labelling, notebook 03 | ⬜ Not started |
 | **S7** | Radar charts + visuals | Radar chart per player (event + physical metrics combined), PCA scatter plot, "players like X" function output | ⬜ Not started |
 | **S8** | README + polish | Full README narrative, outputs committed, repo clean, links ready for CV/LinkedIn | ⬜ Not started |
@@ -288,9 +288,13 @@ Update the status column at the end of each session.
   PL 2015/16 era benchmark in notebook 02 — logistic regression confirmed as recommended model
 - [x] Switched `assist_type` one-hot encoding to drop "None" as reference category (was flagged as
   dummy-variable collinearity in S3) — coefficients now read cleanly as "vs. an unassisted shot"
-- [ ] S5: per-90 player metrics from event data + SkillCorner physical metrics (speed, sprints,
-  acceleration), `src/similarity.py` skeleton
-- [ ] Commit S1–S4 work (nothing committed yet — still pending)
+- [x] S5: `src/similarity.py` — minutes-played + position from StatsBomb `lineups` endpoint,
+  per-90 event metrics (goals/shots/key passes/assists/progressive passes/dribbles/pressures/
+  interceptions/tackles) for PL 2015/16 (300 qualifying players), SkillCorner physical per-90
+  metrics (distance/HSR/sprints) for the 10 A-League sample matches (22 qualifying players)
+- [ ] S6: K-means + PCA clustering on the PL 2015/16 per-90 features, elbow method, archetype
+  labelling, notebook 03
+- [ ] Commit S5 work (S1–S4 committed 2026-06-29; S5 is new uncommitted work)
 
 ---
 
@@ -343,12 +347,45 @@ Update this section at the end of every session.
   tagged identically as `league_context='league'`). PL 2015/16 ranking output passes the sniff
   test: Agüero/Mahrez/Kane top overperformers, Mitrović/Bony/Jerome top underperformers, both
   consistent with how that season is actually remembered. Notebook 02 now covers S3+S4 end-to-end,
-  runs clean. Still nothing committed to git — S1 through S4 are all uncommitted local work.
+  runs clean. Also added a project-level "Learning Goals" section to this file (right after
+  Owner) — this project's purpose is Guilherme practicing hands-on ML, not just shipping a
+  portfolio artifact, so future sessions should narrate the "why" behind modelling decisions,
+  report negative/mixed results honestly, and slow down to explain when asked rather than racing
+  to more code. S1 through S4 committed to git this session.
+- **2026-06-29 (cont. 2)** — Closed out S5 (`src/similarity.py`). Minutes-played and position are
+  pulled from StatsBomb's `lineups` endpoint (per-player on-pitch stints with from/to clock times
+  and position, including in-match "Tactical Shift" position changes) rather than reconstructed
+  from Starting XI + Substitution events — `lineups` already tracks exactly this, more reliably.
+  Built per-90 event metrics (non-penalty goals, shots, key passes, assists, progressive passes,
+  dribbles completed, pressures, interceptions, tackles) for PL 2015/16 — 300 players qualify at
+  the 900-minute floor (118 Defenders / 104 Midfielders / 78 Forwards; goalkeepers excluded from
+  clustering entirely, per `POSITION_GROUPS`). Hit another sparse-column gotcha like the S2 one:
+  statsbombpy only includes a column in a match's events DataFrame if at least one event in that
+  match has it set, so `pass_goal_assist` was missing entirely from matches with zero assists,
+  crashing the full-season build partway through — fixed with `_safe_bool_column`/`_safe_column`
+  helpers that substitute a default Series when the column doesn't exist, rather than assuming
+  every match's schema is identical.
+  Built `build_physical_per90_features()` for SkillCorner: speed/distance columns in `to_df()`
+  output are entirely null, so they're derived from frame-to-frame position deltas (rescaled from
+  normalised 0-1 coordinates to metres using the match's real pitch dimensions, 105×68m here).
+  First pass extrapolated short tracked windows up to a full "per 90" rate assuming uniform
+  intensity — one player tracked for only ~10 minutes got blown up 9x to reach his per-90 figure,
+  which is not a number to build a scouting decision on. Raised `min_observed_minutes` to 30 (caps
+  the extrapolation factor at 3x) — 22 of the original 32 tracked players survive, with the
+  remaining figures (9,000-13,000m per 90 for outfield players, ~4,400m for what are almost
+  certainly the two goalkeepers) landing in a believable range. Documented this as a real
+  reliability gap between the StatsBomb event-based per-90s and the SkillCorner physical per-90s,
+  not glossed over.
+  **Confirmed explicitly (see Learning Goals section) that StatsBomb (PL/Bundesliga/Euro) and
+  SkillCorner (Australian A-League) share zero players** — S7's "event + physical combined" radar
+  chart will be two standalone capability demos, not one fused per-player profile. Cached
+  `data/player_per90_pl_2015_16.pkl` and `data/physical_per90_skillcorner_sample.pkl`. S5 is
+  uncommitted local work as of this entry.
 - [x] S1 — Scaffold + data loader
 - [x] S2 — xG feature engineering
 - [x] S3 — xG baseline model
 - [x] S4 — xG upgrade + visuals
-- [ ] S5 — Player similarity features
+- [x] S5 — Player similarity features
 - [ ] S6 — Clustering + PCA
 - [ ] S7 — Radar charts
 - [ ] S8 — README + polish
