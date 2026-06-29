@@ -6,7 +6,7 @@ Session S7 (radar charts, PCA scatter plot).
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from mplsoccer import Pitch
+from mplsoccer import Pitch, Radar
 
 OUTCOME_COLORS = {"Goal": "gold", "No Goal": "dimgrey"}
 
@@ -132,6 +132,55 @@ def plot_pca_clusters(components, cluster_labels, ax=None, title=None):
     ax.set_ylabel("PCA component 2")
     if title:
         ax.set_title(title, fontsize=12)
+    return ax
+
+
+def plot_player_radar(player_row, population, feature_columns, ax=None, title=None):
+    """Draw a radar chart of one player's per-90 metrics against their position group's range.
+
+    Uses mplsoccer's `Radar` rather than a hand-rolled polar plot — no reason to
+    rebuild what the library already provides.
+
+    Each axis is scaled to the *5th-95th percentile* of `population`, not the
+    true min/max. True min/max would let a single extreme outlier (e.g. the
+    one-player defender cluster dominated by Michail Antonio's attacking
+    output, see notebook 03 S6) compress every other player's radar into an
+    unreadable sliver near the centre — percentile bounds trade a little bit of
+    range accuracy for a chart that stays legible across the whole group.
+
+    Args:
+        player_row (pandas.Series): one row of a per-player feature table,
+            must contain `feature_columns`.
+        population (pandas.DataFrame): the comparison group (typically the
+            player's own position group) used to set each axis's range.
+        feature_columns (list[str]): columns to plot, one per radar axis.
+        ax (matplotlib.axes.Axes, optional): existing axes to draw on (a plain
+            rectangular axes — mplsoccer's `Radar` configures it internally,
+            it should not be created with a polar projection); a new figure
+            is created if omitted.
+        title (str, optional): plot title.
+
+    Returns:
+        matplotlib.axes.Axes: the axes the radar was drawn on.
+    """
+    labels = [col.replace("_p90", "").replace("_", " ").title() for col in feature_columns]
+    min_range = population[feature_columns].quantile(0.05).tolist()
+    max_range = population[feature_columns].quantile(0.95).tolist()
+
+    radar = Radar(labels, min_range, max_range, num_rings=4)
+
+    if ax is None:
+        _, ax = plt.subplots(figsize=(8, 8))
+    radar.setup_axis(ax=ax)
+    radar.draw_circles(ax=ax, facecolor="#f0f0f0", edgecolor="#cccccc")
+    radar.draw_radar(
+        player_row[feature_columns].tolist(), ax=ax,
+        kwargs_radar={"facecolor": "#1a78cf", "alpha": 0.6},
+        kwargs_rings={"facecolor": "#cccccc", "alpha": 0.3},
+    )
+    radar.draw_param_labels(ax=ax, fontsize=10)
+    if title:
+        ax.set_title(title, fontsize=13, pad=30)
     return ax
 
 

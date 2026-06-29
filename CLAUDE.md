@@ -54,13 +54,8 @@ point. This changes how Claude Code should work in this repo:
 | **A — xG model** | Supervised, binary classification | Feature engineering from raw event data, baseline-before-complexity methodology, calibration vs. discrimination metrics, train/test design under distribution shift, honest model comparison |
 | **B — Player similarity** | Unsupervised, clustering + dimensionality reduction | Feature scaling, K-means, PCA, judging cluster quality without ground-truth labels |
 
-### Concepts already exercised (S2–S4)
-- Feature engineering from domain knowledge (shot distance/angle/assist type from raw JSON)
-- Deliberate non-random train/test split to test distribution shift (league → tournament), not just in-sample memorisation
-- Calibration (Brier score, log loss) evaluated separately from ranking quality (ROC-AUC) — a model can rank well but still be miscalibrated
-- Bias-variance tradeoff observed directly: default gradient boosting overfit (train AUC 0.825 vs test 0.794); tuning it down still didn't beat the simpler logistic baseline — a real example of complexity not paying for itself on limited data
-- Dummy-variable collinearity: one-hot encoding all categories of `assist_type` without dropping a reference category produced individually unreliable coefficients — fixed via `drop_first`-style encoding
-- A real Python gotcha with ML relevance: `bool(float('nan'))` is `True`, which silently corrupted a categorical feature until caught
+**See [ML_LEARNING_LOG.md](ML_LEARNING_LOG.md) for the full running record of ML/stats concepts
+exercised, gotchas hit, and ideas parked but not yet built — updated every session, not just here.**
 
 ### Coming up (S5+)
 - Feature scaling (K-means is distance-based — unlike the tree/linear models used so far, raw feature scale will matter)
@@ -88,6 +83,15 @@ Two interconnected analyses on StatsBomb open data (La Liga, Messi-era seasons):
 
 These two modules together form a "Player Evaluation Framework" — the same framing used by
 Football Radar in their Club Services team job descriptions.
+
+### Module C (candidate, future, not started) — "PUP" — Performance Under Pressure
+- Per-player KPI comparing performance in high-stakes league moments (title race, relegation,
+  derby, must-win) vs. baseline league performance, tested against tournament performance for the
+  subset of players who appear in both contexts
+- Status: scoped only, no code yet — full hypothesis, data-sourcing plan, and a confirmed-feasible
+  51-player league/tournament overlap are written up in [ML_LEARNING_LOG.md](ML_LEARNING_LOG.md)
+  under "Module C (candidate)"
+- Do not assume this is in progress — it is not on the Session Roadmap below until it's picked up
 
 ---
 
@@ -218,9 +222,13 @@ IDE: VS Code with Claude Code extension + GitHub Copilot Free (inline autocomple
 
 ## Session Workflow
 
+**Git is handled by Guilherme through the GitHub Desktop app, not the CLI.** `git` is not on PATH
+in this terminal by design — do not try to invoke git commands or hunt for the git executable.
+If you need current repo state (last commit, status), ask Guilherme directly instead of shelling out.
+
 At the start of every Claude Code session:
 1. Read this CLAUDE.md fully
-2. Check `git status` and `git log --oneline -10` to understand current state
+2. Ask Guilherme for current repo state (last commit, anything uncommitted) if relevant
 3. Give a 2-line summary of where we are and what you plan to do this session
 4. Ask Guilherme what we are working on today if not specified
 5. Never modify files outside the repo without explicit instruction
@@ -273,8 +281,9 @@ Update the status column at the end of each session.
 | **S4** | xG model — upgrade + visuals | Gradient boosting, feature importance, player xG rankings, overperformer/underperformer table; PL 2015/16 as era benchmark | ✅ Done |
 | **S5** | Player similarity — features | Per-90 metrics per player/position from event data + SkillCorner physical metrics (speed, sprints, acceleration), `similarity.py` skeleton | ✅ Done |
 | **S6** | Player similarity — clustering | K-means, PCA, elbow method, player archetype labelling, notebook 03 | ✅ Done |
-| **S7** | Radar charts + visuals | Radar chart per player (event + physical metrics combined), PCA scatter plot, "players like X" function output | ⬜ Not started |
-| **S8** | README + polish | Full README narrative, outputs committed, repo clean, links ready for CV/LinkedIn | ⬜ Not started |
+| **S7** | Radar charts + visuals | Radar chart per player (event-based per-90s), PCA scatter plot (already built in S6), "players like X" function output | ✅ Done |
+| **S8** | README + polish | Full README narrative, outputs committed, repo clean, links ready for CV/LinkedIn | ✅ Done |
+| **S9 (future, unscheduled)** | Module C — PUP | Match-importance data sourcing, PUP score, league↔tournament validation for the 51-player overlap — see [ML_LEARNING_LOG.md](ML_LEARNING_LOG.md) | 💡 Scoped only |
 
 ### Next Session (S7) — Checklist
 - [x] S1: folder structure, requirements.txt, .gitignore, `data_loader.py`, notebook 01 (incl. bonus mplsoccer shot map) — runs clean
@@ -295,10 +304,12 @@ Update the status column at the end of each session.
 - [x] S6: `scale_features`/`compute_elbow_scores`/`fit_kmeans`/`profile_clusters`/`run_pca` in
   `similarity.py`, `plot_elbow_curve`/`plot_pca_clusters` in `visualisation.py`, notebook 03 —
   K=4 clustering per position group (Defender/Midfielder/Forward) on PL 2015/16
-- [ ] S7: radar charts per player (event-based per-90s; SkillCorner physical layer presented
-  separately, see Learning Goals note on zero player overlap), PCA scatter as standalone
-  deliverable, "players like X" lookup function
-- [ ] Commit S5+S6 work (S1–S4 committed 2026-06-29; S5/S6 are new uncommitted work)
+- [x] S7: `plot_player_radar()` in `visualisation.py` (mplsoccer `Radar`, 5th-95th percentile axes
+  to avoid the S6 Antonio outlier distorting the scale), `find_similar_players()` in
+  `similarity.py` (Euclidean distance in standardised feature space, within position group),
+  notebook 03 extended — sanity-checked against Kanté/Cresswell/Kane, all returned recognisable
+  same-role players
+- [ ] Commit S5+S6+S7 work (S1–S4 committed 2026-06-29; S5/S6/S7 are new uncommitted work)
 
 ---
 
@@ -410,14 +421,59 @@ Update this section at the end of every session.
   defenders — but a real limitation of "most common position across the season" as an assignment
   rule for versatile/misused players, noted directly in notebook 03 rather than smoothed over.
   Notebook 03 runs clean end-to-end. S5 and S6 are both uncommitted local work as of this entry.
+- **2026-06-29 (cont. 4)** — Closed out S7. Added `find_similar_players()` to `src/similarity.py`
+  (Euclidean distance in standardised feature space, same `scale_features` matrix the clustering
+  itself uses, restricted to the target player's own position group — deliberately a continuous
+  ranking rather than just "same K-means cluster," since cluster membership alone can't distinguish
+  near vs. far within a cluster) and `plot_player_radar()` to `src/visualisation.py` (mplsoccer's
+  `Radar`, not hand-rolled). Radar axes are scaled to the position group's 5th-95th percentile,
+  not true min/max — a direct consequence of the S6 Antonio outlier: a true-range axis would
+  compress every other defender's chart toward the centre on every feature, not just the one
+  Antonio is actually unusual in. The PCA scatter deliverable from the original S7 scope was
+  already satisfied by S6's `plot_pca_clusters` — nothing new needed there.
+  Hit a real StatsBomb data quirk while wiring up the Kanté example: this dataset stores his name
+  as `N''Golo Kanté` with a **doubled apostrophe**, not the familiar single-apostrophe spelling —
+  confirmed directly against the cached pickle, not a typo introduced here. Also hit a genuine
+  mplsoccer API gotcha: `Radar.setup_axis()` expects a plain rectangular `Axes`, not one created
+  with `subplot_kw={'polar': True}` — it configures the polar-like projection internally, and
+  handing it an already-polar axes broke its internal spine-visibility logic
+  (`KeyError: 'bottom'`). Both gotchas, plus the Windows console/codepage issues hit while running
+  `nbconvert` and printing accented player names from PowerShell, are written up in
+  `ML_LEARNING_LOG.md`'s new "Tooling / environment gotchas" section.
+  Validated against three recognisable players: nearest neighbours for Kanté were Gana Gueye/
+  Tioté/Coquelin/Fernando (ball-winning defensive midfielders), for Cresswell were other
+  attacking full-backs (Brunt/Davies/Sagna/Bertrand/Daniels), for Kane were other out-and-out
+  poachers (Vardy/Carroll/Ighalo/Defoe/Agüero) — clean sanity check, not noise.
+  Also added a **Theoretical Concepts Reference** section to `ML_LEARNING_LOG.md` this session
+  (separate from the project-decision log), covering the general ML/stats theory behind every
+  concept used so far (logistic regression mechanics, gradient boosting, bias-variance, ROC-AUC vs.
+  calibration, the dummy-variable trap, K-means scale-sensitivity, the elbow method, z-scores, PCA's
+  variance tradeoff, per-90 normalization) — written as standalone self-study material, not just a
+  changelog. Separately, recovered and fully scoped "Module C — PUP" (Performance Under Pressure),
+  an idea from an earlier session that had been lost to a context clear: found a real 51-player
+  overlap between the league training data and EURO 2024 test data (34 of them via Leverkusen
+  2023/24, since that roster largely also played at EURO 2024), which makes an actual transfer
+  validation feasible rather than purely aspirational — full spec is in `ML_LEARNING_LOG.md`,
+  status is explicitly "scoped only, not started."
+  Notebook 03 runs clean end-to-end through S7. S5, S6, and S7 are all uncommitted local work as of
+  this entry.
+- **2026-06-29 (cont. 5)** — Closed out S8. Replaced the one-line placeholder `README.md` with the
+  full project narrative: Module A (xG) and Module B (similarity) each get a question/why-it-matters
+  framing, methodology summary, the real result numbers (logistic regression 0.798 test ROC-AUC vs.
+  GBM's 0.793 — reported as a genuine non-win for the more complex model, not smoothed over), and
+  the actual saved PNGs from `outputs/` embedded inline. Kept the two honest caveats from S4/S6
+  visible in the README itself rather than only in the learning log: gradient boosting not beating
+  the baseline, and the Michail Antonio mislabelled-position cluster. Closed with a short "What's
+  next" pointing at Module C/PUP (scoped, not started) and a possible front-end. All S1-S8 work is
+  still uncommitted locally — git remains Guilherme's responsibility via GitHub Desktop.
 - [x] S1 — Scaffold + data loader
 - [x] S2 — xG feature engineering
 - [x] S3 — xG baseline model
 - [x] S4 — xG upgrade + visuals
 - [x] S5 — Player similarity features
 - [x] S6 — Clustering + PCA
-- [ ] S7 — Radar charts
-- [ ] S8 — README + polish
+- [x] S7 — Radar charts
+- [x] S8 — README + polish
 
 ---
 

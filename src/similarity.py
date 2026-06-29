@@ -474,6 +474,49 @@ def profile_clusters(features, feature_columns, cluster_labels):
     return (cluster_means - population_mean) / population_std
 
 
+def find_similar_players(features, feature_columns, player, team, n=5):
+    """Find the `n` most similar players to a given player, by Euclidean distance
+    in standardised feature space, restricted to the player's own position group.
+
+    Restricting to the same position group (rather than all outfield players) is
+    the same reasoning as the clustering itself (S6): comparing a forward's
+    distance to a center-back's would mostly just measure "is this a forward",
+    not which forward plays a similar role. K-means cluster membership isn't used
+    here directly — raw distance gives a continuous ranking ("most to least
+    similar") rather than the coarser in-cluster/out-of-cluster split clustering
+    gives, which is the more useful shape for a "players like X" lookup.
+
+    Args:
+        features (pandas.DataFrame): per-player feature table, must contain
+            `player`, `team`, `position_group`, and `feature_columns`.
+        feature_columns (list[str]): columns to compute similarity on.
+        player (str): name of the player to find matches for.
+        team (str): that player's team, needed since player names aren't
+            guaranteed unique across teams.
+        n (int): number of similar players to return.
+
+    Returns:
+        pandas.DataFrame: the `n` nearest players (excluding the player
+            themselves), sorted by ascending distance, with a `distance` column.
+    """
+    target = features[(features["player"] == player) & (features["team"] == team)]
+    if target.empty:
+        raise ValueError(f"No player found matching player={player!r}, team={team!r}")
+    position_group = target["position_group"].iloc[0]
+
+    subset = features[features["position_group"] == position_group].reset_index(drop=True)
+    X_scaled, _ = scale_features(subset, feature_columns)
+    target_idx = subset.index[(subset["player"] == player) & (subset["team"] == team)][0]
+
+    distances = np.linalg.norm(X_scaled.values - X_scaled.loc[target_idx].values, axis=1)
+    result = subset.copy()
+    result["distance"] = distances
+    result = result[result.index != target_idx].sort_values("distance")
+
+    keep_columns = ["player", "team", "position_group", "distance"] + feature_columns
+    return result[keep_columns].head(n).reset_index(drop=True)
+
+
 def run_pca(X_scaled, n_components=2, random_state=42):
     """Reduce scaled features to a small number of components for plotting.
 
