@@ -91,6 +91,7 @@ football-analytics-portfolio/
 
 **Avoid the Messi-era La Liga as primary dataset** — overdone in public portfolios, weak differentiation.
 Use it only for specific player benchmarks if needed.
+Ronaldo and Messi as obviously outliers. Worth mentioning and entertainting to compare with. This La Liga period was really good which makes their feats even more absurd. 
 
 **xG Model — data split strategy:**
 
@@ -236,10 +237,10 @@ Update the status column at the end of each session.
 | **S8** | README + polish | Full README narrative, outputs committed, repo clean, links ready for CV/LinkedIn | ⬜ Not started |
 
 ### Next Session (S1) — Checklist
-- [ ] Create full folder structure
-- [ ] Write `requirements.txt` (include kloppy for SkillCorner loading)
-- [ ] Write `.gitignore` (ignore `data/`, `outputs/`, `.ipynb_checkpoints`, `__pycache__`)
-- [ ] Write `src/data_loader.py` with `load_competitions()`, `load_matches()`, `load_events()`, `load_skillcorner_tracking()`
+- [x] Create full folder structure
+- [x] Write `requirements.txt` (include kloppy for SkillCorner loading)
+- [x] Write `.gitignore` (ignore `data/`, `outputs/`, `.ipynb_checkpoints`, `__pycache__`)
+- [x] Write `src/data_loader.py` with `load_competitions()`, `load_matches()`, `load_events()`, `load_skillcorner_tracking()`
 - [ ] Write `notebooks/01_data_exploration.ipynb` — pull EURO 2024 data + SkillCorner sample, inspect shot events and physical metrics, basic EDA
 - [ ] Confirm notebook runs top-to-bottom without errors
 - [ ] Commit: `feat: project scaffold and data loader`
@@ -250,6 +251,18 @@ Update the status column at the end of each session.
 
 Update this section at the end of every session.
 
+- **2026-06-28** — Fixed local dev environment: `python`/`pip` weren't recognized in the VS Code
+  terminal because the User PATH only contained the broken Windows Store "App execution alias" stub,
+  not the real Python 3.10.7 install (`C:\Users\guilh\AppData\Local\Programs\Python\Python310\`).
+  Added that install (+ its `Scripts\`) to the User PATH and pinned it as the workspace interpreter
+  in `.vscode/settings.json`. Separately, `pip install` failed with `CERTIFICATE_VERIFY_FAILED`
+  because Avast Antivirus intercepts HTTPS traffic for scanning and Python's bundled `certifi`
+  didn't trust Avast's generated root cert — fixed by appending that root cert to both `certifi`
+  cacert.pem files (the top-level `certifi` package and pip's vendored copy).
+  `pip install -r requirements.txt` now succeeds. **New terminals only** — already-open terminals
+  won't pick up the PATH change. S1 scaffold partially done (folders, `.gitignore`,
+  `requirements.txt`, `src/data_loader.py` + module stubs) — `notebooks/01_data_exploration.ipynb`
+  and the scaffold commit are still pending for next session.
 - [ ] S1 — Scaffold + data loader
 - [ ] S2 — xG feature engineering
 - [ ] S3 — xG baseline model

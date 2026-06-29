@@ -1,0 +1,10 @@
+statsbombpy
+kloppy
+pandas
+numpy
+scikit-learn
+mplsoccer
+matplotlib
+seaborn
+plotly
+jupyter
