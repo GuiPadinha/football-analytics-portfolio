@@ -10,6 +10,9 @@ CLAUDE.md Learning Goals / S5 progress notes for the reasoning.
 
 import numpy as np
 import pandas as pd
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 from src.data_loader import load_events, load_lineups, load_matches, load_skillcorner_tracking
 
@@ -369,3 +372,123 @@ def build_physical_per90_features(match_id, min_observed_minutes=30.0):
         })
 
     return pd.DataFrame(records)
+
+
+PER90_FEATURE_COLUMNS = [f"{col}_p90" for col in ACTION_COLUMNS]
+
+
+def scale_features(features, feature_columns=PER90_FEATURE_COLUMNS):
+    """Standardise features to mean 0, std 1 before clustering.
+
+    K-means measures similarity as Euclidean distance, so any feature with a
+    naturally larger numeric range will dominate that distance regardless of
+    its actual football relevance — `progressive_passes_p90` (tens) would
+    swamp `non_penalty_goals_p90` (usually well under 1) purely because of
+    units, not because progressive passing matters more. None of the S2-S4
+    xG models needed this: logistic regression and gradient boosting are
+    scale-invariant (or close enough) because they fit a coefficient/split
+    per feature rather than comparing features directly to each other.
+
+    Args:
+        features (pandas.DataFrame): per-player feature table.
+        feature_columns (list[str]): columns to scale and cluster on.
+
+    Returns:
+        tuple[pandas.DataFrame, sklearn.preprocessing.StandardScaler]: the
+            scaled feature matrix (same index as `features`) and the fitted
+            scaler (kept in case new players need to be projected later).
+    """
+    scaler = StandardScaler()
+    scaled = scaler.fit_transform(features[feature_columns])
+    return pd.DataFrame(scaled, columns=feature_columns, index=features.index), scaler
+
+
+def compute_elbow_scores(X_scaled, k_range=range(2, 11)):
+    """Fit K-means across a range of K and return inertia for each.
+
+    Inertia (within-cluster sum of squared distances) always decreases as K
+    grows — the elbow method looks for where it stops decreasing sharply,
+    trading off "clusters are tight" against "we haven't just made one
+    cluster per player." There's no single correct K here, unlike a
+    classification metric such as ROC-AUC; this is read by eye.
+
+    Args:
+        X_scaled (pandas.DataFrame): output of `scale_features`.
+        k_range (range): candidate values of K to try.
+
+    Returns:
+        pandas.Series: inertia indexed by K.
+    """
+    inertias = {}
+    for k in k_range:
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+        kmeans.fit(X_scaled)
+        inertias[k] = kmeans.inertia_
+    return pd.Series(inertias)
+
+
+def fit_kmeans(X_scaled, n_clusters, random_state=42):
+    """Fit K-means and return the model plus a cluster label per row.
+
+    Args:
+        X_scaled (pandas.DataFrame): output of `scale_features`.
+        n_clusters (int): K, typically chosen from the elbow curve.
+        random_state (int): seed for reproducibility (K-means' starting
+            centroids are random, so results can shift run to run otherwise).
+
+    Returns:
+        tuple[sklearn.cluster.KMeans, numpy.ndarray]: fitted model and the
+            cluster label assigned to each row of `X_scaled`.
+    """
+    kmeans = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10)
+    labels = kmeans.fit_predict(X_scaled)
+    return kmeans, labels
+
+
+def profile_clusters(features, feature_columns, cluster_labels):
+    """Describe each cluster by how far its average feature values sit from the
+    overall population average, in standard deviations (z-scores).
+
+    There's no ground-truth label to check a cluster against — "is this
+    cluster good" isn't a question with a clean metric the way ROC-AUC
+    answers it for the xG model. This is the practical substitute: a
+    cluster whose `non_penalty_goals_p90` z-score is +1.8 and whose
+    `tackles_p90` z-score is -0.9 can be read directly as "a goalscoring,
+    defensively-light cluster" — i.e. how a human decides whether the
+    grouping makes football sense.
+
+    Args:
+        features (pandas.DataFrame): per-player feature table.
+        feature_columns (list[str]): columns the clustering was run on.
+        cluster_labels (numpy.ndarray): output of `fit_kmeans`.
+
+    Returns:
+        pandas.DataFrame: one row per cluster, one column per feature,
+            values are z-scores of the cluster mean vs. the population mean.
+    """
+    labelled = features[feature_columns].copy()
+    labelled["cluster"] = cluster_labels
+    cluster_means = labelled.groupby("cluster")[feature_columns].mean()
+    population_mean = features[feature_columns].mean()
+    population_std = features[feature_columns].std()
+    return (cluster_means - population_mean) / population_std
+
+
+def run_pca(X_scaled, n_components=2, random_state=42):
+    """Reduce scaled features to a small number of components for plotting.
+
+    Args:
+        X_scaled (pandas.DataFrame): output of `scale_features`.
+        n_components (int): number of components to keep (2 for a scatter plot).
+        random_state (int): seed for reproducibility.
+
+    Returns:
+        tuple[numpy.ndarray, sklearn.decomposition.PCA]: the projected
+            components and the fitted PCA object (`.explained_variance_ratio_`
+            shows how much signal survives the reduction to 2D — this is the
+            tradeoff PCA makes: easier to plot, but each axis is a blend of
+            the original features and loses their individual interpretability).
+    """
+    pca = PCA(n_components=n_components, random_state=random_state)
+    components = pca.fit_transform(X_scaled)
+    return components, pca

@@ -82,6 +82,59 @@ def plot_player_xg_ranking(ranking, n=10, ax=None, title=None):
     return ax
 
 
+def plot_elbow_curve(inertias, chosen_k=None, ax=None, title=None):
+    """Plot K-means inertia against K, to read off the elbow by eye.
+
+    Args:
+        inertias (pandas.Series): output of `similarity.compute_elbow_scores`,
+            indexed by K.
+        chosen_k (int, optional): draws a vertical marker at this K, to show
+            which value was actually picked.
+        ax (matplotlib.axes.Axes, optional): existing axes to draw on.
+        title (str, optional): plot title.
+
+    Returns:
+        matplotlib.axes.Axes: the axes the curve was drawn on.
+    """
+    if ax is None:
+        _, ax = plt.subplots(figsize=(6, 4))
+
+    ax.plot(inertias.index, inertias.values, marker="o")
+    if chosen_k is not None:
+        ax.axvline(chosen_k, color="crimson", linestyle="--", label=f"chosen K={chosen_k}")
+        ax.legend()
+    ax.set_xlabel("K (number of clusters)")
+    ax.set_ylabel("Inertia")
+    if title:
+        ax.set_title(title, fontsize=12)
+    return ax
+
+
+def plot_pca_clusters(components, cluster_labels, ax=None, title=None):
+    """Scatter plot of players in 2D PCA space, coloured by cluster.
+
+    Args:
+        components (numpy.ndarray): output of `similarity.run_pca` (n_samples, 2).
+        cluster_labels (numpy.ndarray): output of `similarity.fit_kmeans`.
+        ax (matplotlib.axes.Axes, optional): existing axes to draw on.
+        title (str, optional): plot title.
+
+    Returns:
+        matplotlib.axes.Axes: the axes the scatter was drawn on.
+    """
+    if ax is None:
+        _, ax = plt.subplots(figsize=(7, 6))
+
+    scatter = ax.scatter(components[:, 0], components[:, 1], c=cluster_labels, cmap="tab10", alpha=0.8)
+    legend = ax.legend(*scatter.legend_elements(), title="Cluster", loc="best")
+    ax.add_artist(legend)
+    ax.set_xlabel("PCA component 1")
+    ax.set_ylabel("PCA component 2")
+    if title:
+        ax.set_title(title, fontsize=12)
+    return ax
+
+
 def plot_calibration_curve(mean_predicted, observed_freq, ax=None, label=None):
     """Plot a model's calibration curve against the perfect-calibration diagonal.
 

@@ -272,11 +272,11 @@ Update the status column at the end of each session.
 | **S3** | xG model — baseline | Logistic regression in `models.py`, ROC-AUC + calibration evaluation, shot map visualisation | ✅ Done |
 | **S4** | xG model — upgrade + visuals | Gradient boosting, feature importance, player xG rankings, overperformer/underperformer table; PL 2015/16 as era benchmark | ✅ Done |
 | **S5** | Player similarity — features | Per-90 metrics per player/position from event data + SkillCorner physical metrics (speed, sprints, acceleration), `similarity.py` skeleton | ✅ Done |
-| **S6** | Player similarity — clustering | K-means, PCA, elbow method, player archetype labelling, notebook 03 | ⬜ Not started |
+| **S6** | Player similarity — clustering | K-means, PCA, elbow method, player archetype labelling, notebook 03 | ✅ Done |
 | **S7** | Radar charts + visuals | Radar chart per player (event + physical metrics combined), PCA scatter plot, "players like X" function output | ⬜ Not started |
 | **S8** | README + polish | Full README narrative, outputs committed, repo clean, links ready for CV/LinkedIn | ⬜ Not started |
 
-### Next Session (S5) — Checklist
+### Next Session (S7) — Checklist
 - [x] S1: folder structure, requirements.txt, .gitignore, `data_loader.py`, notebook 01 (incl. bonus mplsoccer shot map) — runs clean
 - [x] S2: `src/features.py` — distance, angle, body part, first-time, under-pressure, penalty/free-kick flags,
   assist type (Cross/Through Ball/Cut Back/Standard Pass/None), game-state score diff, `build_training_dataset()`
@@ -292,9 +292,13 @@ Update the status column at the end of each session.
   per-90 event metrics (goals/shots/key passes/assists/progressive passes/dribbles/pressures/
   interceptions/tackles) for PL 2015/16 (300 qualifying players), SkillCorner physical per-90
   metrics (distance/HSR/sprints) for the 10 A-League sample matches (22 qualifying players)
-- [ ] S6: K-means + PCA clustering on the PL 2015/16 per-90 features, elbow method, archetype
-  labelling, notebook 03
-- [ ] Commit S5 work (S1–S4 committed 2026-06-29; S5 is new uncommitted work)
+- [x] S6: `scale_features`/`compute_elbow_scores`/`fit_kmeans`/`profile_clusters`/`run_pca` in
+  `similarity.py`, `plot_elbow_curve`/`plot_pca_clusters` in `visualisation.py`, notebook 03 —
+  K=4 clustering per position group (Defender/Midfielder/Forward) on PL 2015/16
+- [ ] S7: radar charts per player (event-based per-90s; SkillCorner physical layer presented
+  separately, see Learning Goals note on zero player overlap), PCA scatter as standalone
+  deliverable, "players like X" lookup function
+- [ ] Commit S5+S6 work (S1–S4 committed 2026-06-29; S5/S6 are new uncommitted work)
 
 ---
 
@@ -379,14 +383,39 @@ Update this section at the end of every session.
   **Confirmed explicitly (see Learning Goals section) that StatsBomb (PL/Bundesliga/Euro) and
   SkillCorner (Australian A-League) share zero players** — S7's "event + physical combined" radar
   chart will be two standalone capability demos, not one fused per-player profile. Cached
-  `data/player_per90_pl_2015_16.pkl` and `data/physical_per90_skillcorner_sample.pkl`. S5 is
-  uncommitted local work as of this entry.
+  `data/player_per90_pl_2015_16.pkl` and `data/physical_per90_skillcorner_sample.pkl`. S1-S4
+  committed to git this session; S5 was committed separately right after.
+- **2026-06-29 (cont. 3)** — Closed out S6. Added clustering to `src/similarity.py`
+  (`scale_features`, `compute_elbow_scores`, `fit_kmeans`, `profile_clusters`, `run_pca`) and
+  plotting to `visualisation.py` (`plot_elbow_curve`, `plot_pca_clusters`). Key design decision:
+  **clustering is run separately per position group** (Defender/Midfielder/Forward, goalkeepers
+  excluded), not on all outfield players together — clustering everyone at once would mostly just
+  rediscover position itself rather than find play-style sub-archetypes within a position, which
+  is what's actually useful for a recruitment framing. Used K=4 for all three groups (none of the
+  elbow curves showed one obviously "correct" K; 4 balances archetype granularity against group
+  size). `profile_clusters` gives each cluster's z-score profile vs. its position group's own
+  population — the substitute for a clean accuracy metric here, since clustering has no ground
+  truth to check against the way the xG model has `is_goal`.
+  Results read as genuine football archetypes, not noise: midfielder cluster of
+  Kanté/M'Vila/Gueye/Drinkwater (interceptions +0.85, tackles +0.97 z-score) is the ball-winning
+  destroyer role — Kanté's title-winning Leicester season, a strong validation; another midfielder
+  cluster of Özil/Fàbregas/Lallana (key passes +1.69, assists +1.97) matches Özil's record-assist
+  season; defender cluster of Cresswell/Daniels/Bellerín/van Aanholt (key passes +1.23, assists
+  +1.37) reads as attacking/overlapping full-backs vs. the central "stopper" defender cluster.
+  **Found and documented a real data-quality wrinkle rather than hiding it**: one defender cluster
+  has exactly one player, Michail Antonio, with absurd z-scores (+5.95 goals/90). He was primarily
+  a winger that season who filled in defensively a handful of times; `position` is the season's
+  *modal* per-match position, and that vote landed on a defensive slot despite his attacking
+  output dominating. Not a clustering bug — K-means correctly found he's nothing like the other
+  defenders — but a real limitation of "most common position across the season" as an assignment
+  rule for versatile/misused players, noted directly in notebook 03 rather than smoothed over.
+  Notebook 03 runs clean end-to-end. S5 and S6 are both uncommitted local work as of this entry.
 - [x] S1 — Scaffold + data loader
 - [x] S2 — xG feature engineering
 - [x] S3 — xG baseline model
 - [x] S4 — xG upgrade + visuals
 - [x] S5 — Player similarity features
-- [ ] S6 — Clustering + PCA
+- [x] S6 — Clustering + PCA
 - [ ] S7 — Radar charts
 - [ ] S8 — README + polish
 
