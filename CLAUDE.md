@@ -29,6 +29,46 @@ The code must be clean enough to be reviewed by senior data scientists.
 
 ---
 
+## Learning Goals (read this before writing any ML code)
+
+**This project's primary purpose is for Guilherme to learn and practice hands-on ML, not just
+produce a working portfolio artifact.** The portfolio is the by-product; the understanding is the
+point. This changes how Claude Code should work in this repo:
+
+- **Narrate the "why" behind every modelling decision, not just the "what."** Why this train/test
+  split, why this metric, why this model before that one. A working notebook with no explained
+  reasoning fails the actual goal even if it runs clean.
+- **Surface tradeoffs and negative results honestly** rather than smoothing them into a clean
+  narrative. "I tried X, it didn't beat the baseline, here's why" is a more valuable learning
+  moment than quietly picking whichever model number looks best.
+- **Flag real ML/stats gotchas when they come up** (e.g. dummy-variable collinearity, the
+  bias-variance tradeoff showing up as a train/test gap) — these are exactly the things that are
+  hard to learn from reading alone and are the reason this project exists.
+- **When Guilherme asks "why" or seems unsure, slow down and explain conceptually before writing
+  more code.** Don't treat clarifying questions as a detour from progress — they're the actual work.
+
+### The two-module ML curriculum this project covers
+
+| Module | ML paradigm | Core skills being practiced |
+|---|---|---|
+| **A — xG model** | Supervised, binary classification | Feature engineering from raw event data, baseline-before-complexity methodology, calibration vs. discrimination metrics, train/test design under distribution shift, honest model comparison |
+| **B — Player similarity** | Unsupervised, clustering + dimensionality reduction | Feature scaling, K-means, PCA, judging cluster quality without ground-truth labels |
+
+### Concepts already exercised (S2–S4)
+- Feature engineering from domain knowledge (shot distance/angle/assist type from raw JSON)
+- Deliberate non-random train/test split to test distribution shift (league → tournament), not just in-sample memorisation
+- Calibration (Brier score, log loss) evaluated separately from ranking quality (ROC-AUC) — a model can rank well but still be miscalibrated
+- Bias-variance tradeoff observed directly: default gradient boosting overfit (train AUC 0.825 vs test 0.794); tuning it down still didn't beat the simpler logistic baseline — a real example of complexity not paying for itself on limited data
+- Dummy-variable collinearity: one-hot encoding all categories of `assist_type` without dropping a reference category produced individually unreliable coefficients — fixed via `drop_first`-style encoding
+- A real Python gotcha with ML relevance: `bool(float('nan'))` is `True`, which silently corrupted a categorical feature until caught
+
+### Coming up (S5+)
+- Feature scaling (K-means is distance-based — unlike the tree/linear models used so far, raw feature scale will matter)
+- Clustering without labels — a different mental model for "is this working" (elbow method, cluster cohesion, does the grouping make football sense) versus a clean metric like ROC-AUC
+- PCA for dimensionality reduction and what it trades away (interpretability of individual components) for what it gains
+
+---
+
 ## What We Are Building
 
 Two interconnected analyses on StatsBomb open data (La Liga, Messi-era seasons):
@@ -227,23 +267,30 @@ Update the status column at the end of each session.
 
 | Session | Focus | Key deliverables | Status |
 |---|---|---|---|
-| **S1** | Scaffold + data exploration | Folder structure, requirements.txt, .gitignore, `data_loader.py` for StatsBomb + SkillCorner, notebook 01 running end-to-end | ⬜ Not started |
-| **S2** | xG feature engineering | `features.py` with distance, angle, body part, assist type, game state features using EURO 2024 + Leverkusen data; feature validation in notebook 02 | ⬜ Not started |
-| **S3** | xG model — baseline | Logistic regression in `models.py`, ROC-AUC + calibration evaluation, shot map visualisation | ⬜ Not started |
-| **S4** | xG model — upgrade + visuals | Gradient boosting, feature importance, player xG rankings, overperformer/underperformer table; PL 2015/16 as era benchmark | ⬜ Not started |
+| **S1** | Scaffold + data exploration | Folder structure, requirements.txt, .gitignore, `data_loader.py` for StatsBomb + SkillCorner, notebook 01 running end-to-end | ✅ Done |
+| **S2** | xG feature engineering | `features.py` with distance, angle, body part, assist type, game state features using EURO 2024 + Leverkusen data; feature validation in notebook 02 | ✅ Done |
+| **S3** | xG model — baseline | Logistic regression in `models.py`, ROC-AUC + calibration evaluation, shot map visualisation | ✅ Done |
+| **S4** | xG model — upgrade + visuals | Gradient boosting, feature importance, player xG rankings, overperformer/underperformer table; PL 2015/16 as era benchmark | ✅ Done |
 | **S5** | Player similarity — features | Per-90 metrics per player/position from event data + SkillCorner physical metrics (speed, sprints, acceleration), `similarity.py` skeleton | ⬜ Not started |
 | **S6** | Player similarity — clustering | K-means, PCA, elbow method, player archetype labelling, notebook 03 | ⬜ Not started |
 | **S7** | Radar charts + visuals | Radar chart per player (event + physical metrics combined), PCA scatter plot, "players like X" function output | ⬜ Not started |
 | **S8** | README + polish | Full README narrative, outputs committed, repo clean, links ready for CV/LinkedIn | ⬜ Not started |
 
-### Next Session (S1) — Checklist
-- [x] Create full folder structure
-- [x] Write `requirements.txt` (include kloppy for SkillCorner loading)
-- [x] Write `.gitignore` (ignore `data/`, `outputs/`, `.ipynb_checkpoints`, `__pycache__`)
-- [x] Write `src/data_loader.py` with `load_competitions()`, `load_matches()`, `load_events()`, `load_skillcorner_tracking()`
-- [ ] Write `notebooks/01_data_exploration.ipynb` — pull EURO 2024 data + SkillCorner sample, inspect shot events and physical metrics, basic EDA
-- [ ] Confirm notebook runs top-to-bottom without errors
-- [ ] Commit: `feat: project scaffold and data loader`
+### Next Session (S5) — Checklist
+- [x] S1: folder structure, requirements.txt, .gitignore, `data_loader.py`, notebook 01 (incl. bonus mplsoccer shot map) — runs clean
+- [x] S2: `src/features.py` — distance, angle, body part, first-time, under-pressure, penalty/free-kick flags,
+  assist type (Cross/Through Ball/Cut Back/Standard Pass/None), game-state score diff, `build_training_dataset()`
+- [x] S3: `src/models.py` (logistic regression baseline, ROC-AUC/log-loss/Brier eval, calibration curve),
+  `src/visualisation.py` (`plot_shot_map`, `plot_calibration_curve`), notebook 02 trained on
+  Leverkusen 2023/24 + PL 2015/16, evaluated on EURO 2024 — ROC-AUC 0.786 train / 0.798 test
+- [x] S4: gradient boosting model + tuning sweep in `models.py`, feature importance,
+  `build_player_xg_table()` (overperformer/underperformer table), `plot_player_xg_ranking()`,
+  PL 2015/16 era benchmark in notebook 02 — logistic regression confirmed as recommended model
+- [x] Switched `assist_type` one-hot encoding to drop "None" as reference category (was flagged as
+  dummy-variable collinearity in S3) — coefficients now read cleanly as "vs. an unassisted shot"
+- [ ] S5: per-90 player metrics from event data + SkillCorner physical metrics (speed, sprints,
+  acceleration), `src/similarity.py` skeleton
+- [ ] Commit S1–S4 work (nothing committed yet — still pending)
 
 ---
 
@@ -263,10 +310,44 @@ Update this section at the end of every session.
   won't pick up the PATH change. S1 scaffold partially done (folders, `.gitignore`,
   `requirements.txt`, `src/data_loader.py` + module stubs) — `notebooks/01_data_exploration.ipynb`
   and the scaffold commit are still pending for next session.
-- [ ] S1 — Scaffold + data loader
-- [ ] S2 — xG feature engineering
-- [ ] S3 — xG baseline model
-- [ ] S4 — xG upgrade + visuals
+- **2026-06-29** — Closed out S1 (notebook 01 ran clean; added a bonus mplsoccer shot map for the
+  sample EURO 2024 match, with outcomes Goal/Saved/Blocked/Off T/Wayward all explicitly coloured
+  and legended — first version silently lumped "Off T"/"Wayward" into an unlabelled grey). Built S2
+  (`src/features.py`): distance/angle computed from goalpost geometry (StatsBomb pitch, posts at
+  y=36/44), assist type derived by joining each shot's `shot_key_pass_id` to its source pass event.
+  Hit and fixed a real bug here — `pass_cross`/`pass_through_ball`/`pass_cut_back` columns hold
+  `True`/`NaN`, and `bool(float('nan'))` is `True` in Python, so a plain truthy check classified
+  ~72% of assists as crosses; fixed with explicit `is True` checks. Built S3 (`src/models.py`,
+  `src/visualisation.py`, notebook 02): logistic regression trained on Leverkusen 2023/24 + PL
+  2015/16 (10,824 shots, 10.1% conversion), evaluated on EURO 2024 (1,340 shots, 9.4% conversion) —
+  ROC-AUC 0.786 train / 0.798 test, Brier 0.077 / 0.067, generalises cleanly league→tournament.
+  Cached the StatsBomb pulls to `data/shots_train.pkl` / `shots_test.pkl` (gitignored, ~8 min to
+  rebuild via `build_training_dataset()` — pyarrow isn't installed so pickle, not parquet).
+  Coefficient review surfaced a real modelling caveat: `assist_type` is one-hot encoded across all
+  5 categories with no dropped reference, which is a classic dummy-variable collinearity setup —
+  sklearn's L2 regularization still produces an answer, but individual coefficients aren't cleanly
+  interpretable in isolation, only relative differences between them are. Flagged for `drop_first=True`
+  in S4. Nothing committed to git yet — S1 through S3 are all uncommitted local work.
+- **2026-06-29 (cont.)** — Closed out S4. Fixed the assist-type collinearity flagged above by
+  switching `build_feature_matrix` to drop "None" as the reference category (`ASSIST_TYPES[1:]`),
+  so each assist coefficient now reads cleanly as "vs. an unassisted shot." Added
+  `train_gradient_boosting()` to `src/models.py`: ran a small tuning sweep (default params
+  overfit — train ROC-AUC 0.825 vs test 0.794) and landed on shallow trees (max_depth=2),
+  learning_rate=0.05, subsample=0.8. Even tuned, GBM (train 0.796/test 0.793) did not clearly beat
+  the logistic baseline (train 0.786/test 0.798) — reported this honestly in notebook 02 rather
+  than forcing a "boosting wins" narrative; **logistic regression stays the recommended model**.
+  Added `get_feature_importance()`, `build_player_xg_table()` (goals minus cumulative xG, the
+  overperformer/underperformer lens), and `plot_player_xg_ranking()` to visualisation.py. Rebuilt
+  the cached `data/shots_train.pkl` once more to add a `competition_id` column (needed to isolate
+  PL 2015/16 shots from Leverkusen shots for the era-benchmark ranking — both were previously
+  tagged identically as `league_context='league'`). PL 2015/16 ranking output passes the sniff
+  test: Agüero/Mahrez/Kane top overperformers, Mitrović/Bony/Jerome top underperformers, both
+  consistent with how that season is actually remembered. Notebook 02 now covers S3+S4 end-to-end,
+  runs clean. Still nothing committed to git — S1 through S4 are all uncommitted local work.
+- [x] S1 — Scaffold + data loader
+- [x] S2 — xG feature engineering
+- [x] S3 — xG baseline model
+- [x] S4 — xG upgrade + visuals
 - [ ] S5 — Player similarity features
 - [ ] S6 — Clustering + PCA
 - [ ] S7 — Radar charts
