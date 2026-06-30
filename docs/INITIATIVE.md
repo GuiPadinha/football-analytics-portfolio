@@ -19,7 +19,7 @@ built later; StatsBomb 360 on data we already pull is the headline new model.
 |---|---|---|
 | **0** | Framework charter (FRAMEWORK.md, this tracker, CLAUDE.md roadmap entry) | ✅ Done |
 | **1** | Foundation: `config.py`, per-match cache, penalty/shootout fix, pinned deps, robustness fixes, first tests | ✅ Done |
-| **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | ⬜ Not started |
+| **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | 🔄 In progress (Module A done; Module B silhouette + minutes-weighted position pending) |
 | **3** | New model: 360-context xG + post-shot xG (xGOT) | ⬜ Not started |
 | **4** | More data + cross-league/season normalization | ⬜ Not started |
 | **5** | Product layer: interface spec + lightweight Streamlit app | ⬜ Not started |
@@ -51,6 +51,17 @@ Execution order: 0 → 1 → 2 → 3 → 4 → 5, with 6 opportunistic.
   Jupyter kernel — it was defaulting to conda base (Python 3.9.12); filtered that interpreter out in
   `.vscode/settings.json` and normalized all three notebooks' kernelspec to the portable `python3`.
   pyarrow/pytest pinned. **Next: Phase 2 (ML rigor).**
+- **2026-06-30** — Phase 2 **Module A (xG) rigor done** (notebook 02 + `src/models.py`): scaled
+  logistic (continuous features standardised via `Pipeline`/`ColumnTransformer`; test ROC-AUC
+  essentially unchanged at 0.765 — the win is convergence + comparable coefficients, e.g.
+  `distance_to_goal` −0.10 → −0.84 per-SD), 5-fold cross-validation (in-distribution 0.783 ± 0.009;
+  held-out EURO test sits at the bottom edge → a real ~1.7-pt league→tournament shift cost the single
+  number hid), a baseline ladder (no-skill 0.500 → geometry-only 0.712 → full 0.765), and a
+  calibrated GBM (isotonic barely moved Brier 0.0661 → 0.0659, still trails logistic — second honest
+  non-win, "logistic stays" holds). New `models.py` helpers: `build_logistic_pipeline`,
+  `get_coefficients`, `cross_validate_model`, `train_baseline_classifier`, `train_calibrated_gbm`.
+  +5 unit tests (19 green). Notebook 02 re-executed clean end-to-end. **Module B (silhouette,
+  minutes-weighted position) still pending — finishes Phase 2.**
 
 ---
 

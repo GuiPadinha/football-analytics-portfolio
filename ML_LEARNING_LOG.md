@@ -57,6 +57,39 @@ This file is the one to reread before starting a new module, or before an interv
   in-play shots; the 0.798 was flattered. General lesson: a discrimination metric is only as
   meaningful as the population it's computed over — deciding *which cases belong in the evaluation
   set* is itself a modelling decision, not a given. (Hardening Phase 1, 2026-06-30)
+- **Scaling a regularized logistic regression — and the result barely moving as the actual lesson.**
+  Standardised the three continuous features inside a `Pipeline`/`ColumnTransformer` (booleans and
+  one-hot dummies passed through unscaled). Test ROC-AUC moved 0.7652 → 0.7654, i.e. essentially
+  not at all. That non-movement *is* the lesson: L2's penalty is unfair across raw feature scales,
+  but with ~10k shots the likelihood term dominates the penalty, so the fitted boundary is nearly
+  identical either way. The real payoffs were (a) clean convergence (the old `max_iter=1000` was
+  papering over a solver struggling on mismatched scales) and (b) **coefficient comparability** —
+  raw `distance_to_goal` was −0.10 (looked trivial) but per-SD it's −0.84, correctly the
+  second-strongest driver after body part. Scaling here is a correctness/interpretability fix, not
+  an accuracy lever. (Hardening Phase 2, 2026-06-30)
+- **Cross-validation as a variance estimate, and the in- vs. out-of-distribution split it exposes.**
+  5-fold CV on the league training data gave ROC-AUC 0.783 ± 0.009; the held-out EURO 2024 test
+  (0.765) sits right at the bottom edge of that band (mean − 2σ ≈ 0.765). The single
+  train-once/test-once number couldn't show this — CV reframes "is 0.765 good" as "is 0.765 inside
+  the fold-to-fold spread," and the answer (barely, at the edge) quantifies a small but real ~1.7-pt
+  cost of generalising league → tournament. Key distinction made explicit: **CV measures
+  in-distribution stability** (random slices of league data), the **held-out tournament test measures
+  out-of-distribution generalisation** — different questions, both reported, neither a substitute for
+  the other. (Hardening Phase 2, 2026-06-30)
+- **An explicit baseline ladder, so the headline number means something.** Anchored 0.765 against a
+  no-skill base-rate `DummyClassifier` (ROC-AUC 0.500 by construction) and a geometry-only model
+  (distance + angle → 0.712). Reading: ~80% of the discrimination over a coin-flip is pure shot
+  geometry; every other feature (body part, assist, penalty, game state) adds the final 0.712 →
+  0.765. A metric is only interpretable relative to a floor — "baseline before complexity" applied
+  to the *evaluation*, not just the model choice. (Hardening Phase 2, 2026-06-30)
+- **Calibrating the gradient boosting model didn't rescue it — a second honest non-win.** Tree
+  ensembles are notorious for poorly-calibrated probabilities, so the obvious hypothesis was that
+  calibration was the GBM's only real weakness vs. logistic. Wrapped it in `CalibratedClassifierCV`
+  (isotonic, fit on held-out folds): Brier moved 0.0661 → 0.0659, basically nothing, and it still
+  trails logistic (0.0651) on calibration *and* ROC-AUC. Why so little to fix? The S4 GBM was
+  already tuned shallow with subsampling — it was never the pathologically-overconfident deep forest
+  that calibration usually rescues. The S4 "logistic stays" call survives a harder test rather than
+  being overturned. (Hardening Phase 2, 2026-06-30)
 
 ### Module C (candidate) — "PUP" (Performance Under Pressure), recovered and scoped 2026-06-29
 
@@ -290,6 +323,30 @@ when the goal is understanding the concept itself, not just what was decided her
   specifically to test a harder and more realistic question: does the model still work when the
   underlying data-generating process shifts? This is closer to genuine deployment risk (a model
   trained on one league being applied to a different competition) than a random split would reveal.
+- **Cross-validation (k-fold).** A single train/test split gives one performance number, but that
+  number is itself a random draw — split the data differently and it moves. k-fold CV splits the
+  data into k parts, trains on k−1 and validates on the held-out one, rotating through all k, and
+  reports the *spread* as well as the mean. That spread is what lets you say whether "model A scores
+  higher than model B" is a real difference or just fold-to-fold noise. **Stratified** k-fold keeps
+  each fold's class balance matched to the whole (essential at ~10% goals — an unstratified fold
+  could draw a wildly off base rate). Two leakage traps it avoids only if used correctly: (1) any
+  preprocessing fit on data (a scaler, an imputer) must be refit *inside* each fold on that fold's
+  training portion — sklearn `Pipeline` + `cross_validate` does this automatically, which is why the
+  unfitted pipeline is passed in rather than a pre-fitted one; (2) CV on the training set estimates
+  *in-distribution* stability — it is not a substitute for a genuinely held-out test set when the
+  real question is out-of-distribution generalisation (this project keeps both: CV on league data,
+  plus the untouched EURO 2024 tournament test).
+- **Probability calibration of a fitted classifier (Platt / isotonic).** Distinct from the
+  calibration *metric* (Brier) above — this is the *fix* when a model ranks well but its
+  probabilities are off. `CalibratedClassifierCV` learns a monotonic map from the model's raw score
+  to observed frequency, fit on held-out folds so the calibrator never sees the rows the base model
+  trained on. **Platt scaling** (`method="sigmoid"`) fits a single logistic curve — robust, low
+  data cost, but assumes a sigmoid-shaped distortion. **Isotonic** (`method="isotonic"`) fits a
+  free-form monotonic step function — more flexible, can correct any monotonic miscalibration, but
+  needs more data or it overfits the calibration curve itself. It only ever reshuffles probabilities
+  monotonically, so it cannot change ROC-AUC (ranking is preserved) — it can only improve
+  calibration, which is exactly why the GBM's unchanged AUC after calibration is expected, not a
+  bug.
 - **ROC-AUC.** The probability that, for a randomly chosen goal and a randomly chosen non-goal, the
   model assigns a higher score to the goal. Ranges 0.5 (no better than random) to 1.0 (perfect
   ranking). It is *threshold-independent* and *scale-independent* — a model could output garbled

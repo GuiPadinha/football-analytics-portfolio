@@ -5,10 +5,15 @@ Built out in Session S3 (logistic regression baseline) and Session S4
 """
 
 import pandas as pd
-from sklearn.calibration import calibration_curve
+from sklearn.calibration import CalibratedClassifierCV, calibration_curve
+from sklearn.compose import ColumnTransformer
+from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss, log_loss, roc_auc_score
+from sklearn.model_selection import cross_validate
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 NUMERIC_FEATURES = ["distance_to_goal", "angle_to_goal", "game_state_score_diff"]
 BOOLEAN_FEATURES = ["is_header", "is_first_time", "under_pressure", "is_penalty", "is_free_kick"]
@@ -50,22 +55,164 @@ def build_feature_matrix(shots):
     return X, y
 
 
-def train_logistic_regression(X_train, y_train):
-    """Fit the xG baseline model.
+def build_logistic_pipeline(numeric_features=NUMERIC_FEATURES):
+    """Assemble the (unfitted) scaled-logistic xG pipeline.
+
+    The continuous features are standardised before the logistic regression;
+    the boolean/one-hot features are passed through untouched. Two reasons
+    scaling matters here even though it didn't for the raw S3 model:
+
+    1. **Fair regularization.** L2 (sklearn's default) penalises every
+       coefficient by the same amount. On raw features, `distance_to_goal`
+       (0–100+) and `angle_to_goal` (0–180) carry tiny coefficients purely
+       because of their units, so the penalty barely touches them while it
+       leans hard on the binary flags. Standardising the continuous features
+       puts every coefficient on a comparable footing, so the penalty is
+       applied for the right reason (predictive value), not unit size.
+    2. **Convergence.** The old `max_iter=1000` was papering over a solver
+       struggling on wildly different feature scales; on standardised inputs
+       it converges comfortably.
+
+    The binary 0/1 features are deliberately *not* scaled — they're already on
+    a bounded, comparable scale, and leaving them raw keeps each `assist_*` /
+    boolean coefficient readable as a clean "vs. the reference shot" log-odds
+    shift (the S4 interpretability win), rather than a per-standard-deviation
+    quantity that means little for a 0/1 column.
+
+    Args:
+        numeric_features (list[str]): continuous columns to standardise. Pass
+            a subset (e.g. geometry only) to build a reduced baseline model;
+            the column list must match the columns present in `X`.
+
+    Returns:
+        sklearn.pipeline.Pipeline: unfitted scaler+logistic pipeline. Use
+            `train_logistic_regression` for the fitted full-feature model, or
+            pass this to `cross_validate_model` for an unbiased CV estimate
+            (the scaler is refit inside each fold, avoiding train/test leakage).
+    """
+    preprocessor = ColumnTransformer(
+        transformers=[("scale", StandardScaler(), list(numeric_features))],
+        remainder="passthrough",  # booleans + assist dummies pass through unscaled
+    )
+    return Pipeline([
+        ("preprocess", preprocessor),
+        ("logreg", LogisticRegression(max_iter=1000)),
+    ])
+
+
+def train_logistic_regression(X_train, y_train, numeric_features=NUMERIC_FEATURES):
+    """Fit the xG baseline model: standardised-continuous logistic regression.
 
     Logistic regression is the deliberate baseline here: it's well
     calibrated by construction (unlike most tree ensembles, which need
     extra calibration), which matters for an xG model whose whole purpose
-    is producing probabilities, not just rankings.
+    is producing probabilities, not just rankings. See `build_logistic_pipeline`
+    for why the continuous features are standardised first.
 
     Args:
         X_train (pandas.DataFrame): feature matrix from `build_feature_matrix`.
         y_train (pandas.Series): binary goal/no-goal target.
+        numeric_features (list[str]): continuous columns to standardise;
+            must be present in `X_train`.
 
     Returns:
-        sklearn.linear_model.LogisticRegression: fitted model.
+        sklearn.pipeline.Pipeline: fitted scaler+logistic pipeline. Exposes
+            `predict_proba` like a bare estimator, so `evaluate_model` and
+            `model.predict_proba(...)` work unchanged; coefficients are read
+            via `get_coefficients` (the scaler reorders columns internally).
     """
-    model = LogisticRegression(max_iter=1000)
+    model = build_logistic_pipeline(numeric_features)
+    model.fit(X_train, y_train)
+    return model
+
+
+def get_coefficients(model):
+    """Extract logistic coefficients as a name-indexed Series.
+
+    The scaling pipeline (`ColumnTransformer`) reorders columns — scaled
+    features first, passed-through features after — and prefixes their names
+    (`scale__`, `remainder__`), so `model.coef_` no longer lines up with the
+    original `X` column order. This recovers the mapping and strips the
+    prefixes, so the result reads like the old `zip(X.columns, model.coef_)`.
+
+    Note the units differ from the raw S3 model: continuous-feature
+    coefficients are now per-standard-deviation (a one-SD increase in the
+    feature, ~13m for distance), which makes their magnitudes directly
+    comparable to each other; the unscaled boolean/dummy coefficients remain
+    raw log-odds shifts vs. the reference category.
+
+    Args:
+        model (sklearn.pipeline.Pipeline): fitted output of
+            `train_logistic_regression`.
+
+    Returns:
+        pandas.Series: coefficient per feature, indexed by clean feature name,
+            sorted descending.
+    """
+    feature_names = model.named_steps["preprocess"].get_feature_names_out()
+    clean_names = [name.split("__", 1)[-1] for name in feature_names]
+    coefficients = model.named_steps["logreg"].coef_[0]
+    return pd.Series(coefficients, index=clean_names).sort_values(ascending=False)
+
+
+def cross_validate_model(estimator, X, y, cv=5, scorings=("roc_auc", "neg_brier_score")):
+    """Cross-validate an *unfitted* estimator and return per-fold scores.
+
+    A single train-once/evaluate-once number is one draw from a noisy process —
+    it can't tell a genuine difference between two models from fold-to-fold
+    wobble. k-fold CV refits the model on each of `cv` train/validation splits
+    and reports the spread, so "model A beats model B" can be judged against
+    how much the score moves just by reshuffling the data.
+
+    Folds are stratified by default (sklearn does this automatically for a
+    classifier + integer `cv`), which matters at ~10% goals — an unstratified
+    fold could land with a badly skewed goal rate. Pass an *unfitted*
+    estimator (e.g. `build_logistic_pipeline()`); `cross_validate` clones and
+    refits it per fold, so any scaler is fit on each fold's training portion
+    only — no leakage from validation rows into the scaling.
+
+    Important scope note: this estimates *in-distribution* stability (folds are
+    random slices of the league training data). It is a different question from
+    the held-out EURO 2024 test, which measures *out-of-distribution*
+    generalisation to tournament football. Both are reported; neither replaces
+    the other.
+
+    Args:
+        estimator: unfitted sklearn estimator/pipeline.
+        X (pandas.DataFrame): feature matrix.
+        y (pandas.Series): binary goal/no-goal target.
+        cv (int): number of folds.
+        scorings (tuple[str]): sklearn scorer names. `neg_brier_score` is
+            negated by convention (higher = better) — flip the sign to read it
+            as a normal Brier score.
+
+    Returns:
+        dict[str, numpy.ndarray]: scorer name -> array of per-fold scores.
+    """
+    results = cross_validate(estimator, X, y, cv=cv, scoring=list(scorings))
+    return {scorer: results[f"test_{scorer}"] for scorer in scorings}
+
+
+def train_baseline_classifier(X_train, y_train):
+    """Fit the no-skill floor: predict the base goal rate for every shot.
+
+    This is the reference every real model has to clear. A `DummyClassifier`
+    that always predicts the training goal rate (~10%) has ROC-AUC 0.5 by
+    construction (it ranks no shot above any other), but its Brier score is a
+    meaningful *calibration* floor — a model that can't beat the base-rate
+    Brier isn't earning its features. Reporting it stops "ROC-AUC 0.77" from
+    sounding good in a vacuum: it only means something against this floor and
+    against the geometry-only model (see notebook 02).
+
+    Args:
+        X_train (pandas.DataFrame): feature matrix (unused for prediction;
+            kept for a uniform `fit`/`predict_proba` interface).
+        y_train (pandas.Series): binary goal/no-goal target.
+
+    Returns:
+        sklearn.dummy.DummyClassifier: fitted base-rate predictor.
+    """
+    model = DummyClassifier(strategy="prior")
     model.fit(X_train, y_train)
     return model
 
@@ -137,6 +284,46 @@ def train_gradient_boosting(X_train, y_train, random_state=42):
         n_estimators=100, max_depth=2, learning_rate=0.05, subsample=0.8,
         random_state=random_state,
     )
+    model.fit(X_train, y_train)
+    return model
+
+
+def train_calibrated_gbm(X_train, y_train, method="isotonic", cv=5, random_state=42):
+    """Fit the gradient boosting model wrapped in probability calibration.
+
+    The S4 finding was that gradient boosting *ranked* about as well as
+    logistic regression but its raw probabilities were less trustworthy —
+    tree ensembles optimise split purity, not probability accuracy, so their
+    `predict_proba` outputs are notoriously pushed toward 0/1 (a real problem
+    for xG, where the number *is* the product). This tests the obvious
+    follow-up: was poor calibration the GBM's only real weakness?
+
+    `CalibratedClassifierCV` learns a correction from predicted score to
+    observed frequency on held-out folds (so the calibrator never sees the
+    same rows the base model was fit on), then averages the per-fold
+    calibrated models. `method="isotonic"` fits a free-form monotonic mapping
+    — flexible and fine at this sample size (~10k shots, ~1k goals); switch to
+    `"sigmoid"` (Platt scaling, a single logistic fit) if data is scarce and
+    isotonic starts overfitting the calibration curve.
+
+    Args:
+        X_train (pandas.DataFrame): feature matrix from `build_feature_matrix`.
+        y_train (pandas.Series): binary goal/no-goal target.
+        method (str): "isotonic" or "sigmoid" calibration mapping.
+        cv (int): folds used to fit the calibrator without leakage.
+        random_state (int): seed for the underlying GBM.
+
+    Returns:
+        sklearn.calibration.CalibratedClassifierCV: fitted calibrated model.
+            Compare its Brier score against the raw GBM and the logistic
+            baseline — if it now matches logistic on calibration but still
+            doesn't beat it on ROC-AUC, the S4 "logistic stays" call holds.
+    """
+    base_gbm = GradientBoostingClassifier(
+        n_estimators=100, max_depth=2, learning_rate=0.05, subsample=0.8,
+        random_state=random_state,
+    )
+    model = CalibratedClassifierCV(estimator=base_gbm, method=method, cv=cv)
     model.fit(X_train, y_train)
     return model
 

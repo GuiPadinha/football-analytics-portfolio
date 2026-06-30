@@ -516,6 +516,24 @@ Update this section at the end of every session.
   Python 3.9.12 — the cause of the failed in-IDE run): filtered that interpreter out via
   `.vscode/settings.json` `jupyter.kernels.filter` and normalized all three notebooks' kernelspec to
   the portable `python3`. Uncommitted local work.
+- **2026-06-30 (cont.)** — Started Hardening **Phase 2 (ML rigor) — Module A (xG) done** in
+  `src/models.py` + notebook 02. Four rigor checks, all narrated in a new "Phase 2 — ML Rigor"
+  notebook section: (1) **scaled logistic** — continuous features standardised inside a
+  `Pipeline`/`ColumnTransformer`, booleans/dummies passed through; test ROC-AUC unchanged (~0.765),
+  which *is* the lesson — with ~10k shots L2's penalty is weak, so the win is clean convergence (no
+  more leaning on `max_iter=1000`) and **comparable coefficients** (`distance_to_goal` reads −0.84
+  per-SD, not a misleadingly-tiny −0.10). (2) **5-fold cross-validation** on the league data —
+  0.783 ± 0.009 in-distribution, with the held-out EURO test (0.765) at the bottom edge of the band:
+  a small but real ~1.7-pt league→tournament shift cost the single number hid; made the
+  in-distribution-vs-OOD distinction explicit. (3) **baseline ladder** — no-skill 0.500 →
+  geometry-only 0.712 → full 0.765, so ~80% of the discrimination is pure shot geometry. (4)
+  **calibrated GBM** (isotonic) — Brier 0.0661 → 0.0659, basically nothing, still trails logistic on
+  both axes: a second honest non-win, the S4 "logistic regression stays" call holds under a harder
+  test. New helpers: `build_logistic_pipeline`, `get_coefficients`, `cross_validate_model`,
+  `train_baseline_classifier`, `train_calibrated_gbm`; +5 unit tests (19 green); notebook 02
+  re-executed clean end-to-end on the 3.10 kernel. **Module B rigor (silhouette score +
+  minutes-weighted position assignment) still pending — that finishes Phase 2.** Uncommitted local
+  work.
 - [x] S1 — Scaffold + data loader
 - [x] S2 — xG feature engineering
 - [x] S3 — xG baseline model
