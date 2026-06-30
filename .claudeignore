@@ -1,0 +1,20 @@
+# Exclude from Claude's auto-discovery — these are binary, generated, or large cache files.
+# Claude can still explicitly Read any of these files when needed; this only prevents
+# them appearing in directory scans and glob results.
+
+# Cached data (gitignored anyway, but make sure Claude doesn't scan them)
+data/
+
+# Saved plot outputs (PNG files)
+outputs/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Serialized cache files (binary, not text-readable)
+*.pkl
+*.parquet
+
+# Pytest cache
+.pytest_cache/

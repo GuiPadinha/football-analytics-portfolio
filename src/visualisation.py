@@ -112,6 +112,39 @@ def plot_elbow_curve(inertias, chosen_k=None, ax=None, title=None):
     return ax
 
 
+def plot_silhouette_curve(scores, ax=None, title=None):
+    """Plot silhouette score against K, marking the K that maximises it.
+
+    Unlike the elbow curve (inertia, monotonically decreasing — read by eye),
+    the silhouette score has an actual peak, so the maximising K is drawn
+    explicitly as the metric's own recommendation. Read it alongside the elbow
+    curve, not instead of it: a sharp peak is a strong signal, a flat curve
+    means the metric has no strong opinion and the choice falls back to the
+    elbow and football sense.
+
+    Args:
+        scores (pandas.Series): output of `similarity.compute_silhouette_scores`,
+            indexed by K.
+        ax (matplotlib.axes.Axes, optional): existing axes to draw on.
+        title (str, optional): plot title.
+
+    Returns:
+        matplotlib.axes.Axes: the axes the curve was drawn on.
+    """
+    if ax is None:
+        _, ax = plt.subplots(figsize=(6, 4))
+
+    ax.plot(scores.index, scores.values, marker="o")
+    best_k = scores.idxmax()
+    ax.axvline(best_k, color="seagreen", linestyle="--", label=f"max at K={best_k}")
+    ax.legend()
+    ax.set_xlabel("K (number of clusters)")
+    ax.set_ylabel("Silhouette score")
+    if title:
+        ax.set_title(title, fontsize=12)
+    return ax
+
+
 def plot_pca_clusters(components, cluster_labels, ax=None, title=None):
     """Scatter plot of players in 2D PCA space, coloured by cluster.
 

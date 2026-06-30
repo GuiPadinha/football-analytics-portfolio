@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
+from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 
 from src.data_loader import load_events, load_lineups, load_matches, load_skillcorner_tracking
@@ -106,6 +107,68 @@ def compute_minutes_played(lineups, match_duration):
                 "position": primary_position,
                 "minutes_played": sum(minutes_by_position.values()),
             })
+
+    return pd.DataFrame(records)
+
+
+def resolve_season_positions(minutes_df):
+    """Assign each player's season position group by total minutes, not match count.
+
+    `minutes_df` is the concatenated per-match output of `compute_minutes_played`:
+    one row per (player, team, match) carrying that match's primary position and
+    the player's minutes in it. The naive aggregation — take the *modal* per-match
+    position — has a real failure mode for versatile players. When a player's
+    attacking minutes are spread across several position labels (Right Wing /
+    Left Wing / Centre Forward) while their occasional defensive cameos all share
+    one label (Right Back), the single defensive label can win a per-match *count*
+    vote even though attacking minutes dominate the season. That is exactly what
+    put Michail Antonio — a winger — into a one-man "defender" cluster in S6.
+
+    The fix resolves the position *group* from summed minutes: total each player's
+    minutes per group across the season and take the argmax. Summing at the group
+    level (not the raw position level) is deliberate — it reunites the fragmented
+    RW/LW/CF minutes into one "Forward" total before comparing, so attacking time
+    can't be split into losing the vote to a single consistent defensive label.
+    The representative `position` is then the highest-minutes position within the
+    winning group. Total `minutes_played` is the player's full season presence
+    (across every position, mapped or not), unchanged from before — only the group
+    assignment logic changes.
+
+    Args:
+        minutes_df (pandas.DataFrame): concatenated per-match output of
+            `compute_minutes_played`, with `player`, `team`, `position`,
+            `minutes_played`.
+
+    Returns:
+        pandas.DataFrame: one row per (player, team) with `minutes_played`
+            (season total), `position_group`, and `position`. Players whose every
+            recorded position is outside `POSITION_GROUPS` are dropped (no group
+            to assign) — this never happens for standard StatsBomb position labels.
+    """
+    df = minutes_df.copy()
+    df["position_group"] = df["position"].map(POSITION_GROUPS)
+
+    records = []
+    for (player, team), player_df in df.groupby(["player", "team"]):
+        mapped = player_df.dropna(subset=["position_group"])
+        if mapped.empty:
+            continue
+
+        # Winning group = most season minutes; winning position = most minutes
+        # within that group. Ties resolve to whichever label sorts first (idxmax).
+        primary_group = mapped.groupby("position_group")["minutes_played"].sum().idxmax()
+        in_group = mapped[mapped["position_group"] == primary_group]
+        primary_position = in_group.groupby("position")["minutes_played"].sum().idxmax()
+
+        records.append({
+            "player": player,
+            "team": team,
+            # Full presence across all positions (incl. any unmapped), so the
+            # min_minutes filter still measures total pitch time, not time-in-group.
+            "minutes_played": player_df["minutes_played"].sum(),
+            "position_group": primary_group,
+            "position": primary_position,
+        })
 
     return pd.DataFrame(records)
 
@@ -253,19 +316,17 @@ def build_player_per90_features(competition_id, season_id, min_minutes=900):
     minutes_df = pd.concat(all_minutes, ignore_index=True)
     actions_df = pd.concat(all_actions, ignore_index=True)
 
-    season_minutes = (
-        minutes_df.groupby(["player", "team"])
-        .agg(minutes_played=("minutes_played", "sum"),
-             position=("position", lambda s: s.mode().iat[0]))
-        .reset_index()
-    )
+    # Minutes-weighted position assignment (see resolve_season_positions): assign
+    # each player to the group they logged the most season minutes in, not their
+    # modal per-match position — the latter mislabels versatile players whose
+    # attacking minutes are split across several labels (the S6 Antonio case).
+    season_minutes = resolve_season_positions(minutes_df)
     season_actions = (
         actions_df.groupby(["player", "team"])[ACTION_COLUMNS].sum().reset_index()
     )
 
     features = season_minutes.merge(season_actions, on=["player", "team"], how="left")
     features[ACTION_COLUMNS] = features[ACTION_COLUMNS].fillna(0)
-    features["position_group"] = features["position"].map(POSITION_GROUPS)
 
     features = features[features["minutes_played"] >= min_minutes]
     features = features[features["position_group"] != "Goalkeeper"]
@@ -425,6 +486,43 @@ def compute_elbow_scores(X_scaled, k_range=range(2, 11)):
         kmeans.fit(X_scaled)
         inertias[k] = kmeans.inertia_
     return pd.Series(inertias)
+
+
+def compute_silhouette_scores(X_scaled, k_range=range(2, 11), random_state=42):
+    """Fit K-means across a range of K and return the silhouette score for each.
+
+    Complementary to `compute_elbow_scores`. Inertia *always* falls as K rises,
+    so the elbow method has no internal optimum — you eyeball where the curve
+    bends, which is subjective. The silhouette score instead measures how well
+    each point sits in its cluster: for a point, `a` is its mean distance to the
+    other points in its own cluster (cohesion) and `b` is its mean distance to
+    the points of the nearest *other* cluster (separation); its silhouette is
+    `(b - a) / max(a, b)`, averaged over all points. It ranges -1 to 1 (higher =
+    tighter, better-separated clusters; near 0 = points sit on cluster borders;
+    negative = points likely in the wrong cluster) and, crucially, does NOT
+    increase monotonically with K — so unlike inertia it can be *maximised* to
+    suggest a K, a quantitative second opinion on the by-eye elbow read.
+
+    It's still only a heuristic: it rewards convex, roughly equal-sized, well-
+    separated blobs, and real play-style data is none of those cleanly — so it
+    informs the K choice alongside the elbow curve and football sense, it doesn't
+    settle it on its own.
+
+    Args:
+        X_scaled (pandas.DataFrame): output of `scale_features`.
+        k_range (range): candidate values of K. Must be >= 2 — the silhouette
+            score is undefined for a single cluster (no "other cluster" for `b`).
+        random_state (int): seed for K-means' centroid initialisation.
+
+    Returns:
+        pandas.Series: silhouette score indexed by K.
+    """
+    scores = {}
+    for k in k_range:
+        kmeans = KMeans(n_clusters=k, random_state=random_state, n_init=10)
+        labels = kmeans.fit_predict(X_scaled)
+        scores[k] = silhouette_score(X_scaled, labels)
+    return pd.Series(scores)
 
 
 def fit_kmeans(X_scaled, n_clusters, random_state=42):

@@ -101,7 +101,14 @@ league) using their actual on-pitch output rather than name recognition.
   goalkeepers excluded) — clustering everyone together would mostly just rediscover position
   itself rather than find play-style differences within a position, which is the actually useful
   signal for recruitment.
-- K-means (K=4 per group, chosen via the elbow method) plus PCA for visualisation.
+- Player positions are assigned by **total minutes played** in each position group across the
+  season, not by the most frequent match-day slot — a deliberate fix for versatile players whose
+  minutes spread across several roles.
+- K-means (K=4 per group) plus PCA for visualisation. K was cross-checked with both the elbow
+  method and silhouette scores; silhouette actually preferred a coarser K=2, but its low scores
+  showed that play-styles within a position blur into a continuum rather than splitting into crisp
+  groups — so K=4 was kept deliberately, for finer, more useful archetypes. (The trade-off is
+  written up honestly in the notebook rather than hidden behind "the metric agreed.")
 - A separate, finer-grained **nearest-neighbour lookup** ("players like X") on top of the
   clustering — two players in the same cluster aren't necessarily equally similar, so this ranks
   by actual distance rather than just shared cluster membership.
@@ -136,14 +143,16 @@ check used throughout this project wherever there's no ground-truth label to val
 
 ### An honest data-quality caveat
 
-One defender cluster contains a single player, **Michail Antonio**, with extreme z-scores driven
-by attacking output that doesn't belong in a defensive cluster at all. He was primarily a winger
-that season who occasionally filled in at the back — his *modal* match position landed on
-"defender," which is a real limitation of using "most common position across a season" to classify
-versatile or misused players. K-means didn't make a mistake here; it correctly found he's nothing
-like the other defenders. The mistake, if there is one, is upstream in how position is assigned.
-Noted here rather than quietly excluded, because this is exactly the kind of edge case a real
-recruitment tool needs a human in the loop for.
+One defender cluster contains a single player, **Michail Antonio**, with extreme attacking output
+(goals and shots per 90 far above any real defender). The intuitive assumption is that his position
+was simply mislabelled — but checking his actual minutes disproved it: in 2015/16 he genuinely
+logged more time at right-back / wing-back (~920 minutes) than as a winger (~760), so assigning
+position by minutes played *correctly* makes him a defender. He stands alone not because of a
+labelling error but because he's a true positional hybrid — forward-level output produced from a
+full-back role. K-means is right: he is nothing like the other defenders. Resolving a case like
+this properly would need multi-position membership (one player belonging to two groups at once),
+and in practice a human in the loop — exactly the kind of edge case a real recruitment tool should
+surface rather than quietly hide.
 
 ---
 

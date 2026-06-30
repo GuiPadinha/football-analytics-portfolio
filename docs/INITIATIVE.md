@@ -19,7 +19,7 @@ built later; StatsBomb 360 on data we already pull is the headline new model.
 |---|---|---|
 | **0** | Framework charter (FRAMEWORK.md, this tracker, CLAUDE.md roadmap entry) | ✅ Done |
 | **1** | Foundation: `config.py`, per-match cache, penalty/shootout fix, pinned deps, robustness fixes, first tests | ✅ Done |
-| **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | 🔄 In progress (Module A done; Module B silhouette + minutes-weighted position pending) |
+| **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | ✅ Done |
 | **3** | New model: 360-context xG + post-shot xG (xGOT) | ⬜ Not started |
 | **4** | More data + cross-league/season normalization | ⬜ Not started |
 | **5** | Product layer: interface spec + lightweight Streamlit app | ⬜ Not started |
@@ -62,6 +62,20 @@ Execution order: 0 → 1 → 2 → 3 → 4 → 5, with 6 opportunistic.
   `get_coefficients`, `cross_validate_model`, `train_baseline_classifier`, `train_calibrated_gbm`.
   +5 unit tests (19 green). Notebook 02 re-executed clean end-to-end. **Module B (silhouette,
   minutes-weighted position) still pending — finishes Phase 2.**
+- **2026-06-30** — Phase 2 **Module B (similarity) rigor done → Phase 2 complete.** Two additions
+  to `src/similarity.py` + notebook 03. (1) **Silhouette score** (`compute_silhouette_scores`,
+  `plot_silhouette_curve`): peaks at K=2 for all three position groups but at a *low* level
+  (Defender 0.236 / Mid 0.264 / Fwd 0.262) — the low absolute value is the finding (play-styles
+  within a position are a continuum, not crisp blobs), and K=4 is kept deliberately against the
+  metric for archetype granularity, narrated honestly. (2) **Minutes-weighted position assignment**
+  (`resolve_season_positions`): assigns the position *group* by total season minutes, not modal
+  per-match position — reclassified 10 borderline winger/forward/midfield hybrids
+  (Coutinho/Lingard/Mata/Sissoko/Firmino/Berahino/Schlupp/…); counts 118/104/78 → 119/106/75. It
+  did *not* move Michail Antonio, which disproved the S6 "mostly a winger" premise (his minutes are
+  920 RB/wing-back vs 761 wing vs 452 mid — genuinely a defender by minutes); he stays a one-man
+  cluster as a true positional hybrid, which only multi-position/soft membership could resolve.
+  +3 unit tests (22 green). Cached per-90 table rebuilt; notebook 03 re-executed clean end-to-end;
+  new `outputs/similarity_silhouette_curves.png`. **Next: Phase 3 (360-context xG + xGOT).**
 
 ---
 
