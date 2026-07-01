@@ -31,7 +31,7 @@ Kicked off post-S8 (2026-06-29). Six phases targeting code-review findings, prod
 | 2 | ML rigor: scaled logistic, CV, baseline ladder, calibrated GBM, silhouette, minutes-weighted positions | ✅ Done |
 | 3 | New model: 360-context xG + post-shot xG (xGOT) | ⬜ **Next** |
 | 4 | More data + cross-league/season normalisation | ⬜ Not started |
-| 5 | Product layer: interface spec + lightweight Streamlit app | ⬜ Not started |
+| 5 | Product layer: interface spec + lightweight Streamlit app ([PRODUCT_SPEC.md](PRODUCT_SPEC.md)) | 🟡 Spec done, build pending |
 | 6 | Alternative models (GMM, hierarchical, cosine, monotonic GBM) | ⬜ Opportunistic |
 
 ---

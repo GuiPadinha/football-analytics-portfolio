@@ -120,6 +120,10 @@ screen:
 That interactive layer (Phase 5 of the hardening initiative) is what turns "a set of analyses"
 into "a tool." Its absence is the main reason the project can feel abstract right now.
 
+The full interface design — screens, interaction model, the map from each panel to the existing
+`src/` function that powers it, tech choice (Streamlit), and mockups — is specified in
+[PRODUCT_SPEC.md](PRODUCT_SPEC.md). Spec is done; the build is a later session.
+
 ---
 
 *Scope, framing, and roadmap for the ongoing improvement work live in [INITIATIVE.md](INITIATIVE.md).*

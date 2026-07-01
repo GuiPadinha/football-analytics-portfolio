@@ -22,7 +22,7 @@ built later; StatsBomb 360 on data we already pull is the headline new model.
 | **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | ✅ Done |
 | **3** | New model: 360-context xG + post-shot xG (xGOT) | ⬜ Not started |
 | **4** | More data + cross-league/season normalization | ⬜ Not started |
-| **5** | Product layer: interface spec + lightweight Streamlit app | ⬜ Not started |
+| **5** | Product layer: interface spec + lightweight Streamlit app — [spec expanded](PRODUCT_SPEC.md) 2026-07-01, build pending | 🟡 Spec done, build pending |
 | **6** | Alternative models (GMM, hierarchical, cosine, monotonic GBM) — exploratory | ⬜ Not started |
 
 Execution order: 0 → 1 → 2 → 3 → 4 → 5, with 6 opportunistic.
