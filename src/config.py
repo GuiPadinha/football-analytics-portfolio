@@ -4,7 +4,7 @@ Replaces the magic `(competition_id, season_id, league_context)` tuples that wer
 scattered through the notebooks (e.g. `(9, 281, 'league')`). A named, self-documenting `Dataset`
 makes the data subsets explicit, kills the positional-tuple ordering hazard, and gives one place
 to record which competitions have StatsBomb 360 freeze-frame data available (used by the
-360-context xG model — see the Phase 3 plan).
+360-context xG model — see the Phase 7 plan).
 
 StatsBomb open-data competition/season ids come from `sb.competitions()`; the `has_360` flags
 reflect the freeze-frame coverage published in StatsBomb's open-data repository.
@@ -49,7 +49,7 @@ WOMENS_EURO_2025 = Dataset(53, 315, "tournament", "UEFA Women's EURO 2025", has_
 TRAIN_SETS = [LEVERKUSEN_2023_24, PL_2015_16]
 TEST_SETS = [EURO_2024]
 
-# Datasets usable by the 360-context xG model (Phase 3) — only those with freeze-frame coverage.
+# Datasets usable by the 360-context xG model (Phase 7) — only those with freeze-frame coverage.
 SETS_WITH_360 = [ds for ds in (LEVERKUSEN_2023_24, PL_2015_16, EURO_2024) if ds.has_360]
 
 # Primary similarity pool (Module B). One competition for now; widened in Phase 4.

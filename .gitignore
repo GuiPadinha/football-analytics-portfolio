@@ -1,6 +1,7 @@
 # Raw data and generated outputs (not tracked, see CLAUDE.md)
 data/*
 !data/.gitkeep
+!data/manifest.json   # provenance manifest is committed on purpose (see src/manifest.py)
 outputs/*
 !outputs/.gitkeep
 
