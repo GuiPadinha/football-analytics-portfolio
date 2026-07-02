@@ -117,7 +117,7 @@ screen:
                          └─────────────────────────────────────────┘
 ```
 
-That interactive layer (Phase 5 of the hardening initiative) is what turns "a set of analyses"
+That interactive layer (Phase 8 of the hardening initiative) is what turns "a set of analyses"
 into "a tool." Its absence is the main reason the project can feel abstract right now.
 
 The full interface design — screens, interaction model, the map from each panel to the existing

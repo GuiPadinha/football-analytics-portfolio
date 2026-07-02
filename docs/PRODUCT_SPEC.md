@@ -1,8 +1,8 @@
-# Product Layer — Interface Spec (Phase 5)
+# Product Layer — Interface Spec (Phase 8)
 
 → [CLAUDE.md](../CLAUDE.md) | Framing: [FRAMEWORK.md](FRAMEWORK.md) | Phase tracker: [INITIATIVE.md](INITIATIVE.md)
 
-**Status:** spec expanded 2026-07-01, build pending (Phase 5, after Phases 3–4).
+**Status:** spec expanded 2026-07-01, build pending (Phase 8, after Phases 3–7). *(Renumbered from Phase 5 on 2026-07-02.)*
 This is the *what* and the *why*. It writes no app code — it's the turnkey brief for
 the future build session, plus mockups so the shape is agreed before a line is written.
 
@@ -151,7 +151,7 @@ dynamic and customizable" — better than the alternatives:
 
 - No live model retraining or live StatsBomb pulls — precomputed artifacts only.
 - No auth, no user accounts, no saved sessions.
-- No 360-context xG or xGOT panels until Phase 3 lands (this spec targets the current
+- No 360-context xG or xGOT panels until Phase 7 lands (this spec targets the current
   pre-shot xG + similarity models).
 - No SkillCorner physical panel — it shares zero players with the event data
   ([FRAMEWORK.md](FRAMEWORK.md) scope note), so it can't slot into a per-player screen.
@@ -159,7 +159,7 @@ dynamic and customizable" — better than the alternatives:
 
 ---
 
-## Build checklist (for the future Phase 5 session)
+## Build checklist (for the future Phase 8 session)
 
 - [ ] Add a `build step` (script or notebook cell) that writes the three artifacts to
       `app_data/` for at least the flagship dataset.

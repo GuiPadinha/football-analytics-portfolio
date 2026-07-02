@@ -9,23 +9,40 @@ scaling gaps, and the product story was unclear. Each phase below is independent
 its own session. Conceptual framing is settled in [FRAMEWORK.md](FRAMEWORK.md).
 
 **Framing decisions (locked):** recruitment-led, both modules kept; product layer specified now and
-built later; StatsBomb 360 on data we already pull is the headline new model.
+built later. **Reprioritised 2026-07-02** ("do it all, structured"): the whole review backlog is
+folded into one execution-ordered program (below). The headline shift — an engineering &
+reproducibility spine goes *first* (manifest is a prerequisite of the data-expansion pipeline;
+`metrics.json` must exist before we generate numbers across new competitions), and data expansion
+is treated as engineering-at-scale-in-service-of-ML, not a download script.
 
 ---
 
 ## Phases
 
-| Phase | Focus | Status |
-|---|---|---|
-| **0** | Framework charter (FRAMEWORK.md, this tracker, CLAUDE.md roadmap entry) | ✅ Done |
-| **1** | Foundation: `config.py`, per-match cache, penalty/shootout fix, pinned deps, robustness fixes, first tests | ✅ Done |
-| **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | ✅ Done |
-| **3** | New model: 360-context xG + post-shot xG (xGOT) | ⬜ Not started |
-| **4** | More data + cross-league/season normalization | ⬜ Not started |
-| **5** | Product layer: interface spec + lightweight Streamlit app — [spec expanded](PRODUCT_SPEC.md) 2026-07-01, build pending | 🟡 Spec done, build pending |
-| **6** | Alternative models (GMM, hierarchical, cosine, monotonic GBM) — exploratory | ⬜ Not started |
+**This table is the single source of truth for phase numbering.** ROADMAP.md links here; do not
+copy it. Phases 3–6 were renumbered on 2026-07-02 (see the "Was" column) when the review backlog
+was folded in — the old Phase 3 (360 xG) and Phase 5 (product) moved *later* behind the unblockers.
 
-Execution order: 0 → 1 → 2 → 3 → 4 → 5, with 6 opportunistic.
+| Phase | Focus | Was | Status |
+|---|---|---|---|
+| **0** | Framework charter (FRAMEWORK.md, this tracker, CLAUDE.md roadmap entry) | 0 | ✅ Done |
+| **1** | Foundation: `config.py`, per-match cache, penalty/shootout fix, pinned deps, robustness fixes, first tests | 1 | ✅ Done |
+| **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | 2 | ✅ Done |
+| **3** | Engineering & reproducibility spine: CI, `pipeline.py`/Makefile, `metrics.json` single-source, data manifest | *new* | ⬜ **Next** |
+| **4** | Multi-competition ingestion + data expansion: config-driven pipeline, Module B cross-league, Module A generalization | 4 (reshaped) | ⬜ Not started |
+| **5** | xG uncertainty + hierarchical/empirical-Bayes finishing model; header/foot interaction; calibration by stratum | *new* | ⬜ Not started |
+| **6** | Module B upgrades: Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features | part of old 6 | ⬜ Not started |
+| **7** | New model: 360-context xG + post-shot xG (xGOT) | **3** | ⬜ Not started |
+| **8** | Product layer: lightweight Streamlit app — [spec done](PRODUCT_SPEC.md) 2026-07-01, build pending | **5** | 🟡 Spec done, build pending |
+| **9** | Opportunistic: xA/chance-creation model, Module C (PUP), remaining alt-models (hierarchical, cosine, monotonic GBM) | old 6 + Module C | ⬜ Not started |
+
+Execution order: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8, with 9 opportunistic. Full per-phase task
+lists live in [ROADMAP.md](ROADMAP.md).
+
+**Why the spine goes first (over the earlier "data expansion first" call):** the data manifest is a
+prerequisite of the config-driven ingestion pipeline, `metrics.json` should exist before we 10× the
+data and the numbers, and the spine is the cheapest credibility badge that also structurally kills
+the doc drift — so every later phase writes into a clean, single-source system.
 
 ---
 
@@ -76,6 +93,18 @@ Execution order: 0 → 1 → 2 → 3 → 4 → 5, with 6 opportunistic.
   cluster as a true positional hybrid, which only multi-position/soft membership could resolve.
   +3 unit tests (22 green). Cached per-90 table rebuilt; notebook 03 re-executed clean end-to-end;
   new `outputs/similarity_silhouette_curves.png`. **Next: Phase 3 (360-context xG + xGOT).**
+- **2026-07-02** — **Reprioritisation ("do it all, structured").** Folded the entire code-review
+  backlog into one execution-ordered program and **renumbered Phases 3–6 → 3–9** (see the "Was"
+  column). New Phase 3 = engineering & reproducibility spine (CI, `pipeline.py`, `metrics.json`
+  single-source, data manifest), promoted ahead of data expansion because the manifest is a
+  prerequisite of the ingestion pipeline and `metrics.json` must exist before the data/number 10×.
+  Old Phase 3 (360 xG) → Phase 7; old Phase 5 (product build) → Phase 8; old Phase 6 + Module C →
+  Phase 9 (opportunistic). Added Phase 5 (xG uncertainty + hierarchical finishing) and Phase 6
+  (Module B upgrades: Mahalanobis, possession-adjust, GMM, creative features). **De-drift done in
+  the same pass:** single canonical phase table now lives here only; ROADMAP links to it and holds
+  the detailed task lists; the stale "all uncommitted" note in PROGRESS.md was corrected against git
+  log. Planning/docs only — no `src/`, notebook, test, or data changes; 22 tests untouched.
+  **Next: Phase 3 (engineering & reproducibility spine).**
 
 ---
 
@@ -83,6 +112,6 @@ Execution order: 0 → 1 → 2 → 3 → 4 → 5, with 6 opportunistic.
 
 1. Read `CLAUDE.md` (project source of truth) and `docs/FRAMEWORK.md` (what the tool is for).
 2. Check this table for the first ⬜ phase.
-3. Open the plan file for that phase's detailed task list.
+3. Open [ROADMAP.md](ROADMAP.md) for that phase's detailed task list.
 4. Close the session by updating the Status column above, adding a Log entry, and following the
    standard CLAUDE.md session close-out (summary + suggested commit message + Progress Log).

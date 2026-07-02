@@ -6,10 +6,12 @@ Project source of truth. Read this first every session, then load linked docs on
 
 ## Current Status
 
-**Active initiative:** Framework Hardening & Expansion — Phase 2 complete.
-**Next: Phase 3 — 360-context xG + post-shot xG (xGOT).**
+**Active initiative:** Framework Hardening & Expansion — Phases 0–2 complete; full review backlog
+folded into a renumbered 0–9 program on 2026-07-02.
+**Next: Phase 3 — Engineering & reproducibility spine (CI, `pipeline.py`, `metrics.json`, data manifest).**
+(360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
 
-Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped). Similarity: K=4 per position group, silhouette ~0.25 (soft continuum). 22 unit tests passing.
+Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped). Similarity: K=4 per position group, silhouette ~0.25 (soft continuum). 22 unit tests passing. *(These become code-emitted via `metrics.json` in Phase 3b; until then they are hand-maintained here.)*
 
 → Phase tracker: [docs/INITIATIVE.md](docs/INITIATIVE.md) | Session log: [docs/PROGRESS.md](docs/PROGRESS.md)
 

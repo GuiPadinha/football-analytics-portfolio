@@ -25,6 +25,8 @@
 
 **Output:** xG per shot/player/team; overperformer/underperformer table (`build_player_xg_table`); shot maps; calibration curves.
 
+**Planned upgrades** (see [ROADMAP.md](ROADMAP.md)): uncertainty on goals−xG + hierarchical/empirical-Bayes finishing model, header/foot interaction, calibration by stratum → **Phase 5**; 360-context features + post-shot xGOT → **Phase 7**.
+
 ---
 
 ## Module B — Player Similarity & Recruitment Tool
@@ -48,11 +50,13 @@
 
 **SkillCorner physical layer:** `build_physical_per90_features` — distance/HSR/sprints per 90 from A-League tracking data. Standalone capability demo only (no player overlap with StatsBomb datasets).
 
+**Planned upgrades** (see [ROADMAP.md](ROADMAP.md)): multi-competition pool + cross-league normalisation → **Phase 4**; Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features (xA/progressive-pass-distance) → **Phase 6**.
+
 ---
 
 ## Module C — "PUP" (Performance Under Pressure)
 
-**Status: scoped only, not started. Do not assume any code exists for this.**
+**Status: scoped only, not started (now Phase 9 — opportunistic). Do not assume any code exists for this.** Phase 5's hierarchical finishing model delivers most of PUP's "skill vs. luck" payoff with cleaner stats and none of the selection-bias confound, so PUP is deprioritised behind it.
 
 **Hypothesis:** players who perform well in high-pressure league moments (title race, relegation six-pointer, derby, must-win) should perform comparably in tournaments. PUP = the per-player KPI measuring that at league level, validated against tournament output.
 

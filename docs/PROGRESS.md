@@ -6,6 +6,16 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-07-02 — Reprioritisation + de-drift (planning only)
+
+"Do it all, structured." Folded the whole code-review backlog into one execution-ordered program and **renumbered the initiative to Phases 0–9**. New **Phase 3 = engineering & reproducibility spine** (CI, `pipeline.py`, `metrics.json` single-source, data manifest) — promoted ahead of data expansion (Phase 4) because the manifest is a prerequisite of the ingestion pipeline and `metrics.json` must exist before we 10× the data/numbers. Old Phase 3 (360 xG) → **Phase 7**; old Phase 5 (Streamlit build) → **Phase 8**; old Phase 6 + Module C → **Phase 9** (opportunistic). Added **Phase 5** (xG uncertainty + hierarchical/empirical-Bayes finishing, header/foot interaction, calibration by stratum) and **Phase 6** (Module B: Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features).
+
+**De-drift in the same pass:** the phase table now lives **only** in INITIATIVE.md (ROADMAP links to it + holds the detailed per-phase task lists); the stale "all uncommitted" note here was corrected against git log (Phases 0–2 + restructure + product spec are committed — `a3ff7cd`/`bbc4ac8`/`5e5aaef`/`4be7844`); CLAUDE.md Current Status + MODULES.md forward-pointers updated. Docs only — no `src/`, notebook, test, or data changes; 22 tests untouched. Uncommitted.
+
+Suggested commit: `docs: fold review backlog into Phases 3–9 program; single-source phase table; fix stale uncommitted note`
+
+---
+
 ## 2026-07-01 — Phase 5 product-layer spec expanded (no build)
 
 Expanded the thin Phase 5 lead (one ASCII sketch in FRAMEWORK.md) into a full interface spec: new `docs/PRODUCT_SPEC.md`. Covers the one-screen design (two lenses — similarity/scouting + xG/valuation), interaction model (sidebar selectors + customizable radar-axis multiselect), a **component→backend reuse map** (every panel powered by an existing tested `src/` function — no new chart code), precomputed-Parquet data flow (`app_data/`, no live StatsBomb pulls), tech decision (**Streamlit** chosen; Dash + static-site rejected with reasons), out-of-scope list, a turnkey build checklist, and ASCII mockups. FRAMEWORK.md product stub now links the spec; INITIATIVE.md + ROADMAP.md Phase 5 marked 🟡 spec-done/build-pending. Docs only — no app code, no model change, 22 tests untouched. Uncommitted.
@@ -54,8 +64,15 @@ Kicked off Framework Hardening initiative. **Phase 0:** `docs/FRAMEWORK.md` char
 
 ---
 
-## Uncommitted Work Summary
+## Commit Status
 
-Phase 0+1+2 hardening + 2026-07-01 .md restructure — all uncommitted. Git via GitHub Desktop.
+Phases 0–2 + the .md restructure + the Phase 5 product spec are **committed** (verified against git
+log 2026-07-02). Git via GitHub Desktop. Relevant commits:
 
-Suggested commit: `Phase 1+2 hardening: config, cache, penalty fix, tests, ML rigor (scaled logistic, CV, calibration, silhouette, minutes-weighted positions) + docs restructure`
+- `a3ff7cd` — Initiative Phases 0–1: framework charter, foundation hardening, data-integrity rebuild
+- `bbc4ac8` — Phase 2 (Module A): xG ML-rigor (scaled logistic, CV, baseline ladder, calibrated GBM)
+- `5e5aaef` — Phase 2 Module B rigor: silhouette score + minutes-weighted positions
+- `4be7844` — Phase 5 (old numbering): expand product-layer interface spec + mockups (docs only)
+
+Working tree is otherwise clean. The 2026-07-02 planning/reprioritisation edits (this restructure)
+are the only uncommitted docs — suggested commit below in that day's entry.
