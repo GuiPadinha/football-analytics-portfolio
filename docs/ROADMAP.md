@@ -42,9 +42,13 @@ of Phase 4's ingestion pipeline and 3b (`metrics.json`) must exist before the da
   product refs → Phase 8. *Leftover for the Phase 3 code session:* renumber the two stale
   `src/config.py` comments that call the 360 model "Phase 3" (now Phase 7) — deferred to keep the
   2026-07-02 commit docs-only.
-- **3b — `metrics.json` single source:** tests/notebook emit key numbers (ROC-AUC, Brier, CV±,
-  silhouette, test count) to a small `metrics.json`; docs reference it. Optional doc-lint test that
-  fails if a doc's number diverges from the file.
+- **3b — `metrics.json` single source** (done 2026-07-02): `src/metrics.py` computes the headline
+  numbers (xG train/test ROC-AUC + Brier, CV mean±std, no-skill→geometry→full ladder, per-group
+  silhouette peaks, shot counts) and `python -m src.metrics` writes the committed `metrics.json`.
+  A doc-lint test (`tests/test_metrics.py::test_current_state_docs_match_metrics_json`) fails the
+  build if a *current-state* doc (README/CLAUDE/MODULES/DATA) prints a number that differs from the
+  file; append-only history (PROGRESS, INITIATIVE log, ML_LEARNING_LOG) is deliberately exempt.
+  Deferred the test-count number (a repo fact, not a model output — CI reports it).
 - **3c — CI:** `.github/workflows/tests.yml` runs the 22 pytest tests on push/PR (Python 3.10,
   pinned `requirements.txt`); green badge in README.
 - **3d — `pipeline.py` + `Makefile`:** headless rebuild of ingestion → features → model → outputs,

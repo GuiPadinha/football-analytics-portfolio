@@ -11,7 +11,7 @@ folded into a renumbered 0–9 program on 2026-07-02.
 **Next: Phase 3 — Engineering & reproducibility spine (CI, `pipeline.py`, `metrics.json`, data manifest).**
 (360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
 
-Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped). Similarity: K=4 per position group, silhouette ~0.25 (soft continuum). 22 unit tests passing. *(These become code-emitted via `metrics.json` in Phase 3b; until then they are hand-maintained here.)*
+Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped). Similarity: K=4 per position group, silhouette ~0.25 (soft continuum). 31 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b.)*
 
 → Phase tracker: [docs/INITIATIVE.md](docs/INITIATIVE.md) | Session log: [docs/PROGRESS.md](docs/PROGRESS.md)
 

@@ -50,6 +50,10 @@ the two.
 | Logistic regression | 0.786 | **0.765** | 0.077 | **0.065** |
 | Gradient boosting (tuned) | 0.796 | 0.760 | — | — |
 
+> These numbers aren't hand-typed: `python -m src.metrics` computes them and writes
+> [`metrics.json`](metrics.json), and a unit test fails the build if this README (or any other
+> current-state doc) ever quotes a figure that disagrees with it.
+
 Gradient boosting did **not** clearly beat the simpler model here, even after a tuning sweep —
 logistic regression is the recommended model. Reporting that honestly matters more than picking
 whichever number looks better: a model that's harder to explain to a coaching staff needs to earn

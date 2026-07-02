@@ -1,0 +1,48 @@
+{
+  "note": "Headline metrics - single source. Regenerate with `python -m src.metrics`.",
+  "similarity": {
+    "comp_id": 2,
+    "competition": "Premier League 2015/16",
+    "groups": {
+      "defender": {
+        "best_k": 2,
+        "best_silhouette": 0.236,
+        "n_players": 119
+      },
+      "forward": {
+        "best_k": 2,
+        "best_silhouette": 0.262,
+        "n_players": 75
+      },
+      "midfielder": {
+        "best_k": 2,
+        "best_silhouette": 0.264,
+        "n_players": 106
+      }
+    },
+    "kmeans_k_used": 4,
+    "min_minutes": 900,
+    "season_id": 27
+  },
+  "xg": {
+    "baseline_ladder_test_roc_auc": {
+      "full": 0.765,
+      "geometry_only": 0.712,
+      "no_skill": 0.5
+    },
+    "cv_in_distribution": {
+      "folds": 5,
+      "roc_auc_mean": 0.783,
+      "roc_auc_std": 0.009
+    },
+    "logistic": {
+      "test_brier": 0.065,
+      "test_roc_auc": 0.765,
+      "train_brier": 0.077,
+      "train_roc_auc": 0.786
+    },
+    "n_test_shots": 1316,
+    "n_train_shots": 10824,
+    "train_goal_rate": 0.101
+  }
+}
