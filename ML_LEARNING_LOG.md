@@ -58,6 +58,23 @@ Key gotchas and lessons — most recent first:
 
 Key gotchas and lessons — most recent first:
 
+- **Goalkeepers need their own feature set, not a branch of the outfield one** (2026-07-05).
+  Investigated StatsBomb's `Goal Keeper` event type before writing anything (`goalkeeper_type`
+  values across 15 real matches: Shot Faced, Shot Saved [+3 rarer synonym labels], Goal Conceded,
+  Collected, Punch, Keeper Sweeper) rather than guessing what fields exist. Confirms the existing
+  "cluster per position group" lesson (S6) one step further: mixing GKs into the outfield
+  `ACTION_COLUMNS` wouldn't just blur the clusters, it'd be measuring almost-always-zero tackles/
+  passes for every keeper — no signal at all, not just weak signal. `build_goalkeeper_per90_features`
+  mirrors the outfield builder's shape (counts summed over a season, converted to per-90, same
+  900-minute floor) with a goalkeeper-appropriate column set instead. Verified on real PL 2015/16
+  data before trusting it: 27 keepers clear the floor, and the ranking is recognisable (Čech, de
+  Gea, Lloris, Courtois, Schmeichel all present). One caveat surfaced by looking at the actual
+  numbers rather than assuming they were right: `save_pct` came out lower (~25-51%) than the
+  broadcast "save %" stat football fans expect (usually quoted 65-75%) — most likely because
+  StatsBomb's `Shot Faced` count includes shots the keeper faced but wasn't necessarily the one
+  who touched (e.g. off-target attempts still logged as a facing event), so the denominator isn't
+  exactly "shots on target." Documented as an open caveat in MODULES.md rather than either hiding
+  the low numbers or asserting they're the standard stat without checking further.
 - **Percentile-bounded radar axes** (S7). 5th-95th percentile scales to avoid outlier distortion (Antonio). General technique: any shared visual scale with a single extreme outlier.
 - **Nearest-neighbour vs. cluster membership** (S7). `find_similar_players` ranks by Euclidean distance within the standardised space — two players in the same cluster can be at very different distances. The ranking is the recruitment-useful shape.
 - **Minutes-weighted position assignment** (Phase 2). `resolve_season_positions` totals minutes per group, not modal match slot — reclassified 10 borderline hybrids. Did **not** move Michail Antonio (920 min at RB/wing-back vs 761 at wing — genuinely defensive). The S6 "primarily a winger" claim was simply wrong.

@@ -257,21 +257,81 @@ ACTION_COLUMNS = [
 ]
 
 
-def build_player_per90_features(competition_id, season_id, min_minutes=900):
-    """Build a per-90, per-player feature table for one competition/season.
+def extract_goalkeeper_match_actions(events):
+    """Count per-goalkeeper action totals for one match, for later per-90 conversion.
+
+    Mirrors `extract_player_match_actions`'s counting-not-rating approach, but reads the
+    `Goal Keeper` event type's `goalkeeper_type` sub-classification instead of the outfield
+    event types `ACTION_COLUMNS` counts — a keeper's meaningful actions (saves, claims,
+    sweeping) live entirely inside one StatsBomb event type the outfield columns never touch,
+    which is exactly why GKs were excluded from clustering rather than just scored near-zero
+    on tackles/passes (see `POSITION_GROUPS`'s note).
+
+    Args:
+        events (pandas.DataFrame): full event stream for one match.
+
+    Returns:
+        pandas.DataFrame: one row per (player, team), with raw counts of shots faced,
+            saves, goals conceded, claims, punches, and sweeper actions.
+    """
+    gk_events = events[events["type"] == "Goal Keeper"].copy()
+    gk_events["goalkeeper_type"] = safe_column(gk_events, "goalkeeper_type")
+
+    shots_faced = (
+        gk_events[gk_events["goalkeeper_type"] == "Shot Faced"]
+        .groupby(["player", "team"]).size().rename("shots_faced")
+    )
+    # StatsBomb logs a few rare synonym labels for the same "the keeper stopped it" outcome
+    # family alongside the common "Shot Saved" — grouped together as one `saves` count.
+    saved_types = ["Shot Saved", "Shot Saved Off Target", "Shot Saved to Post", "Save", "Penalty Saved"]
+    saves = (
+        gk_events[gk_events["goalkeeper_type"].isin(saved_types)]
+        .groupby(["player", "team"]).size().rename("saves")
+    )
+    goals_conceded = (
+        gk_events[gk_events["goalkeeper_type"] == "Goal Conceded"]
+        .groupby(["player", "team"]).size().rename("goals_conceded")
+    )
+    claims = (
+        gk_events[gk_events["goalkeeper_type"] == "Collected"]
+        .groupby(["player", "team"]).size().rename("claims")
+    )
+    punches = (
+        gk_events[gk_events["goalkeeper_type"] == "Punch"]
+        .groupby(["player", "team"]).size().rename("punches")
+    )
+    sweeper_actions = (
+        gk_events[gk_events["goalkeeper_type"] == "Keeper Sweeper"]
+        .groupby(["player", "team"]).size().rename("sweeper_actions")
+    )
+
+    actions = pd.concat(
+        [shots_faced, saves, goals_conceded, claims, punches, sweeper_actions], axis=1,
+    ).fillna(0)
+    return actions.reset_index()
+
+
+GK_ACTION_COLUMNS = ["shots_faced", "saves", "goals_conceded", "claims", "punches", "sweeper_actions"]
+
+
+def _build_season_minutes_and_actions(competition_id, season_id, extract_match_actions):
+    """Shared season-build loop: minutes played + one action-extractor's per-match counts.
+
+    Factored out of `build_player_per90_features`/`build_goalkeeper_per90_features` — both
+    need the same per-match minutes/lineup iteration, differing only in *which* actions get
+    counted from each match's events (outfield vs. goalkeeper).
 
     Args:
         competition_id (int): StatsBomb competition id.
         season_id (int): StatsBomb season id.
-        min_minutes (float): drop players below this many total minutes —
-            per-90 rates from a handful of substitute appearances are noisy
-            and would distort clustering (e.g. one lucky shot in 10 minutes
-            looks like a strong goal-scoring rate).
+        extract_match_actions (callable): `extract_player_match_actions` or
+            `extract_goalkeeper_match_actions` — one match's events in, one row per
+            (player, team) of that match's raw action counts out.
 
     Returns:
-        pandas.DataFrame: one row per player, with `position_group`,
-            `minutes_played`, and one `<action>_p90` column per entry in
-            `ACTION_COLUMNS`. Goalkeepers are excluded.
+        tuple[pandas.DataFrame, pandas.DataFrame]: (season_minutes, actions_df) — the
+            minutes-weighted position table (`resolve_season_positions`) and the
+            concatenated raw per-match action counts, not yet summed or per-90'd.
     """
     matches = load_matches(competition_id, season_id)
 
@@ -286,7 +346,7 @@ def build_player_per90_features(competition_id, season_id, min_minutes=900):
         match_minutes["match_id"] = match_id
         all_minutes.append(match_minutes)
 
-        match_actions = extract_player_match_actions(events)
+        match_actions = extract_match_actions(events)
         match_actions["match_id"] = match_id
         all_actions.append(match_actions)
 
@@ -297,7 +357,29 @@ def build_player_per90_features(competition_id, season_id, min_minutes=900):
     # each player to the group they logged the most season minutes in, not their
     # modal per-match position — the latter mislabels versatile players whose
     # attacking minutes are split across several labels (the S6 Antonio case).
-    season_minutes = resolve_season_positions(minutes_df)
+    return resolve_season_positions(minutes_df), actions_df
+
+
+def build_player_per90_features(competition_id, season_id, min_minutes=900):
+    """Build a per-90, per-player feature table for one competition/season.
+
+    Args:
+        competition_id (int): StatsBomb competition id.
+        season_id (int): StatsBomb season id.
+        min_minutes (float): drop players below this many total minutes —
+            per-90 rates from a handful of substitute appearances are noisy
+            and would distort clustering (e.g. one lucky shot in 10 minutes
+            looks like a strong goal-scoring rate).
+
+    Returns:
+        pandas.DataFrame: one row per player, with `position_group`,
+            `minutes_played`, and one `<action>_p90` column per entry in
+            `ACTION_COLUMNS`. Goalkeepers are excluded — see
+            `build_goalkeeper_per90_features` for their own feature set.
+    """
+    season_minutes, actions_df = _build_season_minutes_and_actions(
+        competition_id, season_id, extract_player_match_actions
+    )
     season_actions = (
         actions_df.groupby(["player", "team"])[ACTION_COLUMNS].sum().reset_index()
     )
@@ -313,6 +395,54 @@ def build_player_per90_features(competition_id, season_id, min_minutes=900):
 
     keep_columns = ["player", "team", "position_group", "minutes_played"] + \
         [f"{col}_p90" for col in ACTION_COLUMNS]
+    return features[keep_columns].reset_index(drop=True)
+
+
+def build_goalkeeper_per90_features(competition_id, season_id, min_minutes=900):
+    """Build a per-90, per-goalkeeper feature table for one competition/season.
+
+    A separate function rather than a branch inside `build_player_per90_features` on
+    purpose: a keeper's tackles/progressive-passes rate is meaningless (they're all near
+    zero), so reusing `ACTION_COLUMNS` would just rediscover "this player is a goalkeeper"
+    rather than distinguish *between* keepers. `GK_ACTION_COLUMNS` (shots faced, saves,
+    goals conceded, claims, punches, sweeper actions) is the goalkeeper-appropriate analogue
+    of the same counting-not-rating approach — same pattern as `build_physical_per90_features`
+    being its own function for a different feature domain (physical tracking), not a branch
+    inside this one.
+
+    Args:
+        competition_id (int): StatsBomb competition id.
+        season_id (int): StatsBomb season id.
+        min_minutes (float): as `build_player_per90_features` — drop keepers below this
+            many total minutes.
+
+    Returns:
+        pandas.DataFrame: one row per goalkeeper, with `minutes_played`, `save_pct`
+            (saves / shots faced, computed from raw season totals rather than the per-90
+            rates so it reads as a plain ratio; 0 for a keeper who faced no shots, not NaN),
+            and one `<action>_p90` column per entry in `GK_ACTION_COLUMNS`.
+    """
+    season_minutes, actions_df = _build_season_minutes_and_actions(
+        competition_id, season_id, extract_goalkeeper_match_actions
+    )
+    season_actions = (
+        actions_df.groupby(["player", "team"])[GK_ACTION_COLUMNS].sum().reset_index()
+    )
+
+    features = season_minutes.merge(season_actions, on=["player", "team"], how="left")
+    features[GK_ACTION_COLUMNS] = features[GK_ACTION_COLUMNS].fillna(0)
+
+    features = features[features["minutes_played"] >= min_minutes]
+    features = features[features["position_group"] == "Goalkeeper"].copy()
+
+    features["save_pct"] = np.where(
+        features["shots_faced"] > 0, features["saves"] / features["shots_faced"], 0.0
+    )
+    for col in GK_ACTION_COLUMNS:
+        features[f"{col}_p90"] = features[col] / features["minutes_played"] * 90
+
+    keep_columns = ["player", "team", "position_group", "minutes_played", "save_pct"] + \
+        [f"{col}_p90" for col in GK_ACTION_COLUMNS]
     return features[keep_columns].reset_index(drop=True)
 
 
@@ -413,6 +543,7 @@ def build_physical_per90_features(match_id, min_observed_minutes=30.0):
 
 
 PER90_FEATURE_COLUMNS = [f"{col}_p90" for col in ACTION_COLUMNS]
+GK_PER90_FEATURE_COLUMNS = [f"{col}_p90" for col in GK_ACTION_COLUMNS]
 
 
 def scale_features(features, feature_columns=PER90_FEATURE_COLUMNS):

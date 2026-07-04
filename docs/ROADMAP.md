@@ -148,3 +148,12 @@ headless `AppTest` harness only — script-level correctness, not a look at the 
 - ~~**Architecture / dependency doc**~~ — flagged 2026-07-04, done same day:
   [ARCHITECTURE.md](ARCHITECTURE.md) (import graph, data flow for both modules, the pure/IO-split
   pattern, and the implicit DataFrame-schema contracts an import graph can't show).
+- **2026 World Cup player/team performance model** (flagged 2026-07-05, not started) — a
+  predictive model for the *current* tournament (~2026-06-11 to ~2026-07-19), rather than the
+  retrospective xG/similarity framing used everywhere else in this project. **First step before
+  any modelling: verify whether StatsBomb has open data for it at all.** Every tournament this
+  project already uses (World Cup 2022, EURO 2024, AFCON 2023, Copa América 2024) was released
+  *after* the tournament finished, not live — a still-in-progress or just-finished 2026 World Cup
+  may simply have no open data yet, which would make this a "wait" item, not a "no data exists"
+  item. Scope (prediction target, features, train set) deliberately left undefined until that
+  availability check happens.

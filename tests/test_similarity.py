@@ -8,6 +8,7 @@ from src.similarity import (
     _parse_clock,
     compute_minutes_played,
     compute_silhouette_scores,
+    extract_goalkeeper_match_actions,
     find_similar_players,
     resolve_season_positions,
 )
@@ -107,6 +108,41 @@ def test_find_similar_players_respects_n():
 def test_find_similar_players_raises_for_unknown_player():
     with pytest.raises(ValueError):
         find_similar_players(_player_pool(), ["f1", "f2"], player="Nobody", team="T")
+
+
+def test_extract_goalkeeper_match_actions_counts_by_type():
+    events = pd.DataFrame([
+        {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Shot Faced"},
+        {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Shot Saved"},
+        {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Shot Faced"},
+        {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Goal Conceded"},
+        {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Collected"},
+        {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Punch"},
+        {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Keeper Sweeper"},
+        # A different team's outfield event in the same match must not be counted as a GK action.
+        {"type": "Pass", "player": "Midfielder B", "team": "T", "goalkeeper_type": np.nan},
+    ])
+    result = extract_goalkeeper_match_actions(events).set_index(["player", "team"])
+    row = result.loc[("Keeper A", "T")]
+    assert row["shots_faced"] == 2
+    assert row["saves"] == 1
+    assert row["goals_conceded"] == 1
+    assert row["claims"] == 1
+    assert row["punches"] == 1
+    assert row["sweeper_actions"] == 1
+    assert "Midfielder B" not in result.index.get_level_values("player")
+
+
+def test_extract_goalkeeper_match_actions_handles_zero_gk_events():
+    # Sparser version of the same sparse-column family as features.py's Barcelona 2020/21 fix:
+    # if a match has zero "Goal Keeper" events at all, `goalkeeper_type` never appears as a
+    # column in `events`, not just as a missing flag on an existing row.
+    events = pd.DataFrame([
+        {"type": "Pass", "player": "Midfielder B", "team": "T"},
+    ])
+    result = extract_goalkeeper_match_actions(events)
+    assert len(result) == 0
+    assert list(result.columns) == ["player", "team", "shots_faced", "saves", "goals_conceded", "claims", "punches", "sweeper_actions"]
 
 
 def test_compute_silhouette_scores_prefers_true_cluster_count():

@@ -33,9 +33,11 @@
 
 **Question:** without relying on reputation or scout notes, who plays like this player, and what archetype are they?
 
-**Data:** PL 2015/16, 300 players clearing 900-min floor. Position groups (Phase 2 minutes-weighted): Defender 119 / Midfielder 106 / Forward 75. GKs excluded.
+**Data:** PL 2015/16, 300 outfield players clearing 900-min floor. Position groups (Phase 2 minutes-weighted): Defender 119 / Midfielder 106 / Forward 75.
 
 **Per-90 features:** non-penalty goals, shots, key passes, assists, progressive passes, dribbles completed, pressures, interceptions, tackles.
+
+**Goalkeepers (2026-07-05, built not yet wired in):** excluded from the outfield clustering above on purpose — a keeper's tackles/progressive-passes rate is meaningless, so reusing the same columns would just rediscover "this is a goalkeeper" rather than distinguish between keepers. `build_goalkeeper_per90_features` (`src/similarity.py`) gives them their own feature set instead — shots faced, saves, goals conceded, claims, punches, sweeper actions per 90, plus `save_pct` (saves ÷ shots faced) — verified against real PL 2015/16 data (27 keepers clearing the minutes floor, recognisable names: Čech, de Gea, Lloris, Courtois, Schmeichel). One honest caveat: `save_pct` divides by StatsBomb's own "Shot Faced" GK-event count, which may include some off-target/blocked shots a keeper never had to save — it isn't necessarily the broadcast "saves ÷ shots on target" stat, and cross-referencing the linked `Shot` event's outcome would tighten that up if this becomes user-facing. Not yet wired into `config.py`/clustering/the app — that's a separate integration decision (own K? own silhouette check? added to the app's position filter?), deliberately left open rather than rushed.
 
 **Position assignment:** `resolve_season_positions` — total season minutes per group, not modal per-match position. Reclassified 10 borderline hybrids in Phase 2. Michail Antonio stays a Defender (920 min RB/wing-back vs 761 wing — genuinely the plurality).
 

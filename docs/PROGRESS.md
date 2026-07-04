@@ -6,6 +6,42 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-07-05 (cont.) — goalkeeper feature engineering + a World Cup 2026 backlog note
+
+Two asks that arrived mid-session: add goalkeepers to Module B, and note a 2026 World Cup
+predictive-model idea for later.
+
+**Goalkeepers:** investigated StatsBomb's `Goal Keeper` event schema on real cached data before
+writing anything (`goalkeeper_type` values across 15 matches: Shot Faced, Shot Saved [+3 rarer
+synonyms], Goal Conceded, Collected, Punch, Keeper Sweeper). New `extract_goalkeeper_match_actions`
++ `build_goalkeeper_per90_features` (`src/similarity.py`) give keepers their own feature set —
+shots faced, saves, goals conceded, claims, punches, sweeper actions per 90, plus `save_pct` — kept
+deliberately separate from the outfield `ACTION_COLUMNS` rather than a branch inside the same
+function (a keeper's tackle/pass-progression rate is meaningless; same "cluster per position
+group" lesson as S6, one step further). Refactored the shared match-iteration loop out of
+`build_player_per90_features` into `_build_season_minutes_and_actions` so both builders reuse it —
+verified byte-identical output for the existing outfield function before trusting the refactor.
++2 tests (`test_similarity.py`). Verified on real PL 2015/16 data: 27 keepers clear the 900-minute
+floor, recognisable names (Čech, de Gea, Lloris, Courtois, Schmeichel). One honest caveat found by
+actually looking at the numbers: `save_pct` (25-51%) reads lower than the broadcast "save %" stat
+(usually 65-75%) — likely because StatsBomb's `Shot Faced` count isn't restricted to shots on
+target. Documented in MODULES.md rather than hidden or asserted-correct without checking.
+
+**Not done in this pass, on purpose:** wiring goalkeepers into `config.py`, clustering (own K?),
+or the app's position filter — a separate integration decision, not rushed into the same pass as
+the feature engineering.
+
+**World Cup 2026 note:** added to ROADMAP.md/INITIATIVE.md's Phase 9 backlog — flagged that the
+first step has to be checking whether StatsBomb has released *any* open data for it yet, since
+every tournament this project already uses was released after the tournament ended, not live, and
+the 2026 World Cup may still be running. Scope (target, features, train set) deliberately left
+undefined until that's checked.
+
+Tests **59 → 61 green**. `src/similarity.py` + `tests/test_similarity.py` changed; docs updated
+(MODULES.md, ML_LEARNING_LOG.md, ROADMAP.md, INITIATIVE.md, CLAUDE.md test count).
+
+---
+
 ## 2026-07-05 — first real use of the app: two bugs found (not model bugs), then a UX pass
 
 **Two real bugs, found by Guilherme actually running the app** (both environment/tooling, not a
