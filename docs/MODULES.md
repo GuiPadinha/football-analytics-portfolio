@@ -65,7 +65,9 @@
 **Confound to always name:** tournament squads are selection-biased. Any observed link is confounded by that selection — not a clean causal test.
 
 **What's needed when picked up:**
-1. External match-importance labels (StatsBomb has no league-table or rivalry metadata)
+1. External match-importance labels (StatsBomb has no league-table or rivalry metadata) — a scraped
+   SofaScore/FlashScore standings table is a candidate source, see
+   [DATA.md](DATA.md#candidate-alternative--supplementary-data-sources-not-yet-used)
 2. Per-player PUP score: delta between high-pressure and normal league performance rates
 3. Scatter validation: league PUP vs. EURO 2024 knockout-stage performance for the 51-overlap players
 4. `src/similarity.py`'s per-90 architecture is directly reusable — same action-count pattern, split into "high pressure" vs. "normal" buckets

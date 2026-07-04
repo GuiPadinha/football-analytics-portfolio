@@ -6,12 +6,13 @@ Project source of truth. Read this first every session, then load linked docs on
 
 ## Current Status
 
-**Active initiative:** Framework Hardening & Expansion — Phases 0–2 complete; full review backlog
-folded into a renumbered 0–9 program on 2026-07-02.
-**Next: Phase 3 — Engineering & reproducibility spine (CI, `pipeline.py`, `metrics.json`, data manifest).**
+**Active initiative:** Framework Hardening & Expansion — Phases 0–3 complete (engineering &
+reproducibility spine done 2026-07-03); full review backlog folded into a renumbered 0–9 program
+on 2026-07-02.
+**Next: Phase 4 — Multi-competition ingestion + data expansion.**
 (360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
 
-Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped). Similarity: K=4 per position group, silhouette ~0.25 (soft continuum). 31 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b.)*
+Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped). Similarity: K=4 per position group, silhouette ~0.25 (soft continuum). 36 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
 
 → Phase tracker: [docs/INITIATIVE.md](docs/INITIATIVE.md) | Session log: [docs/PROGRESS.md](docs/PROGRESS.md)
 
@@ -38,23 +39,28 @@ src/
   models.py          ← logistic pipeline, CV, calibration, GBM, player xG table
   similarity.py      ← clustering, PCA, find_similar_players, resolve_season_positions
   visualisation.py   ← shot map, calibration curve, elbow, PCA, radar, xG ranking
+  manifest.py        ← data provenance manifest (`python -m src.manifest`)
+  metrics.py         ← metrics.json single source (`python -m src.metrics`)
+  pipeline.py        ← headless rebuild: data → models → outputs → manifest/metrics (`python -m src.pipeline`)
+Makefile               ← thin wrapper around src/pipeline.py
 notebooks/
   01_data_exploration.ipynb
   02_xg_model.ipynb          ← Phase 2 ML rigor section added
   03_player_similarity.ipynb ← silhouette + minutes-weighting added
 docs/
   FRAMEWORK.md           ← what the tool is for (purpose, user story, scope)
-  INITIATIVE.md          ← phase tracker (Phases 0–6)
+  ARCHITECTURE.md        ← module dependency graph, data flow, pure/IO-split pattern
+  INITIATIVE.md          ← phase tracker (Phases 0–9)
   MODULES.md             ← Module A/B/C specs and current state
   DATA.md                ← data sources, datasets table, cache file index
   CONTEXT.md             ← owner, learning goals, career context, portfolio framing
   ROADMAP.md             ← session roadmap (S1–S9) + Phase 3 scope
-  PROGRESS.md            ← recent session log (Phase 1–2 hardening)
-  PROGRESS_ARCHIVE.md    ← S1–S8 history
+  PROGRESS.md            ← recent session log (Phase 3 spine + docs pass)
+  PROGRESS_ARCHIVE.md    ← S1–S8 + Phase 0–2 history
   ML_THEORY.md           ← ML/stats theory reference (textbook-level)
   ML_TOOLING.md          ← Windows/environment gotchas
 ML_LEARNING_LOG.md       ← ML gotchas and decisions log (pointers to above docs)
-tests/                   ← 22 pytest unit tests, all green
+tests/                   ← 36 pytest unit tests, all green
 outputs/                 ← saved PNGs (gitignored)
 data/                    ← per-match cache + Parquet feature tables (gitignored)
 ```
@@ -63,7 +69,7 @@ data/                    ← per-match cache + Parquet feature tables (gitignore
 
 ## Session Workflow
 
-**Git via GitHub Desktop only** — `git` not on PATH; never invoke git CLI; ask Guilherme for repo state.
+**Git CLI is fine** (as of 2026-07-04) — `git status`/`log`/`diff`/`add`/`commit` may be run directly. Still: only commit when explicitly asked, never force-push or push without confirmation, prefer new commits over amending. (Earlier sessions used GitHub Desktop only, on the mistaken assumption `git` wasn't reachable — that restriction is lifted.)
 
 **Start of session:**
 1. Read this file; check [docs/PROGRESS.md](docs/PROGRESS.md) for last session state

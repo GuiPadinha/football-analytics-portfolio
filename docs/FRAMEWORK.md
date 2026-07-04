@@ -1,12 +1,11 @@
-# The Player Evaluation Framework — what it is and who it's for
+# The Player Evaluation Framework
 
-This document exists to answer one question without ambiguity: **what does this project actually
-do, for whom, and what do they put in versus get out?** If the rest of the repo ever feels like a
-pile of loosely related notebooks, read this first.
+Defines what this project does, for whom, and the scope boundary between Module A and Module B.
+Read this first if the rest of the repo reads like a pile of loosely related notebooks.
 
 ---
 
-## One sentence
+## Summary
 
 A recruitment-led player evaluation tool: **given a player, find statistically similar players
 (scouting), and separately check whether any player's goal output is real or just variance
@@ -14,11 +13,11 @@ A recruitment-led player evaluation tool: **given a player, find statistically s
 
 ---
 
-## Who the user is
+## Target User
 
-A **recruitment / data analyst at a club or data provider**. They are trying to make a signing or
-squad-planning decision and want evidence, not reputation. They are *not* a developer — they think
-in players, roles, and budgets, not in DataFrames.
+A **recruitment / data analyst at a club or data provider**, making a signing or squad-planning
+decision and wanting evidence rather than reputation. Not a developer — they think in players,
+roles, and budgets, not in DataFrames.
 
 The two questions they actually ask, and which module answers each:
 
@@ -29,42 +28,39 @@ The two questions they actually ask, and which module answers each:
 
 ---
 
-## Module B — Similarity (the scouting lens)
+## Module B — Similarity (the Scouting Lens)
 
-**This is the part where the user inputs something.** They type (or pick) a player's name.
+The only module where the user provides input: a player name (+ their team, since names aren't
+unique).
 
-- **Input:** a player name (+ their team, since names aren't unique).
 - **What happens:** every other player in the same position group is ranked by how close their
   per-90 statistical profile is to the target's, in standardised feature space.
 - **Output:** a ranked "players like X" list, a style **archetype** label (which of the play-style
   clusters they fall into), and a **radar chart** of their profile against their position peers.
-- **The decision it informs:** find a like-for-like replacement for a departing player, or a
-  cheaper/less-hyped alternative to an expensive transfer target, or simply understand what *kind*
-  of player an unfamiliar name actually is.
+- **Decision it informs:** a like-for-like replacement for a departing player, a cheaper/less-hyped
+  alternative to an expensive transfer target, or simply what *kind* of player an unfamiliar name is.
 
-It does **not** know anything about transfer fees, age, or contracts — it matches on *playing
-style from on-pitch output*. Pairing its shortlist with budget/age filters is a human step (and a
-candidate front-end feature).
+It does not know transfer fees, age, or contracts — it matches on *playing style from on-pitch
+output* only. Pairing its shortlist with budget/age filters is a human step (and a candidate
+front-end feature).
 
-## Module A — xG (the valuation lens)
+## Module A — xG (the Valuation Lens)
 
-**The user does not type anything here.** They point it at a player/team/season that already exists
-in the data.
+No user input here — it's pointed at a player/team/season that already exists in the data.
 
-- **Input:** shots that already happened (from match event data).
 - **What happens:** each shot gets a goal probability from its circumstances (location, angle, body
   part, what created it, game state). Summed per player, that's their **expected goals (xG)**.
 - **Output:** **goals minus xG** per player. Positive = scoring more than the chances deserved
   (finishing hot — likely partly luck, expect regression). Negative = scoring less than the chances
   deserved (possibly unlucky — a potential buy-low).
-- **The decision it informs:** don't overpay for a player riding a finishing streak; don't write off
-  a player who's been creating good chances but not converting.
+- **Decision it informs:** don't overpay for a player riding a finishing streak; don't write off a
+  player who's been creating good chances but not converting.
 
-It is **not** a scouting tool. It evaluates output that already exists; it doesn't find new players.
+It is not a scouting tool — it evaluates output that already exists, it doesn't find new players.
 
 ---
 
-## How they work together — a concrete walkthrough
+## How the Modules Combine
 
 > A club's striker is leaving. The analyst needs a replacement on a smaller budget.
 >
@@ -75,12 +71,12 @@ It is **not** a scouting tool. It evaluates output that already exists; it doesn
 > 3. **Shortlist:** the analyst flags the second player as the better-value target — similar
 >    profile, output *suppressed* by variance rather than inflated by it — and discounts the first.
 >
-> Similarity narrowed the field by *style*; xG corrected for *luck*. Neither answers the question
-> alone. That's why they're one framework.
+> Similarity narrows the field by *style*; xG corrects for *luck*. Neither answers the question
+> alone — that's why they're one framework.
 
 ---
 
-## What's input vs. what's derived
+## Inputs vs. Derived Data
 
 - **Input by the user:** a player name (Module B only). Optionally, which competition/season to
   scope to.
@@ -89,11 +85,11 @@ It is **not** a scouting tool. It evaluates output that already exists; it doesn
 
 ---
 
-## Explicitly NOT in scope (so we stop wondering)
+## Out of Scope
 
-- **Youth scouting.** The open data is senior professional matches. We have no data on academy or
-  lower-league prospects, so "find the next wonderkid" is not something this can do today. It would
-  require a dataset that contains those players first — a data decision, not a model one.
+- **Youth scouting.** The open data is senior professional matches. There is no data on academy or
+  lower-league prospects, so "find the next wonderkid" is not something this can do today — it
+  would require a dataset containing those players first, a data decision rather than a model one.
 - **Live / in-match prediction.** Everything is post-hoc on completed matches.
 - **Biometric / physical load at the player level fused with events.** The StatsBomb (events) and
   SkillCorner (physical tracking) datasets share zero players, so physical and event metrics are
@@ -104,10 +100,9 @@ It is **not** a scouting tool. It evaluates output that already exists; it doesn
 
 ---
 
-## The product layer (intended experience, not yet built)
+## Product Layer (Planned)
 
-Today this lives in notebooks: run cells, read tables. The *intended* experience is a single
-screen:
+Today this lives in notebooks: run cells, read tables. The intended experience is a single screen:
 
 ```
 [ pick a player ▾ ]  →   ┌─────────────────────────────────────────┐
@@ -117,8 +112,8 @@ screen:
                          └─────────────────────────────────────────┘
 ```
 
-That interactive layer (Phase 8 of the hardening initiative) is what turns "a set of analyses"
-into "a tool." Its absence is the main reason the project can feel abstract right now.
+That interactive layer (Phase 8 of the hardening initiative) turns a set of analyses into a tool,
+and its absence is the main reason the project can currently feel abstract.
 
 The full interface design — screens, interaction model, the map from each panel to the existing
 `src/` function that powers it, tech choice (Streamlit), and mockups — is specified in

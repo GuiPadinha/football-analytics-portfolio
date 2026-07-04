@@ -27,11 +27,11 @@ execution-ordered program and renumbered to Phases 0–9.
 
 **The phase table + status lives only in [INITIATIVE.md](INITIATIVE.md#L18) — do not duplicate it
 here.** This doc holds the *detailed task lists* per phase. Execution order: 0→1→2→3→4→5→6→7→8,
-with 9 opportunistic. Phases 0–2 are done.
+with 9 opportunistic. Phases 0–3 are done.
 
 ---
 
-## Phase 3 — Engineering & reproducibility spine  ⬜ Next
+## Phase 3 — Engineering & reproducibility spine  ✅ Done
 
 Cheapest credibility badge for the target roles, and it structurally kills the doc drift so every
 later phase writes into a single-source system. Goes first because 3e (manifest) is a prerequisite
@@ -51,13 +51,15 @@ of Phase 4's ingestion pipeline and 3b (`metrics.json`) must exist before the da
   Deferred the test-count number (a repo fact, not a model output — CI reports it).
 - **3c — CI:** `.github/workflows/tests.yml` runs the 22 pytest tests on push/PR (Python 3.10,
   pinned `requirements.txt`); green badge in README.
-- **3d — `pipeline.py` + `Makefile`:** headless rebuild of ingestion → features → model → outputs,
-  no notebook execution required. Notebooks **stay** as the teaching surface (learning mandate) —
-  the pipeline runs alongside them.
+- **3d — `pipeline.py` + `Makefile`** (done 2026-07-03): `src/pipeline.py` chains the ingestion →
+  features → model → outputs steps into a headless rebuild, runnable as `python -m src.pipeline`
+  (`--force` to bypass caches, `--skip-plots` for data-only). A thin root `Makefile` wraps it
+  (`make pipeline`). Notebooks **stay** as the teaching surface (learning mandate) — the pipeline
+  runs alongside them, not instead of them.
 - **3e — Data manifest:** `data/manifest.json` pinning comp/season/match IDs + row counts + content
   hash per dataset; catches upstream StatsBomb changes; feeds Phase 4.
 
-## Phase 4 — Multi-competition ingestion + data expansion  ⬜
+## Phase 4 — Multi-competition ingestion + data expansion  ⬜ Next
 
 The flagship overlap item: engineering-at-scale in service of ML. Fixes Module B's single-season
 thinness and turns Module A's "generalises from n=2 contexts" into a defensible claim.
@@ -71,7 +73,9 @@ thinness and turns Module A's "generalises from n=2 contexts" into a defensible 
 - **4c — Module A generalisation:** add held-out test contexts beyond the single EURO 2024.
 - **4d — Availability friction:** free full-season league data is scarce and skews to Messi-era La
   Liga (CONTEXT.md says avoid); tournaments are plentiful but wrong-shaped for per-90 similarity.
-  Pick deliberately, document the constraint.
+  Pick deliberately, document the constraint. If this keeps being the blocker, see
+  [DATA.md](DATA.md#candidate-alternative--supplementary-data-sources-not-yet-used) for a scoped
+  SofaScore/FlashScore option (match-level stats + standings, not a per-shot xG source).
 
 ## Phase 5 — xG uncertainty + hierarchical finishing model  ⬜
 
@@ -128,3 +132,6 @@ after 4–6 so it showcases the *upgraded* models, not the current ones.
 - **Module C (PUP)** — only if desired; carries a selection-bias confound + label-acquisition cost,
   and Phase 5 already delivers most of its payoff. Spec: [MODULES.md](MODULES.md#L53).
 - **Remaining alt-models** — hierarchical clustering, cosine, monotonic GBM.
+- ~~**Architecture / dependency doc**~~ — flagged 2026-07-04, done same day:
+  [ARCHITECTURE.md](ARCHITECTURE.md) (import graph, data flow for both modules, the pure/IO-split
+  pattern, and the implicit DataFrame-schema contracts an import graph can't show).

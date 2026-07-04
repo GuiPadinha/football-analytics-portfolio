@@ -182,6 +182,8 @@ football-analytics-portfolio/
 ├── README.md
 ├── CLAUDE.md                  ← full project log, ML reasoning, session-by-session decisions
 ├── ML_LEARNING_LOG.md         ← theory reference + concepts exercised + tooling gotchas
+├── metrics.json                ← headline-metrics single source (see src/metrics.py)
+├── Makefile                    ← thin wrapper around src/pipeline.py
 ├── requirements.txt
 ├── docs/
 │   ├── FRAMEWORK.md            ← what the tool is for (purpose, user story, scope)
@@ -196,7 +198,10 @@ football-analytics-portfolio/
 │   ├── features.py             ← xG feature engineering
 │   ├── models.py                ← xG model training and evaluation
 │   ├── similarity.py            ← clustering, PCA, nearest-neighbour lookup
-│   └── visualisation.py         ← pitch plots, radar charts, all chart functions
+│   ├── visualisation.py         ← pitch plots, radar charts, all chart functions
+│   ├── manifest.py              ← data provenance manifest (python -m src.manifest)
+│   ├── metrics.py               ← writes metrics.json (python -m src.metrics)
+│   └── pipeline.py              ← headless rebuild: data → models → outputs (python -m src.pipeline)
 ├── tests/                      ← pytest unit tests
 └── outputs/                    ← saved plots (shown above)
 ```
@@ -214,6 +219,18 @@ jupyter notebook notebooks/01_data_exploration.ipynb
 
 Notebooks run top-to-bottom with no manual data download — `statsbombpy` pulls StatsBomb's open
 data directly; no API key required.
+
+For a headless rebuild (no Jupyter kernel) — regenerates the processed data tables, both models,
+every output PNG, `data/manifest.json`, and `metrics.json` in one go:
+
+```bash
+python -m src.pipeline            # reuses the data/ cache where present
+python -m src.pipeline --force    # ignore the cache, re-pull/re-engineer from raw StatsBomb data
+make pipeline                     # equivalent, if `make` is on your PATH
+```
+
+Notebooks stay the teaching surface (narrated decisions, S1–S8 + Phase 2 rigor sections);
+`src/pipeline.py` is their non-interactive twin, used for CI/release-style reproducibility checks.
 
 ---
 

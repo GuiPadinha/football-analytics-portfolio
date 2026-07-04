@@ -8,19 +8,18 @@ the future build session, plus mockups so the shape is agreed before a line is w
 
 ---
 
-## Why this exists
+## Purpose
 
-Everything the models produce currently lives inside notebooks: run cells, read tables.
-That is fine for building, useless for showing. [FRAMEWORK.md](FRAMEWORK.md) already names
-the fix — a single interactive screen — and flags its absence as the main reason the
-project "can feel abstract right now."
+Model output currently lives only inside notebooks: run cells, read tables — fine for building,
+not for showing. [FRAMEWORK.md](FRAMEWORK.md) already names the fix (a single interactive screen)
+and flags its absence as the main reason the project can currently feel abstract.
 
-This layer turns *a set of analyses* into *a tool*: one shareable URL an interviewer or a
-football fan can click, pick a player, and immediately see the model's output. The wow is
-meant to come from **the output** (a genuine "players like X" ranking, a real over/under-
-performance number), not from UI chrome. Simple screen, real model underneath.
+This layer turns a set of analyses into a tool: one shareable URL where an interviewer or a
+football fan can click, pick a player, and immediately see the model's output. The screen stays
+simple; the payoff is a genuine "players like X" ranking and a real over/under-performance number,
+not UI chrome.
 
-## Who it's for
+## Audience
 
 Two audiences, one screen:
 - **Interviewers / recruiters** — proof the models work end-to-end and that the author can
@@ -28,13 +27,13 @@ Two audiences, one screen:
 - **Football fans** — the "pick your favourite player, see who's like him" hook is
   self-explanatory and shareable.
 
-Neither reads Python. The screen must explain itself.
+Neither reads Python, so the screen has to explain itself.
 
 ---
 
-## The one screen
+## Screen Layout
 
-Expanded from the [FRAMEWORK.md](FRAMEWORK.md#L107-L121) sketch. A left **sidebar** drives
+Expanded from the [FRAMEWORK.md](FRAMEWORK.md#L103-L113) sketch. A left **sidebar** drives
 selection; the **main pane** reacts live. Two lenses share the screen:
 
 - **Similarity / scouting lens** (user input) — pick a player → radar vs. position peers +
@@ -79,10 +78,10 @@ selection; the **main pane** reacts live. Two lenses share the screen:
 
 ---
 
-## Component → backend map (reuse, no new chart code)
+## Component → Backend Map
 
-Every panel is powered by a function that already exists and is unit-tested. The app is a
-thin presentation shell over `src/`, not a reimplementation.
+Every panel is powered by a function that already exists and is unit-tested — the app is a
+thin presentation shell over `src/`, reusing rather than reimplementing chart code.
 
 | Screen panel                | Backend function (reuse as-is)                                        | File |
 |-----------------------------|-----------------------------------------------------------------------|------|
@@ -123,10 +122,10 @@ leans committed `app_data/` for simplicity unless the shot table proves too larg
 
 ---
 
-## Tech choice — Streamlit (and what it beat)
+## Technology Choice (Streamlit)
 
 **Chosen: Streamlit.** It fits the brief — "simple, but amazes because of the model output,
-dynamic and customizable" — better than the alternatives:
+dynamic and customizable" — better than the alternatives considered below:
 
 - Python-native: imports `src/similarity.py` and `src/visualisation.py` directly, zero
   rewrite of model logic. The reuse table above is literally the app.
@@ -147,7 +146,7 @@ dynamic and customizable" — better than the alternatives:
 
 ---
 
-## Out of scope for v1
+## Out of Scope (v1)
 
 - No live model retraining or live StatsBomb pulls — precomputed artifacts only.
 - No auth, no user accounts, no saved sessions.
@@ -159,7 +158,7 @@ dynamic and customizable" — better than the alternatives:
 
 ---
 
-## Build checklist (for the future Phase 8 session)
+## Build Checklist (Phase 8)
 
 - [ ] Add a `build step` (script or notebook cell) that writes the three artifacts to
       `app_data/` for at least the flagship dataset.
@@ -176,7 +175,7 @@ dynamic and customizable" — better than the alternatives:
 
 ---
 
-## Mockups — secondary views
+## Additional Mockups
 
 **Similarity lens close-up** — ranked neighbours with distance bars (shorter bar = closer):
 

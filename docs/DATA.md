@@ -64,3 +64,43 @@ Current processed data state:
 | `data/shots_test.parquet` | Parquet | Processed xG test features (flat → parquet-safe) |
 | `data/player_per90_pl_2015_16.pkl` | Pickle | Per-90 player features + position for PL 2015/16 clustering |
 | `data/physical_per90_skillcorner_sample.pkl` | Pickle | SkillCorner physical per-90 features for A-League sample |
+
+---
+
+## Committed Provenance & Metrics Files (not gitignored)
+
+Two files are the deliberate exceptions to "`data/` is never committed" — they're small,
+deterministic, and exist specifically so someone reading the repo (not running it) can see the
+data's provenance and the model's headline numbers without pulling StatsBomb or rebuilding anything.
+
+| File | Written by | Contents |
+|---|---|---|
+| `metrics.json` (repo root) | `python -m src.metrics` | xG train/test ROC-AUC + Brier, CV mean±std, baseline ladder, per-group silhouette peaks — the single source the docs quote (see `src/metrics.py`, Phase 3b) |
+| `data/manifest.json` | `python -m src.manifest` | Per-dataset match-id set + hash + local cache coverage, processed-table content hashes, `statsbombpy` version — provenance pin, catches upstream data drift (see `src/manifest.py`, Phase 3e) |
+
+Both regenerate byte-for-byte from unchanged data/models (no timestamps) — a real diff on either
+file means something upstream actually moved. `python -m src.pipeline` regenerates both as its
+last step (Phase 3d).
+
+---
+
+## Candidate Alternative / Supplementary Data Sources (not yet used)
+
+Flagged 2026-07-04 as a Phase 4 option if free full-season StatsBomb league coverage keeps proving
+scarce (see [ROADMAP.md](ROADMAP.md) Phase 4d, "availability friction"): **SofaScore / FlashScore**
+match-info pages (lineups, match stats, league standings at the time of the match).
+
+Honest assessment before reaching for this:
+- **Not a StatsBomb replacement for Module A.** These sites expose match-level and box-score-style
+  stats (shots, possession, cards, ratings), not event-level x/y shot locations — there's no
+  `distance_to_goal`/`angle_to_goal` to recover, so they can't feed the existing xG model as-is.
+  They'd suit a coarser *match-outcome* or *team-strength* model, not a per-shot one.
+- **No official API** — this is scraping, not a published open-data endpoint like
+  `statsbombpy`. That means ToS review before relying on it for anything public-facing, and
+  brittleness (page-structure changes break the scraper with no changelog to warn you).
+- **Where it's genuinely useful:** league standings / rivalry context is exactly the
+  "external match-importance label" Module C (PUP) has been blocked on since it was scoped —
+  StatsBomb has no league-table or derby metadata (see [MODULES.md](MODULES.md#L57)). A scraped
+  standings table at the date of each match would unblock that without needing per-shot detail.
+- **Verdict:** worth a small spike (one competition, one season) if/when Phase 4's data-availability
+  friction or Module C gets picked up — not a default assumption that it will work cleanly.

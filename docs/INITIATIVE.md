@@ -4,9 +4,9 @@ Tracks the multi-phase improvement work that follows the S1–S8 build. Mirrors 
 style in `CLAUDE.md`. The full plan and rationale live in the approved plan file; this is the
 where-are-we tracker.
 
-**Why this initiative exists:** a code review surfaced correctness, methodology, structure, and
-scaling gaps, and the product story was unclear. Each phase below is independently executable in
-its own session. Conceptual framing is settled in [FRAMEWORK.md](FRAMEWORK.md).
+**Origin:** a code review surfaced correctness, methodology, structure, and scaling gaps, and the
+product story was unclear. Each phase below is independently executable in its own session.
+Conceptual framing is settled in [FRAMEWORK.md](FRAMEWORK.md).
 
 **Framing decisions (locked):** recruitment-led, both modules kept; product layer specified now and
 built later. **Reprioritised 2026-07-02** ("do it all, structured"): the whole review backlog is
@@ -28,8 +28,8 @@ was folded in — the old Phase 3 (360 xG) and Phase 5 (product) moved *later* b
 | **0** | Framework charter (FRAMEWORK.md, this tracker, CLAUDE.md roadmap entry) | 0 | ✅ Done |
 | **1** | Foundation: `config.py`, per-match cache, penalty/shootout fix, pinned deps, robustness fixes, first tests | 1 | ✅ Done |
 | **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | 2 | ✅ Done |
-| **3** | Engineering & reproducibility spine: CI, `pipeline.py`/Makefile, `metrics.json` single-source, data manifest | *new* | ⬜ **Next** |
-| **4** | Multi-competition ingestion + data expansion: config-driven pipeline, Module B cross-league, Module A generalization | 4 (reshaped) | ⬜ Not started |
+| **3** | Engineering & reproducibility spine: CI, `pipeline.py`/Makefile, `metrics.json` single-source, data manifest | *new* | ✅ Done |
+| **4** | Multi-competition ingestion + data expansion: config-driven pipeline, Module B cross-league, Module A generalization | 4 (reshaped) | ⬜ **Next** |
 | **5** | xG uncertainty + hierarchical/empirical-Bayes finishing model; header/foot interaction; calibration by stratum | *new* | ⬜ Not started |
 | **6** | Module B upgrades: Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features | part of old 6 | ⬜ Not started |
 | **7** | New model: 360-context xG + post-shot xG (xGOT) | **3** | ⬜ Not started |
@@ -39,10 +39,10 @@ was folded in — the old Phase 3 (360 xG) and Phase 5 (product) moved *later* b
 Execution order: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8, with 9 opportunistic. Full per-phase task
 lists live in [ROADMAP.md](ROADMAP.md).
 
-**Why the spine goes first (over the earlier "data expansion first" call):** the data manifest is a
-prerequisite of the config-driven ingestion pipeline, `metrics.json` should exist before we 10× the
-data and the numbers, and the spine is the cheapest credibility badge that also structurally kills
-the doc drift — so every later phase writes into a clean, single-source system.
+**Sequencing rationale (revised from the earlier "data expansion first" call):** the data manifest
+is a prerequisite of the config-driven ingestion pipeline, `metrics.json` should exist before we
+10× the data and the numbers, and the spine is the cheapest credibility badge that also
+structurally kills the doc drift — so every later phase writes into a clean, single-source system.
 
 ---
 
@@ -105,6 +105,19 @@ the doc drift — so every later phase writes into a clean, single-source system
   the detailed task lists; the stale "all uncommitted" note in PROGRESS.md was corrected against git
   log. Planning/docs only — no `src/`, notebook, test, or data changes; 22 tests untouched.
   **Next: Phase 3 (engineering & reproducibility spine).**
+- **2026-07-03** — **Phase 3 complete (3d: `pipeline.py` + Makefile).** New `src/pipeline.py`
+  chains the already-tested `src/` functions into a headless, non-notebook rebuild — shot-table
+  ingestion, per-90 similarity features, xG model training + all 4 Module A output PNGs, per-group
+  clustering + all 4 Module B output PNGs, then `write_manifest`/`write_metrics` — runnable as
+  `python -m src.pipeline` (`--force` to bypass the data/ caches, `--skip-plots` for a data-only
+  run). A root `Makefile` thinly wraps it (`make pipeline`, `make pipeline-force`, `make test`);
+  `python -m src.pipeline` remains the primary entry point since `make` isn't guaranteed on
+  Windows. Ran end-to-end against the existing cached data: reproduced `metrics.json` and
+  `data/manifest.json` byte-for-byte (both are deliberately deterministic — see Phase 3b/3e), the
+  concrete proof the pipeline is a faithful twin of notebooks 02/03, not a rewrite. +5 unit tests
+  (31 → 36 green), covering the one piece of real new logic (rebuild-vs-reuse cache decisions),
+  network-free via monkeypatched builders. **Phase 3 (engineering & reproducibility spine) is now
+  fully done. Next: Phase 4 (multi-competition ingestion + data expansion).**
 
 ---
 
