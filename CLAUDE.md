@@ -78,7 +78,8 @@ data/                    ← per-match cache + Parquet feature tables (gitignore
 
 **End of session:**
 1. Add dated entry to [docs/PROGRESS.md](docs/PROGRESS.md) (move old entries to PROGRESS_ARCHIVE.md when it exceeds 150 lines)
-2. Give 3-line summary: done / unresolved / commit message suggestion
+2. Log any new environment/tooling obstacle to [docs/ML_TOOLING.md](docs/ML_TOOLING.md), any new ML/data gotcha to [ML_LEARNING_LOG.md](ML_LEARNING_LOG.md) — as it happens, not just when asked to retrospectively
+3. Give 3-line summary: done / unresolved / commit message suggestion
 
 ---
 

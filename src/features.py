@@ -7,7 +7,7 @@ type, game state) and Session S5 (per-90 player metrics).
 import numpy as np
 import pandas as pd
 
-from src.data_loader import load_events, load_matches
+from src.data_loader import load_events, load_matches, safe_bool_column
 
 # StatsBomb pitch is 120x80. Goal line sits at x=120, goal mouth spans
 # y=36 to y=44 (8-yard width centred on y=40).
@@ -136,8 +136,12 @@ def extract_shot_features(events):
     ]
 
     shots["is_header"] = shots["shot_body_part"] == "Head"
-    shots["is_first_time"] = shots["shot_first_time"].eq(True)
-    shots["under_pressure"] = shots["under_pressure"].eq(True)
+    # shot_first_time / under_pressure are sparse flag columns (statsbombpy only includes them
+    # if at least one event in the match has them set) — a match with zero first-time shots or
+    # zero pressured shots drops the column entirely, which crashed extract_shot_features on a
+    # genuinely new competition (Barcelona 2020/21, Phase 4 data expansion) before this fix.
+    shots["is_first_time"] = safe_bool_column(shots, "shot_first_time")
+    shots["under_pressure"] = safe_bool_column(shots, "under_pressure")
     shots["is_penalty"] = shots["shot_type"] == "Penalty"
     shots["is_free_kick"] = shots["shot_type"] == "Free Kick"
 

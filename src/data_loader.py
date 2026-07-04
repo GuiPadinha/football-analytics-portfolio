@@ -18,11 +18,38 @@ pickle but not through columnar parquet.
 import pickle
 from pathlib import Path
 
+import pandas as pd
 from statsbombpy import sb
 from kloppy import skillcorner
 
 # data/ is gitignored; the cache lives under it so cached pulls never get committed.
 CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "cache"
+
+
+def safe_bool_column(df, column):
+    """Return `df[column]` as booleans, or all-False if the column is absent.
+
+    statsbombpy only includes a column in a match's events DataFrame if at least one event in
+    that match actually has it set (e.g. `pass_goal_assist` is missing entirely from matches with
+    zero assists, `shot_first_time` from a match with zero first-time shots) — sparse flag columns
+    can't be accessed directly without risking a KeyError on an otherwise ordinary match. Shared
+    by `features.py` and `similarity.py`, both of which hit this on different sparse columns.
+    """
+    if column not in df.columns:
+        return pd.Series(False, index=df.index)
+    return df[column].eq(True)
+
+
+def safe_column(df, column, default=None):
+    """Return `df[column]`, or an all-`default` Series if the column is absent.
+
+    Same sparse-column issue as `safe_bool_column`, for non-boolean fields (e.g. `pass_outcome`
+    is absent entirely from a match with zero incomplete passes, `duel_type` from a match with
+    zero duels of that type recorded).
+    """
+    if column not in df.columns:
+        return pd.Series(default, index=df.index)
+    return df[column]
 
 
 def _disk_cached(kind, match_id, producer, use_cache=True):

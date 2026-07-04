@@ -49,6 +49,22 @@ def test_classify_assist_empty_is_standard_pass():
     assert _classify_assist({}) == "Standard Pass"
 
 
+def test_extract_shot_features_handles_missing_sparse_flag_columns():
+    # Regression: statsbombpy omits shot_first_time/under_pressure entirely from a match's
+    # events if zero shots in that match have them set — hit for real on Barcelona 2020/21
+    # (Phase 4 data expansion), where extract_shot_features crashed with a bare KeyError before
+    # this fix. Note: no "shot_first_time" or "under_pressure" key in this event at all.
+    events = pd.DataFrame([
+        {"id": "s1", "type": "Shot", "period": 1, "location": [108.0, 40.0], "team": "A", "minute": 10,
+         "shot_outcome": "Goal", "shot_type": "Open Play", "shot_body_part": "Right Foot",
+         "shot_key_pass_id": np.nan, "shot_statsbomb_xg": 0.3},
+    ])
+    result = extract_shot_features(events)
+    assert len(result) == 1
+    assert bool(result.iloc[0]["is_first_time"]) is False
+    assert bool(result.iloc[0]["under_pressure"]) is False
+
+
 def test_extract_shot_features_drops_shootout_and_null_location():
     events = pd.DataFrame([
         # A normal in-game shot (kept).

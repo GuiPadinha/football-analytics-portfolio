@@ -59,23 +59,30 @@ of Phase 4's ingestion pipeline and 3b (`metrics.json`) must exist before the da
 - **3e — Data manifest:** `data/manifest.json` pinning comp/season/match IDs + row counts + content
   hash per dataset; catches upstream StatsBomb changes; feeds Phase 4.
 
-## Phase 4 — Multi-competition ingestion + data expansion  ⬜ Next
+## Phase 4 — Multi-competition ingestion + data expansion  🟡 Data pull in progress
 
 The flagship overlap item: engineering-at-scale in service of ML. Fixes Module B's single-season
 thinness and turns Module A's "generalises from n=2 contexts" into a defensible claim.
 
-- **4a — Config-driven ingestion:** generalise `data_loader.py` + the `src/config.py` `Dataset`
-  registry (already the right shape; `SIMILARITY_SET` literally says "widened in Phase 4") so a new
-  competition is a config line, not a code edit. Manifest-tracked (reuses 3e).
-- **4b — Module B cross-league/season:** the structural fix — single-season similarity can't do
-  "cheaper version in a smaller league." Add competitions; design league-context/strength
-  normalisation so per-90 profiles compare across leagues.
-- **4c — Module A generalisation:** add held-out test contexts beyond the single EURO 2024.
-- **4d — Availability friction:** free full-season league data is scarce and skews to Messi-era La
-  Liga (CONTEXT.md says avoid); tournaments are plentiful but wrong-shaped for per-90 similarity.
-  Pick deliberately, document the constraint. If this keeps being the blocker, see
-  [DATA.md](DATA.md#candidate-alternative--supplementary-data-sources-not-yet-used) for a scoped
-  SofaScore/FlashScore option (match-level stats + standings, not a per-shot xG source).
+- **4a — Config-driven ingestion** (done 2026-07-04): `src/config.py`'s `Dataset` registry already
+  had the right shape, so every candidate below is a config line, no `data_loader.py` changes
+  needed. New: `PHASE_4_EVENTS_ONLY` / `PHASE_4_EVENTS_AND_LINEUPS` groupings, pulled via a one-off
+  script reusing `build_training_dataset`/`build_player_per90_features` — see [DATA.md](DATA.md#phase-4-data-expansion-2026-07-04)
+  for the full dataset list, the "StatsBomb's La Liga = mostly Barcelona" gotcha, and the sampled
+  women's-football viability check.
+- **4b — Module B cross-league/season:** data pulled (La Liga 2015/16, Serie A 2015/16, Ligue 1
+  2015/16, Frauen Bundesliga 2023/24, FA WSL 2023/24) — not yet wired into `SIMILARITY_SET` or
+  cross-league normalisation designed. Next actual step once the pull finishes.
+- **4c — Module A generalisation:** held-out test candidates pulled (Copa América 2024, FIFA World
+  Cup 2022, Africa Cup of Nations 2023, Women's EURO 2025) — not yet wired into `TEST_SETS`.
+- **4d — Availability friction:** resolved for now — full-season non-La-Liga leagues (Serie A,
+  Ligue 1, both women's leagues) were more available than assumed once verified by match/team
+  count instead of competition name. Understat.com (free, Big-5-league shot coordinates,
+  2014/15–present) is a further option if more volume is wanted later, deferred because it needs
+  new ingestion code (different schema) — see [DATA.md](DATA.md#phase-4-data-expansion-2026-07-04).
+  The originally-flagged SofaScore/FlashScore option is still there too, see
+  [DATA.md](DATA.md#candidate-alternative--supplementary-data-sources-not-yet-used) (match-level
+  stats + standings, not a per-shot xG source).
 
 ## Phase 5 — xG uncertainty + hierarchical finishing model  ⬜
 

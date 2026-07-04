@@ -15,7 +15,10 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 
-from src.data_loader import load_events, load_lineups, load_matches, load_skillcorner_tracking
+from src.data_loader import (
+    load_events, load_lineups, load_matches, load_skillcorner_tracking,
+    safe_bool_column, safe_column,
+)
 
 # Common broadcast-tracking thresholds for classifying running intensity (km/h).
 HIGH_SPEED_RUNNING_THRESHOLD_KMH = 19.8
@@ -173,32 +176,6 @@ def resolve_season_positions(minutes_df):
     return pd.DataFrame(records)
 
 
-def _safe_bool_column(df, column):
-    """Return `df[column]` as booleans, or all-False if the column is absent.
-
-    statsbombpy only includes a column in a match's events DataFrame if at
-    least one event in that match actually has it set (e.g. `pass_goal_assist`
-    is missing entirely from matches with zero assists) — sparse flag columns
-    can't be accessed directly without risking a KeyError on an otherwise
-    ordinary match.
-    """
-    if column not in df.columns:
-        return pd.Series(False, index=df.index)
-    return df[column].eq(True)
-
-
-def _safe_column(df, column, default=None):
-    """Return `df[column]`, or an all-`default` Series if the column is absent.
-
-    Same sparse-column issue as `_safe_bool_column`, for non-boolean fields
-    (e.g. `pass_outcome` is absent entirely from a match with zero incomplete
-    passes, `duel_type` from a match with zero duels of that type recorded).
-    """
-    if column not in df.columns:
-        return pd.Series(default, index=df.index)
-    return df[column]
-
-
 def extract_player_match_actions(events):
     """Count per-player action totals for one match, for later per-90 conversion.
 
@@ -215,8 +192,8 @@ def extract_player_match_actions(events):
             small-sample distortion from any single match.
     """
     shots = events[events["type"] == "Shot"].copy()
-    shots["shot_outcome"] = _safe_column(shots, "shot_outcome")
-    shots["shot_type"] = _safe_column(shots, "shot_type")
+    shots["shot_outcome"] = safe_column(shots, "shot_outcome")
+    shots["shot_type"] = safe_column(shots, "shot_type")
     non_penalty_goals = (
         shots[(shots["shot_outcome"] == "Goal") & (shots["shot_type"] != "Penalty")]
         .groupby(["player", "team"]).size().rename("non_penalty_goals")
@@ -225,18 +202,18 @@ def extract_player_match_actions(events):
 
     passes = events[events["type"] == "Pass"].copy()
     key_passes = (
-        passes[_safe_bool_column(passes, "pass_shot_assist")]
+        passes[safe_bool_column(passes, "pass_shot_assist")]
         .groupby(["player", "team"]).size().rename("key_passes")
     )
     assists = (
-        passes[_safe_bool_column(passes, "pass_goal_assist")]
+        passes[safe_bool_column(passes, "pass_goal_assist")]
         .groupby(["player", "team"]).size().rename("assists")
     )
     # "Progressive" here means a completed pass that advances the ball at least
     # 10 yards toward the opponent's goal. StatsBomb coordinates are already
     # direction-normalised (attacking goal always at x=120 regardless of period
     # or team), so a plain x-delta works without tracking attacking direction.
-    completed_passes = passes[_safe_column(passes, "pass_outcome").isna()].copy()
+    completed_passes = passes[safe_column(passes, "pass_outcome").isna()].copy()
     if len(completed_passes):
         dx = completed_passes["pass_end_location"].apply(lambda loc: loc[0]) - \
             completed_passes["location"].apply(lambda loc: loc[0])
@@ -248,7 +225,7 @@ def extract_player_match_actions(events):
 
     dribbles = events[events["type"] == "Dribble"].copy()
     dribbles_completed = (
-        dribbles[_safe_column(dribbles, "dribble_outcome") == "Complete"]
+        dribbles[safe_column(dribbles, "dribble_outcome") == "Complete"]
         .groupby(["player", "team"]).size().rename("dribbles_completed")
     )
 
@@ -262,7 +239,7 @@ def extract_player_match_actions(events):
     )
     duels = events[events["type"] == "Duel"].copy()
     tackles = (
-        duels[_safe_column(duels, "duel_type") == "Tackle"]
+        duels[safe_column(duels, "duel_type") == "Tackle"]
         .groupby(["player", "team"]).size().rename("tackles")
     )
 

@@ -25,10 +25,71 @@
 | Bayer Leverkusen 2023/24 | 34 matches, events + 360 | xG training (league) — tactically unique unbeaten season |
 | Premier League 2015/16 | 380 matches, events | xG training (league) — volume + era benchmark |
 | UEFA EURO 2024 | 51 matches, events + 360 | xG test/validation (tournament) — out-of-distribution test |
-| Copa América 2024 | 32 matches, events | Optional extension if EURO 2024 test is interesting |
 | SkillCorner 2024/25 | 10 matches, physical tracking | Physical layer for player similarity (Module B) |
-| Messi-era La Liga | Multiple seasons | Reference/benchmarks only if needed |
-| Women's EURO 2025 | comp 53 / season 315, events + 360 | Phase 4 candidate (newly released as of 2026-06-29) |
+
+**Being pulled as of 2026-07-04 (Phase 4 data expansion, see below) — not yet wired into
+`TRAIN_SETS`/`TEST_SETS`/`SIMILARITY_SET`:**
+
+| Dataset | Coverage | Role |
+|---|---|---|
+| Barcelona 2004/05–2020/21 (16 seasons) | 866 matches, events | xG training volume — Messi-era, single-club (see gotcha below) |
+| La Liga 2015/16 | 380 matches, events | Genuine full 20-team season — usable for Module B too |
+| Serie A 2015/16 | 380 matches, events | Same-era full league as PL 2015/16 |
+| Ligue 1 2015/16 | 377 matches, events | Same-era full league as PL 2015/16 |
+| Frauen Bundesliga 2023/24 | 132 matches, events + lineups | Module B women's-football expansion |
+| FA Women's Super League 2023/24 | 132 matches, events + lineups | Module B women's-football expansion |
+| Women's EURO 2025 | 31 matches, events + 360 | xG test — women's-football held-out tournament |
+| Copa América 2024 | 32 matches, events | xG test — additional held-out tournament |
+| FIFA World Cup 2022 | 64 matches, events + 360 | xG test — additional held-out tournament |
+| Africa Cup of Nations 2023 | 52 matches, events + 360 | xG test — additional held-out tournament |
+
+---
+
+## Phase 4 Data Expansion (2026-07-04)
+
+Datasets identified and pulled for Phase 4 (multi-competition ingestion). All named in
+`src/config.py` (`PHASE_4_EVENTS_ONLY` / `PHASE_4_EVENTS_AND_LINEUPS`); cached locally via a
+one-off script that reuses `build_training_dataset`/`build_player_per90_features` — no new
+ingestion code, per Phase 4a's "config line, not code edit" goal. Not yet wired into
+`TRAIN_SETS`/`TEST_SETS`/`SIMILARITY_SET`; that's a separate modelling decision (cross-league
+normalisation, which seasons actually go into the train split) for a follow-up pass.
+
+**Gotcha: StatsBomb's "La Liga" entry is mostly Barcelona, not the league.** Checked by
+match/team count (not assumed from the competition name — the same trap caught a "Bundesliga
+2023/24" entry that turned out to be Leverkusen-only, and a "Ligue 1 2022/23" entry that was all
+Paris Saint-Germain). Of La Liga's 17 available seasons, 16 have every single match involving
+Barcelona — StatsBomb's well-known Messi-era open-data release, filed under the league rather
+than under a separate club label. Only **2015/16** is a genuine full 20-team, 380-match season.
+Total Barcelona-only volume: 866 matches, 2004/05–2020/21. Guilherme is fine leaning into the
+Messi era for this (see CONTEXT.md's Portfolio Framing, updated 2026-07-04) — the correction here
+is about what the data *is*, not whether it's acceptable to use.
+
+**Women's football — is it viable?** Sampled real shot/goal events (not guessed) before
+committing to the pull:
+
+| | Shots/match (sampled) | Conversion | Full-season shots (est.) |
+|---|---|---|---|
+| Frauen Bundesliga 23/24 | 25.6 | 14.1% | ~3,400 |
+| FA WSL 23/24 | 25.9 | 12.6% | ~3,400 |
+| Women's Euro 2025 | 27.6 | 12.3% | ~860 |
+| *(existing) PL+Leverkusen train* | *26.1* | *10.1%* | *10,824* |
+| *(existing) EURO 2024 test* | *25.8* | *8.1%* | *1,316* |
+
+Shot volume per match is basically identical to men's football — not a bottleneck. Conversion
+rate is consistently higher (12–14% vs. 8–10%) across all three samples, a real and narratable
+difference, not one to assert a cause for without more digging. The one real risk is **Module B**:
+a 12-team league yields roughly half the qualifying-player pool of PL 2015/16 per position
+group (estimate, not an exact count yet) — expect thinner clusters, possibly more Antonio-style
+one-player clusters, and say so plainly if that's what happens rather than hiding it.
+
+**Deferred: Understat.com.** Free, scrapable shot-level data with real x/y coordinates across the
+Big 5 leagues + Russian league, 2014/15–present (a ready-made Kaggle mirror exists too) — a
+genuinely bigger unlock than any paid option investigated (StatsBomb/Opta are enterprise
+sales-quote only with no individual pricing; Wyscout's €299/year individual tier is video +
+box-score stats, not raw shot coordinates). Not pulled in this pass because it needs real new
+engineering — a different event schema than StatsBomb's (`extract_shot_features` assumes
+StatsBomb's column names), so it's new ingestion code, not a `config.py` line. Worth its own scoped
+session, not bundled into a same-day data pull.
 
 ---
 

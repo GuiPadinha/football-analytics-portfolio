@@ -10,6 +10,14 @@ Companion to CLAUDE.md. Running record of ML/stats concepts exercised, gotchas h
 
 Key gotchas and lessons — most recent first:
 
+- **Sparse-column crash on a genuinely new competition** (Phase 4). `extract_shot_features` read
+  `shot_first_time`/`under_pressure` with a bare column access; statsbombpy drops a flag column
+  entirely from a match's events if zero shots in that match have it set (same pattern `similarity.py`
+  already handled for pass/dribble/duel columns). Worked by luck across Leverkusen/PL2015/16/EURO2024
+  — broke for real the moment Phase 4 added Barcelona 2020/21, where one of 35 matches had zero
+  first-time shots. Fixed by moving `similarity.py`'s `_safe_bool_column`/`_safe_column` up to
+  `data_loader.py` (shared, public) and using them in `features.py` too — the kind of bug that only
+  shows up when you actually add data diversity, not when you re-run the same three datasets.
 - **Calibrated GBM didn't rescue it** (Phase 2). Brier 0.0661→0.0659. S4 tuned-shallow GBM wasn't pathologically miscalibrated to begin with. "Logistic stays" survives a harder test.
 - **Baseline ladder** (Phase 2). Geometry-only 0.712 → full 0.765. ~80% of discrimination is pure shot geometry.
 - **5-fold CV as variance estimate** (Phase 2). In-distribution 0.783 ± 0.009; EURO test 0.765 at bottom edge → real ~1.7-pt league→tournament cost. CV ≠ substitute for OOD test.

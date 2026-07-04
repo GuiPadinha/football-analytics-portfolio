@@ -59,6 +59,14 @@ project is "about" specific StatsBomb competitions. `build_training_dataset(data
 uses" as their *default* argument. Swap in Women's EURO 2025 (Phase 4) by editing `config.py`
 and the glue layer — the feature/model/plot functions underneath don't change.
 
+**`data_loader.py` isn't just network I/O** — it also holds `safe_bool_column`/`safe_column`,
+small shared helpers for StatsBomb's sparse-column quirk (a flag column is absent entirely from a
+match's events if nothing in that match set it). `similarity.py` needed this from the start;
+`features.py` didn't need it until Phase 4 added a competition where the gap was real (Barcelona
+2020/21 has one match with zero first-time shots) and a bare column access crashed. Both now
+import the helpers from `data_loader.py` rather than each defining their own — the fix that
+surfaces this kind of latent bug is adding genuinely new data, not re-running the same fixtures.
+
 ---
 
 ## Data Contracts (Schemas, Not Imports)

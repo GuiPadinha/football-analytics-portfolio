@@ -73,4 +73,29 @@ Same project, two cache layers, two correct serialization choices — not a blan
 
 StatsBombpy only includes a column in a match's events DataFrame if at least one event in that match uses it. So `pass_goal_assist` is absent entirely from matches with zero assists — a plain column access crashes.
 
-Fixed with `_safe_bool_column` / `_safe_column` helpers in `features.py` that substitute a default Series rather than assuming every match's schema is identical.
+Fixed with `safe_bool_column` / `safe_column` helpers in `data_loader.py` (shared by `features.py` and `similarity.py`) that substitute a default Series rather than assuming every match's schema is identical.
+
+---
+
+## Git Bash has no network egress; PowerShell does
+
+Hit during Phase 4 research: `curl` and similar network calls from the Bash tool (Git Bash) silently return nothing in this environment, with no obvious error to explain why. PowerShell's `Invoke-WebRequest` works fine for the same request. Any raw HTTP fetch (verifying a StatsBomb competition/season id against the live API, checking a candidate data source) should go through PowerShell here, not Bash — don't burn time re-diagnosing a "network is down" false alarm.
+
+---
+
+## Background task stdout redirection hides output from the harness's own tracker
+
+Redirecting a background command's stdout to a custom log file (`> pull.log 2>&1`) means the harness's own `.output` tracking file stays empty (0 lines) even though the process is running and producing output normally. Not a bug — the redirection just means the output never reaches the stream the harness tails. Check the custom log file directly (`Read`/`tail` on it) instead of assuming an empty `.output` means the process is stuck or silent.
+
+---
+
+## Transient network errors on large StatsBomb pulls
+
+A multi-season/multi-competition bulk pull (Phase 4: 24 datasets, ~2,400 matches) hit one `IncompleteRead` connection error mid-download (Serie A 2015/16) — StatsBomb's open-data hosting occasionally drops a long-running connection with no pattern to it, not something our code did wrong. Fix isn't retry logic inside the pull itself; it's making the *orchestrating* script resumable: skip any dataset whose cache file already exists on disk, so a transient failure only costs re-running the whole script (one retry pass picks up exactly the datasets that didn't finish), not manual bookkeeping of what succeeded. See the Phase 4 pull script's file-exists check.
+
+---
+
+## How to use this file
+
+- Hit a real environment/tooling obstacle this session (network, encoding, kernel, caching, a silent tool failure)? Add it here **before** the session ends, dated only if the fix might later change — most of these don't need a date, just the symptom and the fix. Don't wait for a retrospective "were there any obstacles?" question to write them down.
+- Distinct from [ML_LEARNING_LOG.md](../ML_LEARNING_LOG.md): that file is *modelling* gotchas (a bug in feature engineering, a stats concept, a data-quality trap). This file is *environment/tooling* friction (Windows paths, encoding, kernels, network, background-task quirks) — a bug in `features.py` goes there even if the trigger was new data; a `curl` that silently fails goes here.

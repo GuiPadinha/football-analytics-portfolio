@@ -54,6 +54,9 @@ When writing README sections, docstrings, or any public-facing text:
 - Emphasise both: data engineering rigour (clean pipelines, reproducibility) AND analytical insight
 - Always include a "so what" — not just what the model does, but what decision it informs
 - Avoid academic language; write as if explaining to a **sporting director**, not a reviewer
-- Avoid Messi-era La Liga as primary dataset — overdone in public portfolios, weak differentiation
+- Messi-era La Liga is fine to use, including as bulk volume (2026-07-04: Guilherme is not precious
+  about the cliché) — the earlier "avoid" note was about not *centering the narrative* on one
+  superstar, not about avoiding the data. Frame usage as cross-season robustness/volume, not a
+  "look at Messi's numbers" showcase, and the differentiation concern takes care of itself
 - Ronaldo and Messi as obviously outliers — worth mentioning for benchmarking (the era was genuinely exceptional, which makes their feats even more absurd)
 - True biometric data (HRV, sleep, muscle recovery) is never publicly released — legally/contractually protected by clubs; SkillCorner physical tracking is the realistic public-facing equivalent
