@@ -1,6 +1,6 @@
-# Progress Log — Historical (S1–S8)
+# Progress Log — Historical (S1–S8, Phase 0–3)
 
-Sessions from 2026-06-28 through 2026-06-29. Committed work only.
+Sessions from 2026-06-28 through 2026-07-03. Committed work only.
 → Recent sessions: [PROGRESS.md](PROGRESS.md)
 
 ---
@@ -100,3 +100,45 @@ Expanded the thin Phase 5 lead (one ASCII sketch in FRAMEWORK.md) into a full in
 "Do it all, structured." Folded the whole code-review backlog into one execution-ordered program and **renumbered the initiative to Phases 0–9**. New **Phase 3 = engineering & reproducibility spine** (CI, `pipeline.py`, `metrics.json` single-source, data manifest) — promoted ahead of data expansion (Phase 4) because the manifest is a prerequisite of the ingestion pipeline and `metrics.json` must exist before we 10× the data/numbers. Old Phase 3 (360 xG) → **Phase 7**; old Phase 5 (Streamlit build) → **Phase 8**; old Phase 6 + Module C → **Phase 9** (opportunistic). Added **Phase 5** (xG uncertainty + hierarchical/empirical-Bayes finishing, header/foot interaction, calibration by stratum) and **Phase 6** (Module B: Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features).
 
 **De-drift in the same pass:** the phase table now lives **only** in INITIATIVE.md (ROADMAP links to it + holds the detailed per-phase task lists); the stale "all uncommitted" note here was corrected against git log (Phases 0–2 + restructure + product spec are committed — `a3ff7cd`/`bbc4ac8`/`5e5aaef`/`4be7844`); CLAUDE.md Current Status + MODULES.md forward-pointers updated. Docs only — no `src/`, notebook, test, or data changes; 22 tests untouched. Committed (`e862a59`).
+
+---
+
+## 2026-07-02 — Phase 3 spine, Checkpoints A+B (CI + data manifest)
+
+First code of the engineering & reproducibility spine.
+
+**Checkpoint A — CI:** `.github/workflows/tests.yml` runs the suite on push/PR to main (Python 3.10 to match the pinned `requirements.txt`, `MPLBACKEND=Agg` so `visualisation.py`'s import-time matplotlib works headless). CI badge added to README (repo slug `GuiPadinha/football-analytics-portfolio`). Also cleared the 3a leftover: renumbered the two `src/config.py` comments that still called the 360 model "Phase 3" → Phase 7. *Push required for the badge to go live / first run to appear.*
+
+**Checkpoint B — data manifest (3e):** new `src/manifest.py` + `tests/test_manifest.py`. `python -m src.manifest` writes `data/manifest.json` (tracked via a new `.gitignore` exception) pinning, per dataset, the sorted match-id set + a short set-hash + local cache coverage, plus content hashes of the two processed `shots_*.parquet` tables. Deliberately timestamp-free → pure function of the data, so only real drift diffs. Generated for real: **3 datasets, 465 matches pinned (380 PL 2015/16 + 51 EURO 2024 + 34 Leverkusen), all cached locally**; `statsbombpy 1.19.0` recorded. Feeds Phase 4's ingestion pipeline.
+
+Tests **22 → 27 green** (+5 manifest tests, all network-free via an injected loader). Committed (`6a1876c`).
+
+**Remaining in Phase 3 (at the time):** 3b (`metrics.json` single-source for key numbers) + 3d (`pipeline.py`/Makefile headless rebuild).
+
+---
+
+## 2026-07-02 — Phase 3 spine, Checkpoint C (3b: metrics.json single source)
+
+Closed the drift vector the whole reprioritisation was about: headline numbers were hand-typed into four docs and had already drifted once (the 0.798→0.765 penalty-fix took four edits to chase).
+
+**New `src/metrics.py`** computes them from the same code/data the models use — xG train/test ROC-AUC + Brier, in-distribution CV mean±std, the no-skill→geometry→full baseline ladder, per-group silhouette peaks, and shot counts — and `python -m src.metrics` writes the committed **`metrics.json`** (repo root, outside gitignored `data/`; deterministic + timestamp-free like the manifest). Split into pure compute (`compute_xg_metrics` / `compute_similarity_metrics` / `build_metrics`, tested on synthetic frames) and an IO wrapper (`write_metrics`) so the unit tests stay offline. **Every emitted value matched the docs on the first run** (0.765 / 0.786 / 0.783±0.009 / 0.5→0.712→0.765 / silhouette 0.236·0.264·0.262 at K=2 / 10,824 · 1,316) — the docs were honest, they just weren't *enforced*.
+
+**Doc-lint** (`tests/test_metrics.py::test_current_state_docs_match_metrics_json`): fails the build if a *current-state* doc (README/CLAUDE/MODULES/DATA) prints a number that differs from `metrics.json`. Append-only history (PROGRESS, INITIATIVE log entries, ML_LEARNING_LOG, the archive) is deliberately exempt — an old dated entry may keep the 0.798 it reported then. Deferred the test-count number (a repo fact, not a model output). Docs now *reference* the file: README callout under the results table, CLAUDE.md key-numbers note, ROADMAP 3b marked done.
+
+Tests **27 → 31 green** (+3 pure-compute, +1 doc-lint). Committed (`102a134`).
+
+**Remaining in Phase 3 (at the time):** 3d (`pipeline.py`/Makefile headless rebuild).
+
+---
+
+## 2026-07-03 — Phase 3 spine, Checkpoint D (3d: pipeline.py + Makefile) → Phase 3 complete
+
+Closed the last Phase 3 checkpoint. New **`src/pipeline.py`** chains the already-tested `src/` functions into a headless, non-notebook rebuild — mirrors notebooks 02/03 exactly rather than reimplementing them: build/reload the xG shot tables and the per-90 similarity table (skip the raw StatsBomb pull when the `data/` cache already exists, same `REBUILD` logic the notebooks use), train the logistic + GBM models and write all 4 Module A output PNGs, cluster each position group (K=4, matching the Phase 2 silhouette call) and write all 4 Module B output PNGs, then call `write_manifest()`/`write_metrics()` last (order matters — metrics.json reads the tables the earlier steps just built). Runnable as `python -m src.pipeline`, with `--force` (bypass caches, re-pull raw data) and `--skip-plots` (data + manifest/metrics only) flags.
+
+A thin root **`Makefile`** wraps it (`make pipeline`, `make pipeline-force`, `make test`) for anyone with `make` on their PATH — confirmed it isn't on this Windows machine (checked both PowerShell and Git Bash), so `python -m src.pipeline` stays the primary, always-works entry point; the Makefile is a convenience for CI/WSL/Linux contributors, not a requirement.
+
+**Verified for real, not just unit-tested:** ran `python -m src.pipeline` end-to-end against the existing local `data/` cache (no `--force`, so no fresh network pull) — reproduced `metrics.json` and `data/manifest.json` **byte-for-byte** (`git status` showed no diff on either), which is the concrete proof the pipeline is a faithful non-interactive twin of the notebooks rather than a rewrite that happens to look similar. All 8 output PNGs regenerated cleanly.
+
++5 unit tests (`tests/test_pipeline.py`) — the one piece of genuinely new logic (rebuild-vs-reuse cache decisions in `build_shot_tables`/`build_similarity_table`), tested network-free via monkeypatched builders, same pattern as `test_manifest.py`. Tests **31 → 36 green**. Committed as part of `ce45e74` (bundled with `ARCHITECTURE.md` + docs cleanup in that session's single commit).
+
+**Phase 3 (engineering & reproducibility spine) is now fully done. Next: Phase 4 (multi-competition ingestion + data expansion).**

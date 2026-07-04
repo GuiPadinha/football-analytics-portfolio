@@ -2,12 +2,14 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 from sklearn.pipeline import Pipeline
 
 from src.models import (
     ASSIST_TYPES,
     build_feature_matrix,
     build_logistic_pipeline,
+    build_player_xg_table,
     cross_validate_model,
     get_coefficients,
     train_baseline_classifier,
@@ -98,6 +100,82 @@ def test_cross_validate_returns_per_fold_scores():
     scores = cross_validate_model(build_logistic_pipeline(), X, y, cv=3)
     assert set(scores) == {"roc_auc", "neg_brier_score"}
     assert len(scores["roc_auc"]) == 3
+
+
+def test_logistic_predicts_higher_xg_for_a_closer_shot():
+    # Domain sanity check, not just a metric check: holding everything else fixed,
+    # a shot closer to goal must get a higher predicted probability than a farther
+    # one. This is the kind of "obviously true" invariant a metric like ROC-AUC
+    # can't directly guarantee — a model could rank well on average while still
+    # getting individual comparisons backwards.
+    X, y = build_feature_matrix(_synthetic_shots(n=300))
+    model = train_logistic_regression(X, y)
+
+    close_shot, far_shot = _one_shot(distance_to_goal=6.0), _one_shot(distance_to_goal=30.0)
+    X_pair, _ = build_feature_matrix(pd.DataFrame([close_shot, far_shot]))
+    proba = model.predict_proba(X_pair)[:, 1]
+
+    assert proba[0] > proba[1]
+
+
+def test_logistic_predicts_higher_xg_for_a_penalty():
+    # Penalties convert at a much higher, well-known rate than open-play shots from
+    # the same spot — the model should have learned a strong positive is_penalty
+    # coefficient, not just picked up geometry.
+    rng = np.random.default_rng(1)
+    n = 300
+    is_penalty = rng.uniform(size=n) < 0.15
+    goal_prob = np.where(is_penalty, 0.78, 0.1)
+    shots = pd.DataFrame({
+        "distance_to_goal": np.full(n, 12.0),
+        "angle_to_goal": np.full(n, 40.0),
+        "game_state_score_diff": rng.integers(-2, 3, n),
+        "is_header": False,
+        "is_first_time": False,
+        "under_pressure": False,
+        "is_penalty": is_penalty,
+        "is_free_kick": False,
+        "assist_type": "None",
+        "is_goal": rng.uniform(size=n) < goal_prob,
+    })
+    X, y = build_feature_matrix(shots)
+    model = train_logistic_regression(X, y)
+
+    penalty_shot = _one_shot(distance_to_goal=12.0, angle_to_goal=40.0, is_penalty=True, assist_type="None")
+    open_play_shot = _one_shot(distance_to_goal=12.0, angle_to_goal=40.0, is_penalty=False, assist_type="None")
+    X_pair, _ = build_feature_matrix(pd.DataFrame([penalty_shot, open_play_shot]))
+    proba = model.predict_proba(X_pair)[:, 1]
+
+    assert proba[0] > proba[1]
+
+
+def test_build_player_xg_table_aggregates_shots_goals_and_xg_diff():
+    shots = pd.DataFrame([
+        {"player": "A", "team": "T1", "is_goal": True},
+        {"player": "A", "team": "T1", "is_goal": False},
+        {"player": "B", "team": "T1", "is_goal": False},
+    ])
+    predicted_xg = np.array([0.6, 0.2, 0.1])
+
+    table = build_player_xg_table(shots, predicted_xg)
+
+    a_row = table.loc[("A", "T1")]
+    assert a_row["shots"] == 2
+    assert a_row["goals"] == 1
+    assert a_row["total_xg"] == pytest.approx(0.8)
+    assert a_row["xg_diff"] == pytest.approx(1 - 0.8)
+    # Sorted by xg_diff descending: A (1 - 0.8 = 0.2) outranks B (0 - 0.1 = -0.1).
+    assert list(table.index.get_level_values("player")) == ["A", "B"]
+
+
+def test_logistic_regression_is_deterministic_given_fixed_data():
+    # Guards against a future change (e.g. swapping in a stochastic solver, or a random_state-
+    # dependent step) silently making the model non-reproducible: fitting on the exact same data
+    # twice must give the exact same coefficients every time.
+    X, y = build_feature_matrix(_synthetic_shots())
+    coefficients_1 = get_coefficients(train_logistic_regression(X, y))
+    coefficients_2 = get_coefficients(train_logistic_regression(X, y))
+    pd.testing.assert_series_equal(coefficients_1, coefficients_2)
 
 
 def test_logistic_accepts_numeric_feature_subset():

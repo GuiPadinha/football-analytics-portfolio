@@ -65,6 +65,40 @@ def test_extract_shot_features_handles_missing_sparse_flag_columns():
     assert bool(result.iloc[0]["under_pressure"]) is False
 
 
+def test_game_state_score_diff_reflects_score_before_not_after_the_shot():
+    # A shot that itself is a goal must NOT have that goal counted in its own
+    # game_state_score_diff (the feature describes the state the shooter faced
+    # when deciding to shoot, not the outcome). The next shot from the same team
+    # should then see the lead.
+    events = pd.DataFrame([
+        {"id": "s1", "type": "Shot", "period": 1, "location": [108.0, 40.0], "team": "A", "minute": 10,
+         "shot_outcome": "Goal", "shot_type": "Open Play", "shot_body_part": "Right Foot",
+         "shot_key_pass_id": np.nan, "shot_statsbomb_xg": 0.3},
+        {"id": "s2", "type": "Shot", "period": 1, "location": [100.0, 40.0], "team": "A", "minute": 20,
+         "shot_outcome": "Saved", "shot_type": "Open Play", "shot_body_part": "Right Foot",
+         "shot_key_pass_id": np.nan, "shot_statsbomb_xg": 0.1},
+    ])
+    result = extract_shot_features(events)
+    assert result.iloc[0]["game_state_score_diff"] == 0  # before its own goal is credited
+    assert result.iloc[1]["game_state_score_diff"] == 1  # now leading by the first goal
+
+
+def test_extract_shot_features_handles_a_match_with_zero_shots():
+    # A sparser version of the sparse-column family than the missing-flag case above: if a match
+    # has literally no Shot events, shot-only fields (shot_body_part, shot_type, shot_outcome,
+    # shot_key_pass_id) never appear in `events` at all, not just a missing flag on an existing
+    # shot. Rare in real matches but not impossible across thousands of them (Phase 4 volume), and
+    # it's exactly the "all shots filtered out" shape the period-5/null-location guards can also
+    # produce internally — same failure mode, so worth covering directly.
+    events = pd.DataFrame([
+        {"id": "p1", "type": "Pass", "period": 1, "location": [60.0, 40.0], "team": "A", "minute": 5},
+        {"id": "p2", "type": "Pass", "period": 1, "location": [55.0, 38.0], "team": "B", "minute": 6},
+    ])
+    result = extract_shot_features(events)
+    assert len(result) == 0
+    assert "is_goal" in result.columns
+
+
 def test_extract_shot_features_drops_shootout_and_null_location():
     events = pd.DataFrame([
         # A normal in-game shot (kept).

@@ -23,10 +23,24 @@ The two questions they actually ask, and which module answers each:
 
 | The user asks… | Module | What it is |
 |---|---|---|
-| "Who else plays like this player — ideally cheaper or younger?" | **B — Similarity** | Scouting lens |
 | "This striker scored 20 — is he actually that good, or did he get lucky?" | **A — xG** | Valuation lens |
+| "Who else plays like this player — ideally cheaper or younger?" | **B — Similarity** | Scouting lens |
 
 ---
+
+## Module A — xG (the Valuation Lens)
+
+No user input here — it's pointed at a player/team/season that already exists in the data.
+
+- **What happens:** each shot gets a goal probability from its circumstances (location, angle, body
+  part, what created it, game state). Summed per player, that's their **expected goals (xG)**.
+- **Output:** **goals minus xG** per player. Positive = scoring more than the chances deserved
+  (finishing hot — likely partly luck, expect regression). Negative = scoring less than the chances
+  deserved (possibly unlucky — a potential buy-low).
+- **Decision it informs:** don't overpay for a player riding a finishing streak; don't write off a
+  player who's been creating good chances but not converting.
+
+It is not a scouting tool — it evaluates output that already exists, it doesn't find new players.
 
 ## Module B — Similarity (the Scouting Lens)
 
@@ -43,20 +57,6 @@ unique).
 It does not know transfer fees, age, or contracts — it matches on *playing style from on-pitch
 output* only. Pairing its shortlist with budget/age filters is a human step (and a candidate
 front-end feature).
-
-## Module A — xG (the Valuation Lens)
-
-No user input here — it's pointed at a player/team/season that already exists in the data.
-
-- **What happens:** each shot gets a goal probability from its circumstances (location, angle, body
-  part, what created it, game state). Summed per player, that's their **expected goals (xG)**.
-- **Output:** **goals minus xG** per player. Positive = scoring more than the chances deserved
-  (finishing hot — likely partly luck, expect regression). Negative = scoring less than the chances
-  deserved (possibly unlucky — a potential buy-low).
-- **Decision it informs:** don't overpay for a player riding a finishing streak; don't write off a
-  player who's been creating good chances but not converting.
-
-It is not a scouting tool — it evaluates output that already exists, it doesn't find new players.
 
 ---
 

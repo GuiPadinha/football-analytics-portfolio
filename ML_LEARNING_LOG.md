@@ -10,6 +10,28 @@ Companion to CLAUDE.md. Running record of ML/stats concepts exercised, gotchas h
 
 Key gotchas and lessons — most recent first:
 
+- **Sparse-column bug had three more instances, found by writing the edge case rather than
+  hitting it in production** (Phase 4, follow-up). Adding a zero-shots-match test for
+  `extract_shot_features` (no `pytest.raises` intended — meant to be a boring pass) surfaced that
+  `shot_body_part`/`shot_type`/`shot_outcome`/`shot_key_pass_id` were still bare column accesses,
+  same crash shape as the `shot_first_time`/`under_pressure` fix above but one level sparser
+  (missing because a match has *zero shots at all*, not just zero shots with one flag set). Fixed
+  the same way — routed through `safe_column`. Unlike the Barcelona 2020/21 case this wasn't hit by
+  real data yet (StatsBomb matches basically always have >=1 shot), but at ~2,400 newly-cached
+  Phase 4 matches the odds of a true zero-shot match stop being negligible, and the fix was free
+  once the gap was visible. Lesson: writing the deliberately-adversarial test found the bug before
+  the data did, not after.
+- **More league volume didn't close the tournament generalisation gap** (Phase 4, quick smoke test,
+  not yet the real Phase 4b wiring). Retrained the same logistic pipeline on baseline (10,824 shots)
+  vs +La Liga/Serie A/Ligue 1 2015/16 (38,804) vs +all 16 Barcelona seasons too (50,789), same
+  untouched EURO 2024 test set throughout. Test ROC-AUC crept 0.765→0.766→0.768 — smaller than the
+  ±0.009 fold-to-fold noise the Phase 2 CV already measured, so not distinguishable from noise — while
+  test Brier got marginally *worse* (0.0651→0.0656→0.0659) even as train ROC-AUC rose more
+  (0.786→0.804→0.803). Reads as confirmation of the CV finding, not a new one: the league→tournament
+  shift is structural (different shot profile), not a sample-size problem, so naively pooling more
+  league shots mostly overfits the training distribution rather than transferring. Caveat: no
+  cross-league normalisation in this quick test — the real Phase 4b pass needs that before this is
+  a final verdict.
 - **Sparse-column crash on a genuinely new competition** (Phase 4). `extract_shot_features` read
   `shot_first_time`/`under_pressure` with a bare column access; statsbombpy drops a flag column
   entirely from a match's events if zero shots in that match have it set (same pattern `similarity.py`
@@ -32,18 +54,6 @@ Key gotchas and lessons — most recent first:
 
 ---
 
-## Module C (candidate) — "PUP" (Performance Under Pressure)
-
-**Status: scoped only, not started.** Full spec in [docs/MODULES.md](docs/MODULES.md).
-
-Core idea: players performing well in high-pressure league moments (title race, relegation, derby, must-win) should perform well in tournaments. PUP = per-player delta (high-pressure vs. normal league performance).
-
-**51-player overlap** between league training data and EURO 2024 makes real transfer validation possible (34 via Leverkusen roster). **Always name the confound:** tournament squads are selection-biased — only good/in-form players get picked.
-
-What's needed: external match-importance labels (StatsBomb has no league-table or rivalry metadata). Scalar per-player PUP score. Scatter validation against EURO 2024 knockout performance for the 51 overlap players.
-
----
-
 ## Module B — Player Similarity (unsupervised, clustering + PCA)
 
 Key gotchas and lessons — most recent first:
@@ -57,6 +67,18 @@ Key gotchas and lessons — most recent first:
 - **No ground truth changes the success criterion** (S6). Used elbow method (eyeballed) + z-score cluster profiling (does it read as a recognisable football role?) as substitutes for accuracy.
 - **Cluster per position group** (S6). Clustering all outfield players together just rediscovers position. Run within each group for style sub-archetypes.
 - **Feature scaling matters here, not for Module A** (S6). K-means uses Euclidean distance. `StandardScaler` before clustering, not before the xG models.
+
+---
+
+## Module C (candidate) — "PUP" (Performance Under Pressure)
+
+**Status: scoped only, not started.** Full spec in [docs/MODULES.md](docs/MODULES.md).
+
+Core idea: players performing well in high-pressure league moments (title race, relegation, derby, must-win) should perform well in tournaments. PUP = per-player delta (high-pressure vs. normal league performance).
+
+**51-player overlap** between league training data and EURO 2024 makes real transfer validation possible (34 via Leverkusen roster). **Always name the confound:** tournament squads are selection-biased — only good/in-form players get picked.
+
+What's needed: external match-importance labels (StatsBomb has no league-table or rivalry metadata). Scalar per-player PUP score. Scatter validation against EURO 2024 knockout performance for the 51 overlap players.
 
 ---
 

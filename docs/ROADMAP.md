@@ -61,8 +61,8 @@ of Phase 4's ingestion pipeline and 3b (`metrics.json`) must exist before the da
 
 ## Phase 4 — Multi-competition ingestion + data expansion  🟡 Data pull in progress
 
-The flagship overlap item: engineering-at-scale in service of ML. Fixes Module B's single-season
-thinness and turns Module A's "generalises from n=2 contexts" into a defensible claim.
+The flagship overlap item: engineering-at-scale in service of ML. Turns Module A's "generalises
+from n=2 contexts" into a defensible claim and fixes Module B's single-season thinness.
 
 - **4a — Config-driven ingestion** (done 2026-07-04): `src/config.py`'s `Dataset` registry already
   had the right shape, so every candidate below is a config line, no `data_loader.py` changes

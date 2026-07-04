@@ -12,7 +12,7 @@ on 2026-07-02.
 **Next: Phase 4 — Multi-competition ingestion + data expansion.**
 (360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
 
-Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped). Similarity: K=4 per position group, silhouette ~0.25 (soft continuum). 36 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
+Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped). Similarity: K=4 per position group, silhouette ~0.25 (soft continuum). 59 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
 
 → Phase tracker: [docs/INITIATIVE.md](docs/INITIATIVE.md) | Session log: [docs/PROGRESS.md](docs/PROGRESS.md)
 
@@ -60,7 +60,7 @@ docs/
   ML_THEORY.md           ← ML/stats theory reference (textbook-level)
   ML_TOOLING.md          ← Windows/environment gotchas
 ML_LEARNING_LOG.md       ← ML gotchas and decisions log (pointers to above docs)
-tests/                   ← 36 pytest unit tests, all green
+tests/                   ← 59 pytest unit tests, all green
 outputs/                 ← saved PNGs (gitignored)
 data/                    ← per-match cache + Parquet feature tables (gitignored)
 ```

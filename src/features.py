@@ -7,7 +7,7 @@ type, game state) and Session S5 (per-90 player metrics).
 import numpy as np
 import pandas as pd
 
-from src.data_loader import load_events, load_matches, safe_bool_column
+from src.data_loader import load_events, load_matches, safe_bool_column, safe_column
 
 # StatsBomb pitch is 120x80. Goal line sits at x=120, goal mouth spans
 # y=36 to y=44 (8-yard width centred on y=40).
@@ -135,28 +135,33 @@ def extract_shot_features(events):
         _shot_angle(x, y) for x, y in zip(shots["x"], shots["y"])
     ]
 
-    shots["is_header"] = shots["shot_body_part"] == "Head"
+    # shot_body_part/shot_type/shot_outcome/shot_key_pass_id are themselves shot-only fields —
+    # entirely absent from `events` if the match has zero Shot events at all (a sparser version
+    # of the same statsbombpy quirk as shot_first_time/under_pressure below), so a bare access
+    # would crash on the all-shots-dropped edge case (e.g. every shot lost to the period-5/
+    # null-location filters above). Guarded the same way.
+    shots["is_header"] = safe_column(shots, "shot_body_part") == "Head"
     # shot_first_time / under_pressure are sparse flag columns (statsbombpy only includes them
     # if at least one event in the match has them set) — a match with zero first-time shots or
     # zero pressured shots drops the column entirely, which crashed extract_shot_features on a
     # genuinely new competition (Barcelona 2020/21, Phase 4 data expansion) before this fix.
     shots["is_first_time"] = safe_bool_column(shots, "shot_first_time")
     shots["under_pressure"] = safe_bool_column(shots, "under_pressure")
-    shots["is_penalty"] = shots["shot_type"] == "Penalty"
-    shots["is_free_kick"] = shots["shot_type"] == "Free Kick"
+    shots["is_penalty"] = safe_column(shots, "shot_type") == "Penalty"
+    shots["is_free_kick"] = safe_column(shots, "shot_type") == "Free Kick"
 
     passes_by_id = (
         events[events["type"] == "Pass"].set_index("id").to_dict(orient="index")
     )
     shots["assist_type"] = [
         _classify_assist(passes_by_id.get(key_pass_id))
-        for key_pass_id in shots["shot_key_pass_id"]
+        for key_pass_id in safe_column(shots, "shot_key_pass_id")
     ]
 
     score_diff_by_index = _compute_score_diff_before_shot(events)
     shots["game_state_score_diff"] = shots.index.map(score_diff_by_index)
 
-    shots["is_goal"] = shots["shot_outcome"] == "Goal"
+    shots["is_goal"] = safe_column(shots, "shot_outcome") == "Goal"
 
     feature_columns = [
         "match_id",

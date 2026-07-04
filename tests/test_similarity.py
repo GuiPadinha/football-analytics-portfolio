@@ -8,6 +8,7 @@ from src.similarity import (
     _parse_clock,
     compute_minutes_played,
     compute_silhouette_scores,
+    find_similar_players,
     resolve_season_positions,
 )
 
@@ -75,6 +76,37 @@ def test_resolve_season_positions_total_minutes_span_all_positions():
     result = resolve_season_positions(pd.DataFrame(rows)).iloc[0]
     assert result["position_group"] == "Midfielder"      # 600 > 300
     assert result["minutes_played"] == pytest.approx(900.0)
+
+
+def _player_pool():
+    # Two position groups so the "restricted to own group" behaviour is actually
+    # exercised: a defender pool (all near each other) and one lone forward who
+    # would otherwise look "similar" by raw distance if groups weren't respected.
+    return pd.DataFrame([
+        {"player": "Target", "team": "T", "position_group": "Defender", "f1": 0.0, "f2": 0.0},
+        {"player": "Near", "team": "T", "position_group": "Defender", "f1": 0.1, "f2": 0.1},
+        {"player": "Far", "team": "T", "position_group": "Defender", "f1": 5.0, "f2": 5.0},
+        {"player": "WrongGroup", "team": "T", "position_group": "Forward", "f1": 0.05, "f2": 0.05},
+    ])
+
+
+def test_find_similar_players_excludes_self_and_restricts_to_position_group():
+    result = find_similar_players(_player_pool(), ["f1", "f2"], player="Target", team="T", n=5)
+
+    assert "Target" not in result["player"].values          # never recommends the player to themselves
+    assert "WrongGroup" not in result["player"].values       # different position_group, excluded even though closer
+    assert list(result["player"]) == ["Near", "Far"]         # ranked nearest-first within the group
+
+
+def test_find_similar_players_respects_n():
+    result = find_similar_players(_player_pool(), ["f1", "f2"], player="Target", team="T", n=1)
+    assert len(result) == 1
+    assert result.iloc[0]["player"] == "Near"
+
+
+def test_find_similar_players_raises_for_unknown_player():
+    with pytest.raises(ValueError):
+        find_similar_players(_player_pool(), ["f1", "f2"], player="Nobody", team="T")
 
 
 def test_compute_silhouette_scores_prefers_true_cluster_count():

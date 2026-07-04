@@ -6,6 +6,119 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-07-04 (cont.) — +8 more tests (determinism, zero-shot edge case, real-data sanity checks) + a real bug fix
+
+Followed up on the parked test ideas from the previous entry.
+
+**New `tests/test_data_sanity.py`** (6 tests, parametrized over `shots_train.parquet`/
+`shots_test.parquet`): the one deliberate exception to "network-free, synthetic data only" — reads
+the real cached shot tables and checks geometry stays within pitch bounds, no missing values in any
+model-input feature column, and goal rate stays in a wide plausible band. Skips cleanly (not fails)
+wherever `data/` isn't present, e.g. CI or a fresh clone.
+
+**Determinism test** (`test_models.py`, +1): fitting the logistic pipeline twice on identical data
+must give identical coefficients — guards against a future stochastic-solver swap silently breaking
+reproducibility.
+
+**Zero-shot-match edge case** (`test_features.py`, +1) **found a real bug**: `extract_shot_features`
+crashed on a synthetic match with zero Shot events, because `shot_body_part`/`shot_type`/
+`shot_outcome`/`shot_key_pass_id` were still bare column accesses — the same sparse-column crash
+shape as the Barcelona 2020/21 fix, one level sparser (missing because the match has no shots at
+all, not just a missing flag on an existing shot). Fixed by routing all four through the existing
+`safe_column` helper. Not yet hit by real data (StatsBomb matches essentially always have ≥1 shot),
+but worth fixing now that ~2,400 Phase 4 matches make it not-quite-negligible, and the edge-case test
+found it before production data did.
+
+Tests **51 → 59 green**; CLAUDE.md's two test-count mentions updated. Logged in
+[ML_LEARNING_LOG.md](../ML_LEARNING_LOG.md). `src/features.py` changed (the fix); everything else
+docs/tests only.
+
+---
+
+## 2026-07-04 (cont.) — +10 tests (model input/output/functioning validation) + Module A→B→C ordering pass
+
+Guilherme asked for tests validating the models more directly (input/output/functioning/features,
+beyond the existing unit tests), and to standardise on telling the module story as A→B→C everywhere
+(narration and docs), reserving a lead-with-B exception for contexts where it genuinely reads better
+(e.g. the recruitment walkthrough in FRAMEWORK.md, left as B→A since that's the real workflow order).
+
+**New `tests/test_contracts.py`** (3 tests): pins the schema contracts `ARCHITECTURE.md` describes
+but nothing previously enforced — `extract_shot_features`'s output covers every column
+`build_feature_matrix` needs, `ASSIST_TYPES` covers every category `_classify_assist` can produce,
+and `PER90_FEATURE_COLUMNS` stays a pure function of `ACTION_COLUMNS` rather than a second
+hand-maintained list.
+
+**Domain sanity checks** (`test_models.py`, +3): a closer shot must get higher predicted xG than a
+farther one, a penalty must get higher predicted xG than an otherwise-identical open-play shot, and
+`build_player_xg_table` aggregates shots/goals/xg_diff correctly — invariants a metric like ROC-AUC
+can't directly guarantee (a model can rank well on average while getting an individual comparison
+backwards).
+
+**Coverage gaps closed:** `game_state_score_diff` reflects the score *before* a shot's own goal is
+credited, not after (`test_features.py`, +1) — a subtlety the docstring already explained but nothing
+tested; `find_similar_players` excludes the queried player, restricts to their position group, respects
+`n`, and raises on an unknown player (`test_similarity.py`, +3) — previously zero coverage on the
+function that actually powers the "players like X" lookup.
+
+Tests **41 → 51 green**. CLAUDE.md's two test-count mentions updated to match (not doc-lint-enforced —
+a repo fact, not a model output — but kept accurate manually).
+
+**Ordering pass:** swapped `docs/FRAMEWORK.md`'s Target User table + Module B/A section order (was
+B-then-A) to A-then-B; swapped `ML_LEARNING_LOG.md`'s section order (was A, C, B) to A, B, C;
+reordered one Phase 4 table cell and one Phase 4 prose sentence in `INITIATIVE.md`/`ROADMAP.md` that
+listed Module B before Module A. Left the FRAMEWORK.md recruitment walkthrough's B-then-A story order
+alone — finding similar players before checking their xG is the actual workflow sequence, not a
+labelling inconsistency.
+
+Docs + tests only — no `src/` changes; suite re-run clean after every edit.
+
+---
+
+## 2026-07-04 (cont.) — quick experiment: does more league volume help xG generalisation? + obstacle-doc gaps closed
+
+Guilherme asked three things before signing off: what obstacles this session hit and whether they're
+documented, whether there's any evidence yet that the Phase 4 data actually helps the model, and
+whether the non-shooting event data (passing, positioning, tackling) is being used anywhere.
+
+**Obstacle docs:** most of the session's real obstacles were already logged (sparse-column crash →
+ML_LEARNING_LOG.md/ARCHITECTURE.md; La Liga-is-mostly-Barcelona → DATA.md). Three weren't: Git Bash's
+lack of network egress (PowerShell has it), a background pull's stdout-redirect hiding output from the
+harness's own tracker, and the Serie A 2015/16 `IncompleteRead` transient pull failure. All three added
+to ML_TOOLING.md, plus a "How to use this file" footer and a CLAUDE.md end-of-session checklist line
+so this gets logged as it happens, not retrospectively.
+
+**Non-shooting data:** Module B already uses it (`ACTION_COLUMNS` in `similarity.py` — key passes,
+progressive passes, dribbles, pressures, interceptions, tackles — per-90 for player similarity).
+xA/chance-creation (passing) and 360-context xG (positioning) are already scoped, unstarted backlog
+items (Phase 9 / Phase 7). Flagged one new idea not yet on the roadmap: a possession-value
+(VAEP/xT-style) model that scores every event, not just shots/completed passes — the real answer to
+"value a tackle," a bigger lift than xA, Phase 9+ candidate.
+
+**Quick retraining experiment** (scratch script, not committed — `phase4_train_expansion_experiment.py`):
+same logistic pipeline, same untouched EURO 2024 test set, three training sets built from already-cached
+Phase 4 data. Result:
+
+| Training set | Shots | Test ROC-AUC | Test Brier |
+|---|---|---|---|
+| Baseline (Leverkusen+PL 2015/16) | 10,824 | 0.7654 | 0.0651 |
+| + La Liga/Serie A/Ligue 1 2015/16 | 38,804 | 0.7662 | 0.0656 |
+| + all 16 Barcelona seasons too | 50,789 | 0.7678 | 0.0659 |
+
+Test ROC-AUC creeps up ~0.1–0.2 points per data addition — smaller than the ±0.009 fold-to-fold noise
+the Phase 2 CV already measured, so not distinguishable from noise. Test Brier gets marginally *worse*
+each time even as train ROC-AUC rises more (0.786→0.804→0.803): the added shots fit the training
+distribution better without transferring to the out-of-distribution tournament test. Reads as
+confirmation, not contradiction, of the earlier CV finding — the league→tournament shift is
+structural, not a sample-size problem, so raw volume alone won't close it. Caveat: naive pooling, no
+cross-league normalisation — Phase 4b's real version needs that before this is a final verdict; this
+was a smoke test to answer "does it help at all," not the production wiring decision.
+
+Docs only (`ML_TOOLING.md`, `CLAUDE.md` end-of-session checklist) + this log entry — the experiment
+script itself is scratch, not part of the repo. 41 tests untouched. Also added to
+[ML_LEARNING_LOG.md](../ML_LEARNING_LOG.md)'s Module A gotcha list.
+
+---
+
 ## 2026-07-04 (cont.) — doc-style cleanup: concept headers over narrative, paragraphs over crammed bullets
 
 Guilherme flagged a recurring style issue across the docs: section headers written as narrative/
@@ -89,58 +202,10 @@ Suggested commit: `docs: relax git policy, add ARCHITECTURE.md, note SofaScore/F
 
 ---
 
-## 2026-07-03 — Phase 3 spine, Checkpoint D (3d: pipeline.py + Makefile) → Phase 3 complete
-
-Closed the last Phase 3 checkpoint. New **`src/pipeline.py`** chains the already-tested `src/` functions into a headless, non-notebook rebuild — mirrors notebooks 02/03 exactly rather than reimplementing them: build/reload the xG shot tables and the per-90 similarity table (skip the raw StatsBomb pull when the `data/` cache already exists, same `REBUILD` logic the notebooks use), train the logistic + GBM models and write all 4 Module A output PNGs, cluster each position group (K=4, matching the Phase 2 silhouette call) and write all 4 Module B output PNGs, then call `write_manifest()`/`write_metrics()` last (order matters — metrics.json reads the tables the earlier steps just built). Runnable as `python -m src.pipeline`, with `--force` (bypass caches, re-pull raw data) and `--skip-plots` (data + manifest/metrics only) flags.
-
-A thin root **`Makefile`** wraps it (`make pipeline`, `make pipeline-force`, `make test`) for anyone with `make` on their PATH — confirmed it isn't on this Windows machine (checked both PowerShell and Git Bash), so `python -m src.pipeline` stays the primary, always-works entry point; the Makefile is a convenience for CI/WSL/Linux contributors, not a requirement.
-
-**Verified for real, not just unit-tested:** ran `python -m src.pipeline` end-to-end against the existing local `data/` cache (no `--force`, so no fresh network pull) — reproduced `metrics.json` and `data/manifest.json` **byte-for-byte** (`git status` showed no diff on either), which is the concrete proof the pipeline is a faithful non-interactive twin of the notebooks rather than a rewrite that happens to look similar. All 8 output PNGs regenerated cleanly.
-
-+5 unit tests (`tests/test_pipeline.py`) — the one piece of genuinely new logic (rebuild-vs-reuse cache decisions in `build_shot_tables`/`build_similarity_table`), tested network-free via monkeypatched builders, same pattern as `test_manifest.py`. Tests **31 → 36 green**.
-
-Suggested commit: `Phase 3 (spine 3d): headless pipeline.py + Makefile — Phase 3 complete`
-
-**Phase 3 (engineering & reproducibility spine) is now fully done. Next: Phase 4 (multi-competition ingestion + data expansion).**
-
----
-
-## 2026-07-02 — Phase 3 spine, Checkpoint C (3b: metrics.json single source)
-
-Closed the drift vector the whole reprioritisation was about: headline numbers were hand-typed into four docs and had already drifted once (the 0.798→0.765 penalty-fix took four edits to chase).
-
-**New `src/metrics.py`** computes them from the same code/data the models use — xG train/test ROC-AUC + Brier, in-distribution CV mean±std, the no-skill→geometry→full baseline ladder, per-group silhouette peaks, and shot counts — and `python -m src.metrics` writes the committed **`metrics.json`** (repo root, outside gitignored `data/`; deterministic + timestamp-free like the manifest). Split into pure compute (`compute_xg_metrics` / `compute_similarity_metrics` / `build_metrics`, tested on synthetic frames) and an IO wrapper (`write_metrics`) so the unit tests stay offline. **Every emitted value matched the docs on the first run** (0.765 / 0.786 / 0.783±0.009 / 0.5→0.712→0.765 / silhouette 0.236·0.264·0.262 at K=2 / 10,824 · 1,316) — the docs were honest, they just weren't *enforced*.
-
-**Doc-lint** (`tests/test_metrics.py::test_current_state_docs_match_metrics_json`): fails the build if a *current-state* doc (README/CLAUDE/MODULES/DATA) prints a number that differs from `metrics.json`. Append-only history (PROGRESS, INITIATIVE log entries, ML_LEARNING_LOG, the archive) is deliberately exempt — an old dated entry may keep the 0.798 it reported then. Deferred the test-count number (a repo fact, not a model output). Docs now *reference* the file: README callout under the results table, CLAUDE.md key-numbers note, ROADMAP 3b marked done.
-
-Tests **27 → 31 green** (+3 pure-compute, +1 doc-lint). Uncommitted.
-
-Suggested commit: `Phase 3 (spine 3b): metrics.json single source + doc-lint; docs reference it`
-
-**Remaining in Phase 3:** 3d (`pipeline.py`/Makefile headless rebuild).
-
----
-
-## 2026-07-02 — Phase 3 spine, Checkpoints A+B (CI + data manifest)
-
-First code of the engineering & reproducibility spine.
-
-**Checkpoint A — CI:** `.github/workflows/tests.yml` runs the suite on push/PR to main (Python 3.10 to match the pinned `requirements.txt`, `MPLBACKEND=Agg` so `visualisation.py`'s import-time matplotlib works headless). CI badge added to README (repo slug `GuiPadinha/football-analytics-portfolio`). Also cleared the 3a leftover: renumbered the two `src/config.py` comments that still called the 360 model "Phase 3" → Phase 7. *Push required for the badge to go live / first run to appear.*
-
-**Checkpoint B — data manifest (3e):** new `src/manifest.py` + `tests/test_manifest.py`. `python -m src.manifest` writes `data/manifest.json` (tracked via a new `.gitignore` exception) pinning, per dataset, the sorted match-id set + a short set-hash + local cache coverage, plus content hashes of the two processed `shots_*.parquet` tables. Deliberately timestamp-free → pure function of the data, so only real drift diffs. Generated for real: **3 datasets, 465 matches pinned (380 PL 2015/16 + 51 EURO 2024 + 34 Leverkusen), all cached locally**; `statsbombpy 1.19.0` recorded. Feeds Phase 4's ingestion pipeline.
-
-Tests **22 → 27 green** (+5 manifest tests, all network-free via an injected loader). Uncommitted.
-
-Suggested commit: `Phase 3 (spine A+B): CI workflow + data provenance manifest; config Phase 3→7 comment fix`
-
-**Remaining in Phase 3:** 3b (`metrics.json` single-source for key numbers) + 3d (`pipeline.py`/Makefile headless rebuild).
-
----
-
 ## Commit Status
 
 Verified against `git log`/`git status` 2026-07-04 (git CLI use is now fine — see the entry above).
-Committed through `102a134`:
+Committed through `0d4d2fe`:
 
 - `25bbf79` — S6/7 — Radar charts + visuals + final polish + README
 - `a3ff7cd` — Initiative Phases 0–1: framework charter, foundation hardening, data-integrity rebuild
@@ -150,8 +215,9 @@ Committed through `102a134`:
 - `e862a59` — Refactoring priorities and plan
 - `6a1876c` — Phase 3 (spine A+B): CI workflow + data provenance manifest; config Phase 3→7 fix
 - `102a134` — Phase 3 (spine 3b): metrics.json single source + doc-lint; docs reference it
+- `ce45e74` — Phase 3 complete: headless pipeline.py + Makefile; add ARCHITECTURE.md; docs cleanup
+- `0d4d2fe` — Phase 4 data expansion: config-driven datasets, sparse-column bug fix, obstacle docs
 
-**Uncommitted as of this entry:** Phase 3d (`src/pipeline.py`, `Makefile`, `tests/test_pipeline.py`)
-and this session's docs pass (`docs/ARCHITECTURE.md` new; `CLAUDE.md`, `README.md`,
-`docs/{DATA,INITIATIVE,MODULES,PROGRESS,ROADMAP}.md` modified). Suggested commit messages are in
-each entry above.
+**Uncommitted as of this entry:** the quick retraining-experiment write-up above (this file +
+`ML_LEARNING_LOG.md` + `docs/PROGRESS_ARCHIVE.md` reshuffle) — docs only, no `src/`/test/data changes,
+left for Guilherme to review before pushing since he'd already signed off when the experiment finished.
