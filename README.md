@@ -184,9 +184,13 @@ football-analytics-portfolio/
 ├── ML_LEARNING_LOG.md         ← theory reference + concepts exercised + tooling gotchas
 ├── metrics.json                ← headline-metrics single source (see src/metrics.py)
 ├── Makefile                    ← thin wrapper around src/pipeline.py
+├── app.py                      ← Streamlit app (streamlit run app.py) — reads app_data/, no live pulls
+├── app_data/                   ← precomputed Parquet artifacts for the app (small, committed)
+├── .streamlit/config.toml      ← Streamlit theme
 ├── requirements.txt
 ├── docs/
 │   ├── FRAMEWORK.md            ← what the tool is for (purpose, user story, scope)
+│   ├── PRODUCT_SPEC.md         ← Streamlit app spec + build checklist
 │   └── INITIATIVE.md           ← hardening & expansion initiative tracker
 ├── notebooks/
 │   ├── 01_data_exploration.ipynb
@@ -201,7 +205,8 @@ football-analytics-portfolio/
 │   ├── visualisation.py         ← pitch plots, radar charts, all chart functions
 │   ├── manifest.py              ← data provenance manifest (python -m src.manifest)
 │   ├── metrics.py               ← writes metrics.json (python -m src.metrics)
-│   └── pipeline.py              ← headless rebuild: data → models → outputs (python -m src.pipeline)
+│   ├── pipeline.py              ← headless rebuild: data → models → outputs (python -m src.pipeline)
+│   └── app_data.py              ← builds app_data/ for the Streamlit app (python -m src.app_data)
 ├── tests/                      ← pytest unit tests
 └── outputs/                    ← saved plots (shown above)
 ```
@@ -232,15 +237,23 @@ make pipeline                     # equivalent, if `make` is on your PATH
 Notebooks stay the teaching surface (narrated decisions, S1–S8 + Phase 2 rigor sections);
 `src/pipeline.py` is their non-interactive twin, used for CI/release-style reproducibility checks.
 
+**Interactive app** (pick a player, see the model output live — see `docs/PRODUCT_SPEC.md`):
+
+```bash
+python -m src.app_data    # one-time: builds app_data/*.parquet from the cached PL 2015/16 data
+streamlit run app.py
+```
+
+Scoped to Premier League 2015/16 for v1. Not yet deployed — running locally for now; a hosted URL
+will land here once it is.
+
 ---
 
 ## What's next
-
-Two directions are scoped but not yet built:
 
 - **Module C — Performance Under Pressure (PUP):** a per-player KPI comparing performance in
   high-stakes league moments (title race, relegation, derby) against tournament performance, for
   the 51 players who appear in both this project's league and tournament datasets. Fully scoped in
   `ML_LEARNING_LOG.md`, not started.
-- **A browsable front-end** for the player lookup and radar charts, so these results don't only
-  live inside notebooks.
+- **Deploy the Streamlit app** to a public URL (Streamlit Community Cloud) and widen it past the
+  single Premier League 2015/16 dataset once more competitions are wired into the models.

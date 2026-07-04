@@ -33,7 +33,7 @@ was folded in — the old Phase 3 (360 xG) and Phase 5 (product) moved *later* b
 | **5** | xG uncertainty + hierarchical/empirical-Bayes finishing model; header/foot interaction; calibration by stratum | *new* | ⬜ Not started |
 | **6** | Module B upgrades: Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features | part of old 6 | ⬜ Not started |
 | **7** | New model: 360-context xG + post-shot xG (xGOT) | **3** | ⬜ Not started |
-| **8** | Product layer: lightweight Streamlit app — [spec done](PRODUCT_SPEC.md) 2026-07-01, build pending | **5** | 🟡 Spec done, build pending |
+| **8** | Product layer: lightweight Streamlit app — [spec done](PRODUCT_SPEC.md) 2026-07-01, minimal v1 built 2026-07-04 | **5** | 🟡 v1 built, deploy pending |
 | **9** | Opportunistic: xA/chance-creation model, Module C (PUP), remaining alt-models (hierarchical, cosine, monotonic GBM) | old 6 + Module C | ⬜ Not started |
 
 Execution order: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8, with 9 opportunistic. Full per-phase task
@@ -118,6 +118,25 @@ structurally kills the doc drift — so every later phase writes into a clean, s
   (31 → 36 green), covering the one piece of real new logic (rebuild-vs-reuse cache decisions),
   network-free via monkeypatched builders. **Phase 3 (engineering & reproducibility spine) is now
   fully done. Next: Phase 4 (multi-competition ingestion + data expansion).**
+- **2026-07-04** — **Phase 4 data pulled (24 datasets, ~43k new shots), not yet wired**, then
+  **Phase 8 minimal build jumped ahead of strict order.** Reasoning: a friend demo (~2026-07-11)
+  makes visible progress worth more than finishing Phase 4b/4c first, and a quick retraining
+  smoke-test showed raw league volume barely moves xG's held-out ROC-AUC (0.765→0.766→0.768,
+  smaller than the ±0.009 CV noise) — confirming the league→tournament shift is structural, not a
+  data-volume problem, so pouring days into more training volume wasn't the highest-value next
+  step anyway. New `src/app_data.py` build step (`python -m src.app_data`) precomputes three small
+  Parquet artifacts (per-90 features + cluster labels, player xG table, shots+predicted-xG) scoped
+  to Premier League 2015/16 — the one dataset with a full similarity + xG pool already built. New
+  `app.py`: sidebar (position → player → radar-axis multiselect) driving a radar chart, "players
+  like X" ranking, a finishing over/under panel with shot map, and an "under the hood" expander
+  reading `metrics.json` directly plus a live per-group silhouette curve. Verified headless via
+  Streamlit's `AppTest` harness across all 3 position groups, 8 players (incl. one with zero shots
+  and one with an accented name), and the zero-radar-axes edge case — zero exceptions; not yet
+  checked in an actual browser. Also +8 tests (41→59: schema-contract tests, domain sanity checks,
+  a determinism check, real-data sanity checks, `find_similar_players` coverage) and a genuine
+  sparse-column bug fix found by one of them. Full detail: [PROGRESS.md](PROGRESS.md).
+  **Next: deploy Phase 8 to Streamlit Community Cloud (maintainer's own step), then decide Phase
+  4b/4c scope.**
 
 ---
 

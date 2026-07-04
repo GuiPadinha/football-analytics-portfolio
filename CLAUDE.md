@@ -6,11 +6,14 @@ Project source of truth. Read this first every session, then load linked docs on
 
 ## Current Status
 
-**Active initiative:** Framework Hardening & Expansion — Phases 0–3 complete (engineering &
-reproducibility spine done 2026-07-03); full review backlog folded into a renumbered 0–9 program
-on 2026-07-02.
-**Next: Phase 4 — Multi-competition ingestion + data expansion.**
+**Active initiative:** Framework Hardening & Expansion — Phases 0–3 complete; Phase 4 data pulled
+but not wired in; Phase 8 minimal Streamlit build shipped 2026-07-04 (ahead of strict phase order,
+for an upcoming demo — see [docs/PROGRESS.md](docs/PROGRESS.md)). Full review backlog folded into
+a renumbered 0–9 program on 2026-07-02.
+**Next: deploy Phase 8 to Streamlit Community Cloud (maintainer's own step — needs their account),
+then decide Phase 4b/4c scope.**
 (360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
+Run the app locally: `python -m src.app_data` (once, to build `app_data/`) then `streamlit run app.py`.
 
 Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped). Similarity: K=4 per position group, silhouette ~0.25 (soft continuum). 59 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
 
@@ -42,7 +45,11 @@ src/
   manifest.py        ← data provenance manifest (`python -m src.manifest`)
   metrics.py         ← metrics.json single source (`python -m src.metrics`)
   pipeline.py        ← headless rebuild: data → models → outputs → manifest/metrics (`python -m src.pipeline`)
+  app_data.py        ← Phase 8 build step: writes app_data/*.parquet (`python -m src.app_data`)
 Makefile               ← thin wrapper around src/pipeline.py
+app.py                 ← Phase 8 Streamlit app (`streamlit run app.py`) — reads app_data/, no live pulls
+app_data/              ← precomputed Parquet artifacts the app reads (small, committed — not gitignored)
+.streamlit/config.toml ← Streamlit theme
 notebooks/
   01_data_exploration.ipynb
   02_xg_model.ipynb          ← Phase 2 ML rigor section added

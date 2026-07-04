@@ -2,9 +2,32 @@
 
 → [CLAUDE.md](../CLAUDE.md) | Framing: [FRAMEWORK.md](FRAMEWORK.md) | Phase tracker: [INITIATIVE.md](INITIATIVE.md)
 
-**Status:** spec expanded 2026-07-01, build pending (Phase 8, after Phases 3–7). *(Renumbered from Phase 5 on 2026-07-02.)*
-This is the *what* and the *why*. It writes no app code — it's the turnkey brief for
-the future build session, plus mockups so the shape is agreed before a line is written.
+**Status:** spec expanded 2026-07-01; minimal v1 built 2026-07-04; first-use feedback (2026-07-05)
+added a global type-to-filter player search, per-position "signature stats" with percentile rank,
+and a full per-90 stat table — see "Post-v1 additions" below. Scoped to the one dataset with a full
+similarity + xG pool already computed (Premier League 2015/16); the multi-competition sidebar
+pickers below are a later pass. Deployment to Streamlit Community Cloud is the one step left for
+the maintainer to do (needs their account) — see the Build Checklist.
+
+### Post-v1 additions (2026-07-05)
+
+Guilherme's first real use of v1 surfaced three asks: real-time player search, more/better stats
+per player, and a general "I expect a lot more, we'll iterate" expectation-setting.
+
+- **Search:** the sidebar's two-step "position → player" flow became one global, prominent
+  `st.selectbox` at the top of the main pane — Streamlit's selectbox already filters live as you
+  type (a real combobox), so this needed no new dependency. Position is now an *optional* narrowing
+  filter in the sidebar, not a prerequisite.
+- **Signature stats:** a `SIGNATURE_STATS_BY_POSITION` mapping in `app.py` surfaces 3 role-relevant
+  per-90 metrics per position group (defender → tackles/interceptions/pressures, midfielder → key
+  passes/progressive passes/pressures, forward → goals/shots/key passes) as headline metric cards,
+  each with a percentile rank within the player's position group.
+- **Full stat table:** an expander lists all 9 per-90 `ACTION_COLUMNS` with value + percentile,
+  sortable — the "way more stats" ask, achievable entirely from data already in `app_data/`.
+- **Named limitation, not silently skipped:** true SofaScore-depth stats (pass completion %, duels
+  won %, aerial win %) need *new* features from raw StatsBomb events — rates need a denominator
+  (attempts), and the current per-90 table only has completed-action counts. Flagged in the app's
+  own "All per-90 stats" expander and here, not faked with the data we have today.
 
 ---
 
@@ -160,18 +183,25 @@ dynamic and customizable" — better than the alternatives considered below:
 
 ## Build Checklist (Phase 8)
 
-- [ ] Add a `build step` (script or notebook cell) that writes the three artifacts to
-      `app_data/` for at least the flagship dataset.
-- [ ] Decide artifact shipping: committed `app_data/` vs. Git LFS (Open decision above).
-- [ ] `app.py` (or `streamlit_app.py`): sidebar selectors → load cached artifacts →
-      render the four panels via the reuse-map functions.
-- [ ] `.streamlit/config.toml`: theme (colours, font) so it doesn't look stock.
-- [ ] Radar-axis multiselect wired to `feature_columns` of `plot_player_radar`.
-- [ ] "Under the hood" expander with the diagnostic plots.
-- [ ] Add `streamlit` to `requirements.txt` (pinned).
-- [ ] Deploy to Streamlit Community Cloud; put the URL in `README.md` and the portfolio.
-- [ ] Smoke test: pick one player per position group, confirm all panels render with no
-      empty-frame / KeyError on sparse columns.
+- [x] Add a `build step` (`src/app_data.py`, `python -m src.app_data`) that writes the three
+      artifacts to `app_data/` for the flagship dataset (Premier League 2015/16).
+- [x] Decide artifact shipping: **committed `app_data/`** — all three tables together are
+      ~520KB, nowhere near needing Git LFS.
+- [x] `app.py`: sidebar selectors → load cached artifacts (`st.cache_data`) → render the four
+      panels via the reuse-map functions.
+- [x] `.streamlit/config.toml`: theme (pitch-blue accent matching the radar chart's own colour).
+- [x] Radar-axis multiselect wired to `feature_columns` of `plot_player_radar`.
+- [x] "Under the hood" expander — reads `metrics.json` directly for the headline numbers, plus a
+      live (cached) per-group silhouette curve; the full diagnostic-plot suite (calibration curve,
+      elbow curve) stayed a v2 idea rather than shipping a fourth precomputed artifact for it.
+- [x] Add `streamlit` to `requirements.txt` (pinned, `1.58.0`).
+- [ ] **Deploy to Streamlit Community Cloud; put the URL in `README.md` and the portfolio** — the
+      one step that needs the maintainer's own account, not something to automate.
+- [x] Smoke test: verified headless via Streamlit's `AppTest` harness (no browser needed) — all 3
+      position groups, 8 different players (including one with zero logged shots, to exercise the
+      "no shot data" branch, and one with an accented name), and the zero-radar-axes edge case, all
+      ran with zero exceptions. **Not yet visually checked in an actual browser** — run
+      `streamlit run app.py` locally to eyeball the real rendering before deploying.
 
 ---
 

@@ -127,11 +127,17 @@ StatsBomb `three-sixty` data gives freeze-frames (every visible player's positio
 - [ ] Verify `data/cache/` has Leverkusen 2023/24 360 frames (should already be pulled)
 - [ ] Check StatsBomb `three-sixty` schema: `statsbombpy.sb.three_sixty(match_id=X)`
 
-## Phase 8 — Product layer build (Streamlit)  🟡 spec done  *(was Phase 5)*
+## Phase 8 — Product layer build (Streamlit)  🟡 minimal v1 built, deploy pending  *(was Phase 5)*
 
-Execute the existing [PRODUCT_SPEC.md](PRODUCT_SPEC.md) build checklist (`app_data/` build step,
-`app.py`, theme, radar-axis multiselect, "under the hood" expander, deploy, README URL). Comes
-after 4–6 so it showcases the *upgraded* models, not the current ones.
+Minimal v1 built 2026-07-04, ahead of strict phase order — a friend demo (~2026-07-11) made
+"something clickable" more valuable than finishing 4–6 first this time; see
+[PRODUCT_SPEC.md](PRODUCT_SPEC.md)'s Build Checklist for exactly what's done vs. left. Scoped to
+Premier League 2015/16 (the one dataset with a full similarity + xG pool already computed) — a
+later pass can widen this once Phase 4b/4c pick a wider training/similarity set to showcase.
+
+**Remaining:** deploy to Streamlit Community Cloud (needs the maintainer's account — not
+automatable) and a from-scratch visual check in a real browser (verified so far via Streamlit's
+headless `AppTest` harness only — script-level correctness, not a look at the actual rendering).
 
 ## Phase 9 — Opportunistic  ⬜
 

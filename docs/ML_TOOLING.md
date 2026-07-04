@@ -95,6 +95,40 @@ A multi-season/multi-competition bulk pull (Phase 4: 24 datasets, ~2,400 matches
 
 ---
 
+## Streamlit's first-run prompt blocks silently if nothing answers it
+
+The very first time `streamlit run` executes on a machine, the CLI prints an interactive "Welcome
+to Streamlit! ... Email:" prompt and waits for input *before* starting the server — no error, no
+timeout, just silence in the terminal (and, from the running-it side, no browser tab ever opens,
+because the server hasn't started). Pre-answer it once and it never asks again:
+
+```bash
+mkdir -p ~/.streamlit   # Windows: %USERPROFILE%\.streamlit
+printf '[general]\nemail = ""\n' > ~/.streamlit/credentials.toml
+```
+
+## A committed `.streamlit/config.toml` with `[server] headless = true` breaks local dev
+
+`headless` is meant for environments with no display (CI, a hosted deployment) — it stops
+`streamlit run` from auto-opening a browser tab. Committing it in the *shared* `.streamlit/
+config.toml` means every local `streamlit run app.py` inherits it too, so the app starts (server
+comes up fine, `/_stcore/health` returns `ok`) but nothing visibly happens for someone just running
+it locally — it looks identical to "the app crashed" from the user's side. Keep `[server]` out of
+a committed config; let each environment (local vs. hosted) default appropriately on its own.
+
+## A Streamlit selectbox whose `options` list changes needs a `key` tied to what changes it
+
+`app.py`'s player search box is filtered by a position dropdown — when the position filter
+changes, the player list changes underneath it. Without an explicit `key`, Streamlit tries to
+carry the *previous* selection forward into the *new* options list; if that value isn't in the
+new list, this raised a `KeyError` from deep inside Streamlit's session-state machinery (not a
+clean, catchable error). Fix: key the dependent widget on the value that changes its options
+(`key=f"player_search_{position_filter}"`) so it's treated as a fresh widget — starting over at
+the first option — every time the filter changes, rather than trying to carry over a selection
+that may no longer exist.
+
+---
+
 ## How to use this file
 
 - Hit a real environment/tooling obstacle this session (network, encoding, kernel, caching, a silent tool failure)? Add it here **before** the session ends, dated only if the fix might later change — most of these don't need a date, just the symptom and the fix. Don't wait for a retrospective "were there any obstacles?" question to write them down.

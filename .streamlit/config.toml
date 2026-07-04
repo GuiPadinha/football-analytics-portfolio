@@ -1,0 +1,13 @@
+# Streamlit theme (Phase 8) — pitch-green accent so the default look isn't stock,
+# without a front-end rebuild (see docs/PRODUCT_SPEC.md's Technology Choice trade-off note).
+#
+# No [server] section here on purpose: `headless` is a deployment-time concern (Streamlit
+# Cloud sets it itself), not something to hardcode in a config every local dev also inherits —
+# `headless = true` here was exactly what silently stopped `streamlit run app.py` from
+# auto-opening a browser tab locally (found 2026-07-04).
+[theme]
+primaryColor = "#1a78cf"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f0"
+textColor = "#1c1c1c"
+font = "sans serif"

@@ -19,3 +19,5 @@ jupyter==1.1.1
 pyarrow==24.0.0
 # pytest: unit tests in tests/.
 pytest==9.1.1
+# streamlit: Phase 8 product layer (app.py) — reads precomputed app_data/, no live StatsBomb pulls.
+streamlit==1.58.0
