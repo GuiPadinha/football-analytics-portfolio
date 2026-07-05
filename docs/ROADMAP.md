@@ -70,9 +70,17 @@ from n=2 contexts" into a defensible claim and fixes Module B's single-season th
   script reusing `build_training_dataset`/`build_player_per90_features` — see [DATA.md](DATA.md#phase-4-data-expansion-2026-07-04)
   for the full dataset list, the "StatsBomb's La Liga = mostly Barcelona" gotcha, and the sampled
   women's-football viability check.
-- **4b — Module B cross-league/season:** data pulled (La Liga 2015/16, Serie A 2015/16, Ligue 1
-  2015/16, Frauen Bundesliga 2023/24, FA WSL 2023/24) — not yet wired into `SIMILARITY_SET` or
-  cross-league normalisation designed. Next actual step once the pull finishes.
+- **4b — Module B cross-league/season** (app-wired 2026-07-05, normalisation still open): the
+  Streamlit app's player pool now spans `config.SIMILARITY_SETS` — PL/La Liga/Serie A/Ligue 1
+  2015/16 + Frauen Bundesliga/FA WSL 2023/24 — clustered together per position group
+  (`src/app_data.py`), not per league. `config.SIMILARITY_SET` (PL 2015/16 alone) is untouched
+  and still what `metrics.json`/notebook 03/`pipeline.py` describe — the teaching example stays
+  single-competition on purpose. **Still open:** cross-league normalisation (per-90 rates are
+  compared raw across leagues of different competitiveness today — flagged in-app as a coarser
+  signal, not resolved). Real ceiling, not a to-do: StatsBomb's free data has no recent men's
+  top-flight season at all, so "wider" (6 competitions) rather than "newer" is what Phase 4b
+  actually delivers for the men's leagues; the women's leagues (2023/24) are the newest
+  full-season data anywhere in this project.
 - **4c — Module A generalisation:** held-out test candidates pulled (Copa América 2024, FIFA World
   Cup 2022, Africa Cup of Nations 2023, Women's EURO 2025) — not yet wired into `TEST_SETS`.
 - **4d — Availability friction:** resolved for now — full-season non-La-Liga leagues (Serie A,

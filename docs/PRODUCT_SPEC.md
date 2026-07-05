@@ -2,12 +2,11 @@
 
 → [CLAUDE.md](../CLAUDE.md) | Framing: [FRAMEWORK.md](FRAMEWORK.md) | Phase tracker: [INITIATIVE.md](INITIATIVE.md)
 
-**Status:** spec expanded 2026-07-01; minimal v1 built 2026-07-04; first-use feedback (2026-07-05)
-added a global type-to-filter player search, per-position "signature stats" with percentile rank,
-and a full per-90 stat table — see "Post-v1 additions" below. Scoped to the one dataset with a full
-similarity + xG pool already computed (Premier League 2015/16); the multi-competition sidebar
-pickers below are a later pass. Deployment to Streamlit Community Cloud is the one step left for
-the maintainer to do (needs their account) — see the Build Checklist.
+**Status:** spec expanded 2026-07-01; minimal v1 built 2026-07-04; two rounds of first-use
+feedback on 2026-07-05 (see "Post-v1 additions" below) added real-time player search, per-position
+"signature stats," a full per-90 stat table, a widened multi-competition player pool, a dark theme,
+and defender-facing clearances/blocks stats. Deployment to Streamlit Community Cloud is the one
+step left for the maintainer to do (needs their account) — see the Build Checklist.
 
 ### Post-v1 additions (2026-07-05)
 
@@ -17,7 +16,8 @@ per player, and a general "I expect a lot more, we'll iterate" expectation-setti
 - **Search:** the sidebar's two-step "position → player" flow became one global, prominent
   `st.selectbox` at the top of the main pane — Streamlit's selectbox already filters live as you
   type (a real combobox), so this needed no new dependency. Position is now an *optional* narrowing
-  filter in the sidebar, not a prerequisite.
+  filter in the sidebar, not a prerequisite. (Superseded same day — see round 2 below: this still
+  read as a dropdown-first interaction rather than a search box.)
 - **Signature stats:** a `SIGNATURE_STATS_BY_POSITION` mapping in `app.py` surfaces 3 role-relevant
   per-90 metrics per position group (defender → tackles/interceptions/pressures, midfielder → key
   passes/progressive passes/pressures, forward → goals/shots/key passes) as headline metric cards,
@@ -28,6 +28,39 @@ per player, and a general "I expect a lot more, we'll iterate" expectation-setti
   won %, aerial win %) need *new* features from raw StatsBomb events — rates need a denominator
   (attempts), and the current per-90 table only has completed-action counts. Flagged in the app's
   own "All per-90 stats" expander and here, not faked with the data we have today.
+
+### Post-v1 additions, round 2 (2026-07-05)
+
+A follow-up pass on the same day: round 1's selectbox-based search didn't read as "typing search,"
+the player pool was locked to one 2015/16 league with no explanation of why, the app inherited
+Streamlit's stock light theme, and assists/defensive-contribution stats were still buried in an
+expander rather than surfaced.
+
+- **Real typing search:** replaced the dropdown-first `st.selectbox` with an `st.text_input`
+  ("Search for a player") that narrows a match list live on every keystroke (Streamlit reruns on
+  each character), feeding a selectbox of current matches with the top one pre-selected — the text
+  box is now the obvious first thing to type into, not a combobox you click open before typing.
+- **Widened player pool (Phase 4b real wiring):** the similarity pool now spans
+  `config.SIMILARITY_SETS` — PL/La Liga/Serie A/Ligue 1 2015/16 plus Frauen Bundesliga/FA WSL
+  2023/24 (6 competitions total), clustered together per position group, not per league. Named
+  honestly in-app: StatsBomb's free data has no recent men's top-flight season at all (2015/16 is
+  the ceiling for all four men's leagues here), so this is "wider," not "newer," for the men's
+  side — the women's leagues are the newest full-season data anywhere in this project. No
+  cross-league normalisation yet — flagged as a coarser signal in the "players like X" panel.
+- **Dark theme:** `.streamlit/config.toml` repainted dark teal/gray with an orange primary accent;
+  `app.py` mirrors the same palette in matplotlib rcParams (figure/axes backgrounds, text, grid,
+  a custom orange/blue property cycle) so the charts match the surrounding chrome instead of
+  rendering on a leftover white background. `plot_player_radar` gained optional dark-friendly
+  colour parameters (default unchanged, so notebooks/pipeline PNGs are unaffected).
+- **Assists + defender stats surfaced:** `assists_p90` promoted into the Midfielder/Forward
+  signature stats (was already computed, just buried in the full-stat expander); new `clearances`
+  and `blocks` action columns added to `ACTION_COLUMNS` for defender-facing "sofascore-like" stats
+  — StatsBomb has no last-ditch/goal-line clearance sub-type, so a plain clearance count is the
+  honest available proxy, stated as such in the app.
+- **A real bug found along the way:** the pre-existing "zero completed passes" fallback in
+  `extract_player_match_actions` produced a shapeless empty Series that could corrupt the whole
+  function's output shape — surfaced by the new clearances/blocks test, not by production data
+  (see ML_LEARNING_LOG.md). Fixed, not worked around.
 
 ---
 

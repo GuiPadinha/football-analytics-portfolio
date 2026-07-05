@@ -185,10 +185,11 @@ def extract_player_match_actions(events):
     Returns:
         pandas.DataFrame: one row per (player, team), with raw counts of
             non-penalty goals, shots, key passes, assists, completed
-            dribbles, progressive passes, pressures, interceptions, and
-            tackles. These are summed across a season and divided by total
-            minutes in `build_player_per90_features` — counting here and
-            dividing later (rather than computing a per-match rate) avoids
+            dribbles, progressive passes, pressures, interceptions,
+            tackles, clearances, and blocks. These are summed across a
+            season and divided by total minutes in
+            `build_player_per90_features` — counting here and dividing
+            later (rather than computing a per-match rate) avoids
             small-sample distortion from any single match.
     """
     shots = events[events["type"] == "Shot"].copy()
@@ -221,7 +222,14 @@ def extract_player_match_actions(events):
             completed_passes[dx >= 10].groupby(["player", "team"]).size().rename("progressive_passes")
         )
     else:
-        progressive_passes = pd.Series(name="progressive_passes", dtype=int)
+        # Not just `pd.Series(dtype=int)` — that has a plain default RangeIndex, not the
+        # 2-level (player, team) MultiIndex every other action Series here carries even when
+        # empty. Mixing the two shapes in the `pd.concat` below silently corrupted the whole
+        # result's index (reset_index() stopped producing player/team columns at all) whenever
+        # this was the only all-empty column — unreachable with real match data (StatsBomb
+        # matches always have passes) but a real landmine, found by testing zero-Pass synthetic
+        # events for the new clearances/blocks columns, not by hitting it in production.
+        progressive_passes = completed_passes.groupby(["player", "team"]).size().rename("progressive_passes")
 
     dribbles = events[events["type"] == "Dribble"].copy()
     dribbles_completed = (
@@ -242,10 +250,23 @@ def extract_player_match_actions(events):
         duels[safe_column(duels, "duel_type") == "Tackle"]
         .groupby(["player", "team"]).size().rename("tackles")
     )
+    # StatsBomb has no separate "goal-line clearance" sub-type (checked against the real
+    # `Clearance` event schema before writing this — its only sub-fields are body part /
+    # aerial-won flags, no last-ditch-ness label) — a plain clearance count is the closest
+    # available proxy for that kind of defending, so that's what this is, not a sofascore-
+    # style "last-ditch" stat masquerading as something more specific.
+    clearances = (
+        events[events["type"] == "Clearance"]
+        .groupby(["player", "team"]).size().rename("clearances")
+    )
+    blocks = (
+        events[events["type"] == "Block"]
+        .groupby(["player", "team"]).size().rename("blocks")
+    )
 
     actions = pd.concat(
         [non_penalty_goals, shot_counts, key_passes, assists, progressive_passes,
-         dribbles_completed, pressures, interceptions, tackles],
+         dribbles_completed, pressures, interceptions, tackles, clearances, blocks],
         axis=1,
     ).fillna(0)
     return actions.reset_index()
@@ -253,7 +274,7 @@ def extract_player_match_actions(events):
 
 ACTION_COLUMNS = [
     "non_penalty_goals", "shots", "key_passes", "assists", "progressive_passes",
-    "dribbles_completed", "pressures", "interceptions", "tackles",
+    "dribbles_completed", "pressures", "interceptions", "tackles", "clearances", "blocks",
 ]
 
 
@@ -720,6 +741,12 @@ def find_similar_players(features, feature_columns, player, team, n=5):
     result = result[result.index != target_idx].sort_values("distance")
 
     keep_columns = ["player", "team", "position_group", "distance"] + feature_columns
+    if "competition" in features.columns:
+        # Optional provenance column (present on the app's multi-competition pool, absent on
+        # single-dataset callers like the notebooks/pipeline) — passed through when it exists
+        # rather than assumed, so a "similar player" result can show it came from a different
+        # league without requiring every caller of this function to carry the column.
+        keep_columns = ["player", "team", "position_group", "competition", "distance"] + feature_columns
     return result[keep_columns].head(n).reset_index(drop=True)
 
 

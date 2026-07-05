@@ -9,6 +9,7 @@ from src.similarity import (
     compute_minutes_played,
     compute_silhouette_scores,
     extract_goalkeeper_match_actions,
+    extract_player_match_actions,
     find_similar_players,
     resolve_season_positions,
 )
@@ -110,6 +111,21 @@ def test_find_similar_players_raises_for_unknown_player():
         find_similar_players(_player_pool(), ["f1", "f2"], player="Nobody", team="T")
 
 
+def test_find_similar_players_includes_competition_column_when_present():
+    pool = _player_pool()
+    pool["competition"] = ["Comp A", "Comp A", "Comp A", "Comp B"]
+    result = find_similar_players(pool, ["f1", "f2"], player="Target", team="T", n=5)
+    assert "competition" in result.columns
+    assert result.set_index("player").loc["Near", "competition"] == "Comp A"
+
+
+def test_find_similar_players_omits_competition_column_when_absent():
+    # Single-dataset callers (notebooks/pipeline) carry no competition column at all -
+    # must not KeyError trying to keep a column that was never there.
+    result = find_similar_players(_player_pool(), ["f1", "f2"], player="Target", team="T", n=5)
+    assert "competition" not in result.columns
+
+
 def test_extract_goalkeeper_match_actions_counts_by_type():
     events = pd.DataFrame([
         {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Shot Faced"},
@@ -143,6 +159,32 @@ def test_extract_goalkeeper_match_actions_handles_zero_gk_events():
     result = extract_goalkeeper_match_actions(events)
     assert len(result) == 0
     assert list(result.columns) == ["player", "team", "shots_faced", "saves", "goals_conceded", "claims", "punches", "sweeper_actions"]
+
+
+def test_extract_player_match_actions_counts_clearances_and_blocks():
+    # Neither sub-type needs a safe_column guard (unlike shot_body_part/goalkeeper_type):
+    # both filter on the always-present `type` column, never touch an optional sub-field.
+    # Uses "Pressure" (not "Pass") for the unrelated event — a bare Pass row would hit the
+    # progressive-passes code path, which needs location/pass_end_location columns this
+    # minimal frame doesn't carry, unrelated to what this test is actually checking.
+    events = pd.DataFrame([
+        {"type": "Clearance", "player": "Defender A", "team": "T"},
+        {"type": "Clearance", "player": "Defender A", "team": "T"},
+        {"type": "Block", "player": "Defender A", "team": "T"},
+        {"type": "Pressure", "player": "Midfielder B", "team": "T"},
+    ])
+    result = extract_player_match_actions(events).set_index(["player", "team"])
+    assert result.loc[("Defender A", "T"), "clearances"] == 2
+    assert result.loc[("Defender A", "T"), "blocks"] == 1
+    assert result.loc[("Midfielder B", "T"), "clearances"] == 0
+    assert result.loc[("Midfielder B", "T"), "blocks"] == 0
+
+
+def test_extract_player_match_actions_handles_zero_clearances_and_blocks():
+    events = pd.DataFrame([{"type": "Pressure", "player": "Midfielder B", "team": "T"}])
+    result = extract_player_match_actions(events)
+    assert result.loc[0, "clearances"] == 0
+    assert result.loc[0, "blocks"] == 0
 
 
 def test_compute_silhouette_scores_prefers_true_cluster_count():

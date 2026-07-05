@@ -170,7 +170,10 @@ def plot_pca_clusters(components, cluster_labels, ax=None, title=None):
     return ax
 
 
-def plot_player_radar(player_row, population, feature_columns, ax=None, title=None):
+def plot_player_radar(
+    player_row, population, feature_columns, ax=None, title=None,
+    circle_facecolor="#f0f0f0", circle_edgecolor="#cccccc", radar_facecolor="#1a78cf",
+):
     """Draw a radar chart of one player's per-90 metrics against their position group's range.
 
     Uses mplsoccer's `Radar` rather than a hand-rolled polar plot — no reason to
@@ -194,6 +197,12 @@ def plot_player_radar(player_row, population, feature_columns, ax=None, title=No
             it should not be created with a polar projection); a new figure
             is created if omitted.
         title (str, optional): plot title.
+        circle_facecolor (str): background fill for the radar's ring circles —
+            default is light-grey (paper/notebook friendly); the app overrides
+            this to a dark panel colour to match its theme.
+        circle_edgecolor (str): ring/gridline colour, same light-vs-dark
+            override reasoning as `circle_facecolor`.
+        radar_facecolor (str): the player's own filled shape colour.
 
     Returns:
         matplotlib.axes.Axes: the axes the radar was drawn on.
@@ -207,11 +216,11 @@ def plot_player_radar(player_row, population, feature_columns, ax=None, title=No
     if ax is None:
         _, ax = plt.subplots(figsize=(8, 8))
     radar.setup_axis(ax=ax)
-    radar.draw_circles(ax=ax, facecolor="#f0f0f0", edgecolor="#cccccc")
+    radar.draw_circles(ax=ax, facecolor=circle_facecolor, edgecolor=circle_edgecolor)
     radar.draw_radar(
         player_row[feature_columns].tolist(), ax=ax,
-        kwargs_radar={"facecolor": "#1a78cf", "alpha": 0.6},
-        kwargs_rings={"facecolor": "#cccccc", "alpha": 0.3},
+        kwargs_radar={"facecolor": radar_facecolor, "alpha": 0.6},
+        kwargs_rings={"facecolor": circle_edgecolor, "alpha": 0.3},
     )
     radar.draw_param_labels(ax=ax, fontsize=10)
     if title:

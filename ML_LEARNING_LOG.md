@@ -10,6 +10,23 @@ Companion to CLAUDE.md. Running record of ML/stats concepts exercised, gotchas h
 
 Key gotchas and lessons — most recent first:
 
+- **A shapeless empty Series can corrupt a `pd.concat` even when every other column is fine**
+  (2026-07-05, `similarity.py`'s `extract_player_match_actions`). Adding `clearances`/`blocks`
+  columns (for defender-facing stats requested in the app) meant writing a zero-Pass-events
+  synthetic test — and it broke `.set_index(["player", "team"])` on the *output*, not on
+  anything clearance/block related. Root cause: the pre-existing `progressive_passes` fallback
+  for "zero completed passes" was `pd.Series(name=..., dtype=int)` — a plain default
+  `RangeIndex`, not the empty 2-level `(player, team)` `MultiIndex` every other action's
+  `.groupby(["player", "team"]).size()` produces even with zero rows. `pd.concat(axis=1)`
+  mixing one differently-shaped empty index among several correctly-shaped ones silently
+  produced a malformed combined index — invisible until something tried to actually use
+  `player`/`team` as columns downstream. Fixed by deriving the empty case the same way as
+  everywhere else (`completed_passes.groupby(["player", "team"]).size()`, safe even at zero
+  rows since `player`/`team` always exist) instead of hand-building a differently-shaped
+  empty Series. Unreachable with real data — StatsBomb matches always have pass events — but
+  the general lesson holds beyond this one function: **when a code path fabricates its own
+  "nothing here" placeholder instead of deriving it the same way as the non-empty case, check
+  that the placeholder's *shape* actually matches**, not just its values.
 - **Sparse-column bug had three more instances, found by writing the edge case rather than
   hitting it in production** (Phase 4, follow-up). Adding a zero-shots-match test for
   `extract_shot_features` (no `pytest.raises` intended — meant to be a boring pass) surfaced that
@@ -58,6 +75,21 @@ Key gotchas and lessons — most recent first:
 
 Key gotchas and lessons — most recent first:
 
+- **Widening the app's player pool exposed a real, hard data-recency ceiling, not just a config
+  change** (Phase 4b real wiring, 2026-07-05). Asked "why only PL 2015/16 — I want it as
+  updated as possible," the honest answer had to be checked, not assumed: StatsBomb's *free*
+  open data simply has no recent men's top-flight season at all, for any league already in this
+  project (PL/La Liga/Serie A/Ligue 1 all cap out at 2015/16 — that's the newest full-season
+  men's data StatsBomb gives away, not a gap this project's pulling can close). The genuine lever
+  available was breadth + the two 2023/24 women's leagues (the newest full-season data this
+  project has anywhere), so `config.SIMILARITY_SETS` now spans 6 competitions instead of 1
+  (`app.py`/`app_data.py`), clustered together per position group rather than per league. Said
+  the ceiling plainly in the app itself (`Under the hood` methodology expander) instead of
+  quietly widening the pool and letting "more data" imply "more recent than it actually is."
+  **Deliberately still no cross-league normalisation** — per-90 rates are compared raw across
+  leagues of different competitiveness, so a cross-league "similar player" match is flagged in
+  the UI as a coarser signal than a same-league one, matching Phase 4b's original open item
+  rather than quietly resolving it by fiat.
 - **Goalkeepers need their own feature set, not a branch of the outfield one** (2026-07-05).
   Investigated StatsBomb's `Goal Keeper` event type before writing anything (`goalkeeper_type`
   values across 15 real matches: Shot Faced, Shot Saved [+3 rarer synonym labels], Goal Conceded,
@@ -75,6 +107,14 @@ Key gotchas and lessons — most recent first:
   who touched (e.g. off-target attempts still logged as a facing event), so the denominator isn't
   exactly "shots on target." Documented as an open caveat in MODULES.md rather than either hiding
   the low numbers or asserting they're the standard stat without checking further.
+- **"Goal-line clearance" isn't a real StatsBomb sub-type** (2026-07-05). Asked to surface
+  defenders' goal-line clearances specifically, checked the real schema first (same habit as
+  the goalkeeper feature work below) rather than assuming a field existed: `Clearance` events
+  only carry body-part/aerial-won sub-fields, no last-ditch/goal-line classification at all —
+  that granularity is an Opta-style stat, not a StatsBomb one. Added a plain `clearances` count
+  (plus `blocks`, the same situation) as the closest honest proxy, and said so explicitly in the
+  app rather than quietly labelling a generic clearance count as something more specific than
+  it is.
 - **Percentile-bounded radar axes** (S7). 5th-95th percentile scales to avoid outlier distortion (Antonio). General technique: any shared visual scale with a single extreme outlier.
 - **Nearest-neighbour vs. cluster membership** (S7). `find_similar_players` ranks by Euclidean distance within the standardised space — two players in the same cluster can be at very different distances. The ranking is the recruitment-useful shape.
 - **Minutes-weighted position assignment** (Phase 2). `resolve_season_positions` totals minutes per group, not modal match slot — reclassified 10 borderline hybrids. Did **not** move Michail Antonio (920 min at RB/wing-back vs 761 at wing — genuinely defensive). The S6 "primarily a winger" claim was simply wrong.

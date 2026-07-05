@@ -111,5 +111,28 @@ TEST_SETS = [EURO_2024]
 # Datasets usable by the 360-context xG model (Phase 7) — only those with freeze-frame coverage.
 SETS_WITH_360 = [ds for ds in (LEVERKUSEN_2023_24, PL_2015_16, EURO_2024) if ds.has_360]
 
-# Primary similarity pool (Module B). One competition for now; widened in Phase 4.
+# Primary similarity pool (Module B). Used to scope the xG "flagship" shots/ranking that ships
+# alongside the app's similarity pool (Module A's TRAIN_SETS is deliberately untouched by Phase
+# 4b — see the "more league volume didn't help" ML_LEARNING_LOG entry — so a player outside this
+# one competition simply has no xG data in the app, which the app already handles gracefully).
 SIMILARITY_SET = PL_2015_16
+
+# Module B's actual player pool (Phase 4b, 2026-07-05): every full multi-team league/season with
+# both events *and* lineups available (minutes-played needs lineups) — the widest pool the free
+# StatsBomb open data supports today. Deliberately not every Phase 4 dataset: the Barcelona-only
+# seasons and the tournament test sets are single-club or small-sample-per-player, wrong shape for
+# a "per-90 rate over a full season" comparison (see DATA.md's Phase 4 section).
+#
+# Honest ceiling, not a bug: StatsBomb's *free* open data does not include a recent men's
+# top-flight season at all — 2015/16 remains the newest full men's-league season available for
+# any of PL/La Liga/Serie A/Ligue 1. The women's leagues below (2023/24) are the newest full-season
+# data this project has anywhere; a live/current-season pool isn't possible on this data source
+# without a paid StatsBomb license.
+#
+# No cross-league normalisation applied yet (still the Phase 4b open item) — per-90 rates are
+# compared directly across leagues of different competitiveness/style. Treat cross-league
+# "players like X" matches as a coarser signal than within-league ones until that's designed.
+SIMILARITY_SETS = [
+    PL_2015_16, LA_LIGA_2015_16_FULL, SERIE_A_2015_16, LIGUE_1_2015_16,
+    FRAUEN_BUNDESLIGA_2023_24, FA_WSL_2023_24,
+]

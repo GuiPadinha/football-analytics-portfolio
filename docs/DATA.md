@@ -27,21 +27,22 @@
 | UEFA EURO 2024 | 51 matches, events + 360 | xG test/validation (tournament) — out-of-distribution test |
 | SkillCorner 2024/25 | 10 matches, physical tracking | Physical layer for player similarity (Module B) |
 
-**Being pulled as of 2026-07-04 (Phase 4 data expansion, see below) — not yet wired into
-`TRAIN_SETS`/`TEST_SETS`/`SIMILARITY_SET`:**
+**Pulled 2026-07-04, Phase 4 data expansion (see below) — wired into `config.SIMILARITY_SETS`
+(the app's player pool, 2026-07-05) unless noted otherwise; `TRAIN_SETS`/`TEST_SETS` (Module A)
+remain untouched by design (see ML_LEARNING_LOG.md — more league volume didn't help):**
 
 | Dataset | Coverage | Role |
 |---|---|---|
-| Barcelona 2004/05–2020/21 (16 seasons) | 866 matches, events | xG training volume — Messi-era, single-club (see gotcha below) |
-| La Liga 2015/16 | 380 matches, events | Genuine full 20-team season — usable for Module B too |
-| Serie A 2015/16 | 380 matches, events | Same-era full league as PL 2015/16 |
-| Ligue 1 2015/16 | 377 matches, events | Same-era full league as PL 2015/16 |
-| Frauen Bundesliga 2023/24 | 132 matches, events + lineups | Module B women's-football expansion |
-| FA Women's Super League 2023/24 | 132 matches, events + lineups | Module B women's-football expansion |
-| Women's EURO 2025 | 31 matches, events + 360 | xG test — women's-football held-out tournament |
-| Copa América 2024 | 32 matches, events | xG test — additional held-out tournament |
-| FIFA World Cup 2022 | 64 matches, events + 360 | xG test — additional held-out tournament |
-| Africa Cup of Nations 2023 | 52 matches, events + 360 | xG test — additional held-out tournament |
+| Barcelona 2004/05–2020/21 (16 seasons) | 866 matches, events only (no lineups pulled) | xG training volume — Messi-era, single-club (see gotcha below); **not wired anywhere yet** — no lineups means no minutes-played, so not usable for Module B as-is |
+| La Liga 2015/16 | 380 matches, events + lineups (lineups pulled 2026-07-05) | In `SIMILARITY_SETS` — genuine full 20-team season |
+| Serie A 2015/16 | 380 matches, events + lineups (lineups pulled 2026-07-05) | In `SIMILARITY_SETS` — same-era full league as PL 2015/16 |
+| Ligue 1 2015/16 | 377 matches, events + lineups (lineups pulled 2026-07-05) | In `SIMILARITY_SETS` — same-era full league as PL 2015/16 |
+| Frauen Bundesliga 2023/24 | 132 matches, events + lineups | In `SIMILARITY_SETS` — women's-football expansion, newest full-season data in this project |
+| FA Women's Super League 2023/24 | 132 matches, events + lineups | In `SIMILARITY_SETS` — women's-football expansion, newest full-season data in this project |
+| Women's EURO 2025 | 31 matches, events + 360 | xG test — women's-football held-out tournament; **not wired**, small-sample tournament shape doesn't suit a per-90 season pool |
+| Copa América 2024 | 32 matches, events | xG test — additional held-out tournament; **not wired** |
+| FIFA World Cup 2022 | 64 matches, events + 360 | xG test — additional held-out tournament; **not wired** |
+| Africa Cup of Nations 2023 | 52 matches, events + 360 | xG test — additional held-out tournament; **not wired** |
 
 ---
 
@@ -50,9 +51,12 @@
 Datasets identified and pulled for Phase 4 (multi-competition ingestion). All named in
 `src/config.py` (`PHASE_4_EVENTS_ONLY` / `PHASE_4_EVENTS_AND_LINEUPS`); cached locally via a
 one-off script that reuses `build_training_dataset`/`build_player_per90_features` — no new
-ingestion code, per Phase 4a's "config line, not code edit" goal. Not yet wired into
-`TRAIN_SETS`/`TEST_SETS`/`SIMILARITY_SET`; that's a separate modelling decision (cross-league
-normalisation, which seasons actually go into the train split) for a follow-up pass.
+ingestion code, per Phase 4a's "config line, not code edit" goal. Module B's app pool (2026-07-05):
+La Liga/Serie A/Ligue 1 2015/16 + Frauen Bundesliga/FA WSL 2023/24 now in `config.SIMILARITY_SETS`
+(their lineups pulled 2026-07-05 to enable minutes-played; La Liga/Serie A/Ligue 1 had only events
+before that). Cross-league normalisation is still not designed — per-90 rates are compared raw
+today, flagged as an open item in the app itself. `TRAIN_SETS`/`TEST_SETS` (Module A) remain
+untouched by design (see ML_LEARNING_LOG.md).
 
 **Gotcha: StatsBomb's "La Liga" entry is mostly Barcelona, not the league.** Checked by
 match/team count (not assumed from the competition name — the same trap caught a "Bundesliga

@@ -6,17 +6,17 @@
     "groups": {
       "defender": {
         "best_k": 2,
-        "best_silhouette": 0.236,
+        "best_silhouette": 0.223,
         "n_players": 119
       },
       "forward": {
         "best_k": 2,
-        "best_silhouette": 0.262,
+        "best_silhouette": 0.244,
         "n_players": 75
       },
       "midfielder": {
         "best_k": 2,
-        "best_silhouette": 0.264,
+        "best_silhouette": 0.256,
         "n_players": 106
       }
     },

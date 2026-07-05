@@ -6,16 +6,19 @@ Project source of truth. Read this first every session, then load linked docs on
 
 ## Current Status
 
-**Active initiative:** Framework Hardening & Expansion — Phases 0–3 complete; Phase 4 data pulled
-but not wired in; Phase 8 minimal Streamlit build shipped 2026-07-04 (ahead of strict phase order,
-for an upcoming demo — see [docs/PROGRESS.md](docs/PROGRESS.md)). Full review backlog folded into
-a renumbered 0–9 program on 2026-07-02.
-**Next: deploy Phase 8 to Streamlit Community Cloud (maintainer's own step — needs their account),
-then decide Phase 4b/4c scope.**
+**Active initiative:** Framework Hardening & Expansion — Phases 0–3 complete; Phase 4a/4d done,
+4b wired into the app (2026-07-05, see below), 4c still pending; Phase 8 minimal Streamlit build
+shipped 2026-07-04 (ahead of strict phase order, for an upcoming demo), then extended 2026-07-05
+with real-time search, a dark theme, and a widened multi-competition player pool — see
+[docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renumbered 0–9 program on
+2026-07-02.
+**Next: a "player career" page/view is under discussion (multi-season drill-down, international
+tournament data — trophies/awards/MOTM data does not exist in any current source and would need
+new scraping infra); deploy Phase 8 to Streamlit Community Cloud remains the maintainer's own step.**
 (360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
 Run the app locally: `python -m src.app_data` (once, to build `app_data/`) then `streamlit run app.py`.
 
-Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped). Similarity: K=4 per position group, silhouette ~0.25 (soft continuum). 61 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
+Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped). Similarity: K=4 per position group, silhouette ~0.24 (soft continuum) on the notebook/pipeline's single-competition (PL 2015/16) scope — the app's own player pool is wider (6 competitions, see MODULES.md). 65 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
 
 → Phase tracker: [docs/INITIATIVE.md](docs/INITIATIVE.md) | Session log: [docs/PROGRESS.md](docs/PROGRESS.md)
 

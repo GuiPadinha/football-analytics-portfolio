@@ -29,7 +29,7 @@ was folded in — the old Phase 3 (360 xG) and Phase 5 (product) moved *later* b
 | **1** | Foundation: `config.py`, per-match cache, penalty/shootout fix, pinned deps, robustness fixes, first tests | 1 | ✅ Done |
 | **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | 2 | ✅ Done |
 | **3** | Engineering & reproducibility spine: CI, `pipeline.py`/Makefile, `metrics.json` single-source, data manifest | *new* | ✅ Done |
-| **4** | Multi-competition ingestion + data expansion: config-driven pipeline, Module A generalization, Module B cross-league | 4 (reshaped) | ⬜ **Next** |
+| **4** | Multi-competition ingestion + data expansion: config-driven pipeline, Module A generalization, Module B cross-league | 4 (reshaped) | 🟡 4a/4d done, 4b wired into app (2026-07-05), 4c pending |
 | **5** | xG uncertainty + hierarchical/empirical-Bayes finishing model; header/foot interaction; calibration by stratum | *new* | ⬜ Not started |
 | **6** | Module B upgrades: Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features | part of old 6 | ⬜ Not started |
 | **7** | New model: 360-context xG + post-shot xG (xGOT) | **3** | ⬜ Not started |
@@ -137,6 +137,29 @@ structurally kills the doc drift — so every later phase writes into a clean, s
   sparse-column bug fix found by one of them. Full detail: [PROGRESS.md](PROGRESS.md).
   **Next: deploy Phase 8 to Streamlit Community Cloud (maintainer's own step), then decide Phase
   4b/4c scope.**
+- **2026-07-05** — **Phase 4b wired into the app; goalkeeper features; UX/theme pass.** Same-day
+  continuation. (1) Goalkeepers: `build_goalkeeper_per90_features` (own feature set: saves, shots
+  faced, goals conceded, claims, punches, sweeper actions, save %), verified on 27 real PL 2015/16
+  keepers; not wired into `config.py`/clustering/the app, a deliberate open decision. Added a 2026
+  World Cup predictive-model backlog note to Phase 9 (data-availability check first). (2) First-use
+  feedback round 2: real typing search (`st.text_input` replacing round 1's selectbox), a dark
+  teal/gray + orange/blue theme (`.streamlit/config.toml` + matplotlib rcParams in `app.py`), and
+  `assists`/`clearances`/`blocks` surfaced as defender/midfielder/forward signature stats (the
+  latter two are new `ACTION_COLUMNS`, 9→11 columns — StatsBomb has no goal-line-specific clearance
+  sub-type, checked the real schema before adding). (3) **Phase 4b real wiring:** the app's
+  similarity pool now spans `config.SIMILARITY_SETS` — PL/La Liga/Serie A/Ligue 1 2015/16 + Frauen
+  Bundesliga/FA WSL 2023/24 — **1,511 players total** (up from 300), clustered together per
+  position group. Cross-league normalisation still not designed (flagged in-app). Real ceiling
+  named explicitly: StatsBomb's free data has no recent men's top-flight season at all, so this is
+  "wider," not "newer," for the men's leagues. `metrics.json` regenerated for the new feature
+  count (per-group silhouette shifted slightly, e.g. defender 0.236 to 0.223 — same "soft
+  continuum" finding). A real bug found by the new clearances/blocks test (not by production data):
+  `extract_player_match_actions`'s zero-completed-passes fallback produced a shapeless empty
+  Series that corrupted `pd.concat`'s output shape — fixed. +4 tests (61 to 65). **Next: a "player
+  career" page is under discussion** (multi-season drill-down using the already-pulled Barcelona
+  2004/05-2020/21 data, international-tournament stats) — **trophies/individual awards/MOTM data
+  does not exist in any current source** and would need new scraping infrastructure (see DATA.md's
+  SofaScore/FlashScore candidate) — scoping this with Guilherme before building.
 
 ---
 

@@ -1,13 +1,19 @@
-# Streamlit theme (Phase 8) — pitch-green accent so the default look isn't stock,
-# without a front-end rebuild (see docs/PRODUCT_SPEC.md's Technology Choice trade-off note).
+# Streamlit theme (Phase 8) — dark teal/gray base with an orange primary accent (2026-07-05
+# repaint; previously a light theme with a blue primary — see docs/PRODUCT_SPEC.md's
+# Technology Choice trade-off note on why Streamlit's built-in theming is used as-is rather
+# than a custom front-end). `app.py` mirrors these exact colours in its own matplotlib rcParams
+# block so the charts (radar, shot maps, elbow/silhouette curves) match the surrounding chrome
+# instead of rendering on a leftover white background — blue reappears there as the secondary
+# chart accent (e.g. the radar's player shape), orange as the primary line/series colour.
 #
 # No [server] section here on purpose: `headless` is a deployment-time concern (Streamlit
 # Cloud sets it itself), not something to hardcode in a config every local dev also inherits —
 # `headless = true` here was exactly what silently stopped `streamlit run app.py` from
 # auto-opening a browser tab locally (found 2026-07-04).
 [theme]
-primaryColor = "#1a78cf"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f0f2f0"
-textColor = "#1c1c1c"
+base = "dark"
+primaryColor = "#e8752f"
+backgroundColor = "#12181a"
+secondaryBackgroundColor = "#1c2b2e"
+textColor = "#e6e6e6"
 font = "sans serif"

@@ -5,9 +5,13 @@ section) — it only reads small, committed Parquet tables from `app_data/`. Thi
 the offline step that produces them, reusing the same `src/` functions as notebooks/pipeline.py
 rather than reimplementing feature engineering or clustering for the app.
 
-Scoped to the one dataset that's actually fully cached end-to-end today (Premier League
-2015/16, `config.SIMILARITY_SET`) — the sidebar's competition/season selectors in the spec
-mockup are aspirational for a future multi-dataset pass, not v1.
+The similarity pool spans every dataset in `config.SIMILARITY_SETS` (Phase 4b, 2026-07-05) —
+widened from the original single-competition (Premier League 2015/16) v1. The xG "flagship"
+ranking/shot map still scopes to `config.SIMILARITY_SET` (PL 2015/16 alone): Module A's own
+TRAIN_SETS were deliberately *not* expanded (see ML_LEARNING_LOG.md — more league volume didn't
+close the tournament generalisation gap), so a player from one of the newly-added similarity
+competitions simply has no xG data in the app; that's an expected gap, not a bug, and the app
+already handles it (see app.py's "no logged shots" fallback).
 
 Usage:
     python -m src.app_data
@@ -19,10 +23,33 @@ import pandas as pd
 
 from src import config
 from src.models import build_feature_matrix, build_player_xg_table, train_logistic_regression
-from src.pipeline import CLUSTER_K, POSITION_GROUPS, build_shot_tables, build_similarity_table
-from src.similarity import fit_kmeans, scale_features
+from src.pipeline import CLUSTER_K, POSITION_GROUPS, build_shot_tables
+from src.similarity import build_player_per90_features, fit_kmeans, scale_features
 
 APP_DATA_DIR = Path(__file__).resolve().parent.parent / "app_data"
+
+
+def _build_combined_similarity_table(datasets=config.SIMILARITY_SETS):
+    """Build and concatenate per-90 features across every dataset in the app's similarity pool.
+
+    Each dataset contributes its own season's minutes/actions (per-90 rates don't carry across
+    competitions) — this just tags provenance and stacks the results; clustering happens
+    afterward in `_add_cluster_labels`, across the *combined* pool per position group, so
+    "players like X" can surface a cross-league match, not just same-league ones.
+
+    Args:
+        datasets (list[config.Dataset]): competitions/seasons to include.
+
+    Returns:
+        pandas.DataFrame: concatenated output of `build_player_per90_features`, one extra
+            `competition` column (the dataset's `label`) identifying each row's source.
+    """
+    frames = []
+    for dataset in datasets:
+        features = build_player_per90_features(dataset.comp_id, dataset.season_id)
+        features["competition"] = dataset.label
+        frames.append(features)
+    return pd.concat(frames, ignore_index=True)
 
 
 def _add_cluster_labels(per90_features):
@@ -30,7 +57,8 @@ def _add_cluster_labels(per90_features):
     silhouette-informed but archetype-driven choice — see ML_LEARNING_LOG.md's Module B entry).
 
     Args:
-        per90_features (pandas.DataFrame): output of `build_player_per90_features`.
+        per90_features (pandas.DataFrame): output of `build_player_per90_features` (or
+            `_build_combined_similarity_table` — same shape, just possibly multi-competition).
 
     Returns:
         pandas.DataFrame: same rows, with a new `cluster` column, position groups concatenated
@@ -59,14 +87,15 @@ def build_app_artifacts(app_data_dir=APP_DATA_DIR):
     app_data_dir.mkdir(parents=True, exist_ok=True)
 
     shots_train, _ = build_shot_tables()
-    per90_features = _add_cluster_labels(build_similarity_table())
+    per90_features = _add_cluster_labels(_build_combined_similarity_table())
 
     X_train, y_train = build_feature_matrix(shots_train)
     model = train_logistic_regression(X_train, y_train)
 
-    # The xG ranking + shot map both scope to config.SIMILARITY_SET's players only (Premier
-    # League 2015/16) — the same player universe as the similarity table, so "players like X"
-    # and "is X's output real" always refer to the same person, not two different pools.
+    # The xG ranking + shot map deliberately stay scoped to config.SIMILARITY_SET (PL 2015/16)
+    # alone, not the wider config.SIMILARITY_SETS pool above — Module A's TRAIN_SETS were never
+    # expanded (see ML_LEARNING_LOG.md), so there is no xG model output for the other similarity
+    # competitions' players. app.py's "no logged shots" fallback covers that gap in the UI.
     flagship_shots = shots_train[
         shots_train["competition_id"] == config.SIMILARITY_SET.comp_id
     ].reset_index(drop=True)
