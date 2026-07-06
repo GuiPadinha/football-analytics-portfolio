@@ -127,6 +127,32 @@ clean, catchable error). Fix: key the dependent widget on the value that changes
 the first option — every time the filter changes, rather than trying to carry over a selection
 that may no longer exist.
 
+## Actually seeing the running Streamlit app (headless browser screenshots)
+
+No screenshot tool is wired into this environment by default, but it's not a hard limitation —
+terminal access (Bash/PowerShell) plus an image-capable Read tool is enough, if something can
+actually put a real screenshot on disk. What worked, and what didn't:
+
+- **`msedge.exe --headless --screenshot=out.png <url>` (old headless mode) doesn't work for
+  Streamlit.** It kept capturing the loading skeleton, never the rendered app, regardless of
+  `--virtual-time-budget` (tried up to 20000ms). Root cause: Streamlit's content arrives over a
+  WebSocket *after* the page's `load` event, and old headless Chrome/Edge's `--screenshot` flag
+  only waits for `load`; `--virtual-time-budget` manipulates JS timers in a way that doesn't play
+  well with real-time WebSocket delivery anyway (a known class of issue with that flag).
+- **Fix: Playwright, using the system-installed Edge instead of a downloaded browser.**
+  `pip install playwright` works fine, but `playwright install chromium` fails on this machine
+  with `UNABLE_TO_VERIFY_LEAF_SIGNATURE` (the same Avast HTTPS-interception issue as the earlier
+  `certifi` gotcha — Node's own cert store doesn't trust Avast's root cert). Skip the download
+  entirely: `p.chromium.launch(channel="msedge", headless=True)` drives the Edge that's already
+  installed. Playwright's `page.wait_for_...` (e.g. waiting for real app text to appear) correctly
+  waits for the WebSocket-delivered content, unlike the CLI screenshot flag.
+- **`page.screenshot(full_page=True)` only captured the viewport**, not the whole scrollable page —
+  Streamlit's main content sits in an inner scrollable container, not normal document flow, so
+  Playwright's page-height detection doesn't see the extra content. Fix: just set a tall viewport
+  (`viewport={"width": 1400, "height": 3000}`) instead of relying on `full_page`.
+- Not added to `requirements.txt` — this is a local verification tool for actually looking at the
+  app, not a runtime dependency of `app.py` itself.
+
 ---
 
 ## How to use this file

@@ -75,6 +75,36 @@ Key gotchas and lessons — most recent first:
 
 Key gotchas and lessons — most recent first:
 
+- **A library can silently override rcParams theming — verified by rendering and reading actual
+  pixels, not by re-reading the code** (2026-07-06). Guilherme screenshotted the running app: the
+  dark theme worked everywhere except the radar chart, which stayed white. Root cause:
+  `visualisation.py`'s `plot_player_radar` called `radar.setup_axis(ax=ax)` without passing
+  `facecolor` — mplsoccer's `Radar._setup_axis` defaults that to `'#FFFFFF'` and calls
+  `ax.set_facecolor()` itself, which runs *after* the axes already existed with the correct
+  rcParams-derived dark background, silently stomping it. Fixed by threading the app's
+  `circle_facecolor` param through to `setup_axis(facecolor=...)` too, not just `draw_circles`.
+  Verified the fix by actually rendering a synthetic radar and reading pixel RGB values from the
+  saved PNG (not just re-reading the diff) — confirms `#12181a` at the axes region, not assumed.
+  General lesson: a plotting library that exposes its own `facecolor`/background parameters is
+  telling you it does NOT reliably inherit global theming — every one of its own background-setting
+  calls needs the override passed explicitly, not just the ones a first pass happened to touch.
+- **A percentile column formatted to a string before sorting sorts wrong** (2026-07-06, `app.py`'s
+  "All per-90 stats" table). `.sort_values("Percentile")` ran on strings like `"98th"`/`"9th"` —
+  lexical comparison puts `"9th"` after `"89th"` (since `'8' < '9'` character-by-character), which
+  silently misorders any single-digit-vs-double-digit percentile pair. Not something a quick look
+  would catch (the table still "looks sorted" for most rows) — found while restructuring this
+  exact table for an unrelated reason (adding a "Total" column) and noticing the sort key was a
+  formatted string. Fixed by sorting on the numeric percentile first, formatting to a display
+  string only after. Lesson: format-for-display and sort-key must never be the same column when
+  the format isn't already lexically monotone (e.g. zero-padded) with the underlying value.
+- **Raw season totals matter as much as per-90 rates — different jobs, different audiences**
+  (2026-07-06). `build_player_per90_features` divided every action count by minutes and kept only
+  the rate — correct for clustering/percentiles (comparing players with different minutes fairly),
+  but the wrong number for a human headline ("0.80" reads as noise; "29" reads as a season). Now
+  keeps both: `ACTION_COLUMNS` (raw totals) alongside the existing `<col>_p90` rates, in the same
+  table, no separate rebuild path. Sanity-checked against a real number before trusting it:
+  Cristiano Ronaldo's 2015/16 La Liga non-penalty-goal total came out to 29 (his real season had
+  35 total including penalties) — the arithmetic and the football both check out.
 - **Widening the app's player pool exposed a real, hard data-recency ceiling, not just a config
   change** (Phase 4b real wiring, 2026-07-05). Asked "why only PL 2015/16 — I want it as
   updated as possible," the honest answer had to be checked, not assumed: StatsBomb's *free*

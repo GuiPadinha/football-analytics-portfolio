@@ -215,7 +215,10 @@ def plot_player_radar(
 
     if ax is None:
         _, ax = plt.subplots(figsize=(8, 8))
-    radar.setup_axis(ax=ax)
+    # mplsoccer's setup_axis() hardcodes facecolor='#FFFFFF' when not passed explicitly here —
+    # it calls ax.set_facecolor() itself, which silently overwrote a dark theme's rcParams
+    # after Axes creation (the actual cause of the app's radar chart still rendering white).
+    radar.setup_axis(ax=ax, facecolor=circle_facecolor)
     radar.draw_circles(ax=ax, facecolor=circle_facecolor, edgecolor=circle_edgecolor)
     radar.draw_radar(
         player_row[feature_columns].tolist(), ax=ax,
@@ -225,6 +228,60 @@ def plot_player_radar(
     radar.draw_param_labels(ax=ax, fontsize=10)
     if title:
         ax.set_title(title, fontsize=13, pad=30)
+    return ax
+
+
+def plot_similar_players_bar(similar, accent_color="steelblue", grid_color="#dddddd", ax=None):
+    """Horizontal bar chart of "players like X" results, closest match at top.
+
+    A plain ranked table of distances is a magnitude comparison on one entity at a
+    time (one player's neighbours), not several parallel series needing distinct
+    identity colours — so this uses one hue with an opacity ramp (closest = most
+    opaque) rather than a categorical palette, and puts the actual distance value
+    at each bar's tip rather than making the reader cross-reference an axis.
+
+    Args:
+        similar (pandas.DataFrame): output of `similarity.find_similar_players`,
+            must contain `player`, `team`, `distance`, already sorted ascending
+            by distance (closest/most similar first).
+        accent_color (str): the single bar hue; the app overrides this to match
+            its theme, same reasoning as `plot_player_radar`'s colour params.
+        grid_color (str): vertical gridline colour, one step off the surface.
+        ax (matplotlib.axes.Axes, optional): existing axes to draw on.
+
+    Returns:
+        matplotlib.axes.Axes: the axes the bars were drawn on.
+    """
+    if ax is None:
+        _, ax = plt.subplots(figsize=(7, 0.7 * len(similar) + 1))
+
+    # Reversed so the closest match (first row, ascending distance) ends up at
+    # the top of a horizontal bar chart, which barh otherwise draws bottom-up.
+    ordered = similar.iloc[::-1].reset_index(drop=True)
+    labels = [f"{row.player} ({row.team})" for row in ordered.itertuples()]
+
+    n = len(ordered)
+    # Closest (last after the reversal, i.e. highest y) gets full opacity; farthest
+    # gets the lightest — intensity carries "how similar," not a second hue.
+    alphas = [0.45 + 0.55 * (i / max(n - 1, 1)) for i in range(n)]
+
+    bars = ax.barh(labels, ordered["distance"], color=accent_color)
+    for bar, alpha in zip(bars, alphas):
+        bar.set_alpha(alpha)
+
+    span = ordered["distance"].max() or 1.0
+    for bar, distance in zip(bars, ordered["distance"]):
+        ax.text(
+            bar.get_width() + span * 0.02, bar.get_y() + bar.get_height() / 2,
+            f"{distance:.2f}", va="center", fontsize=9,
+        )
+
+    ax.set_xlabel("Distance (standardised per-90 features, closer = more similar)")
+    ax.grid(axis="x", color=grid_color, linewidth=0.8)
+    ax.set_axisbelow(True)
+    for spine in ("top", "right"):
+        ax.spines[spine].set_visible(False)
+    ax.margins(x=0.18)
     return ax
 
 

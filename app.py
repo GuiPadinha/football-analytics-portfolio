@@ -23,12 +23,18 @@ import pandas as pd
 from cycler import cycler
 
 from src.similarity import (
+    ACTION_COLUMNS,
     PER90_FEATURE_COLUMNS,
     compute_silhouette_scores,
     find_similar_players,
     scale_features,
 )
-from src.visualisation import plot_player_radar, plot_shot_map, plot_silhouette_curve
+from src.visualisation import (
+    plot_player_radar,
+    plot_shot_map,
+    plot_silhouette_curve,
+    plot_similar_players_bar,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent
 APP_DATA_DIR = REPO_ROOT / "app_data"
@@ -124,13 +130,15 @@ radar_axes = st.sidebar.multiselect(
     "Radar axes", PER90_FEATURE_COLUMNS, default=list(PER90_FEATURE_COLUMNS)
 )
 
-# Typing search with real-time suggestions: a free-text query narrows the match list on every
-# keystroke (Streamlit reruns the script live as a text_input's value changes), and the
+# Typing search: a free-text query narrows the match list once committed (Enter, or clicking
+# away — st.text_input shows its own "Press Enter to apply" hint while a keystroke is pending;
+# it does NOT rerun on every character the way an earlier version of this comment claimed,
+# caught 2026-07-06 by actually driving the app with Playwright rather than assuming), and the
 # selectbox right below always shows the current matches with the top one pre-selected. This
-# is a deliberately different interaction from a plain combobox (click to open, then type
+# is still a deliberately different interaction from a plain combobox (click to open, then type
 # inside it) — the text box is the obvious first thing to type into, matching "typing search"
 # as asked, not a searchable-but-still-dropdown-shaped control.
-search_query = st.text_input("Search for a player", placeholder="Start typing a name...")
+search_query = st.text_input("Search for a player", placeholder="Type a name, then press Enter...")
 if search_query:
     matches = searchable[searchable["player"].str.contains(search_query, case=False, regex=False, na=False)]
 else:
@@ -170,28 +178,38 @@ percentiles = group_df[PER90_FEATURE_COLUMNS].rank(pct=True).loc[player_row_full
 
 metric_cols = st.columns(len(signature_cols))
 for col, stat in zip(metric_cols, signature_cols):
+    raw_col = stat.replace("_p90", "")
+    total = int(round(player_row_full[raw_col]))
+    rate = player_row_full[stat]
     pct = percentiles[stat] * 100
-    col.metric(STAT_LABELS[stat], f"{player_row_full[stat]:.2f}", help=f"{pct:.0f}th percentile among {position_group.lower()}s")
+    col.metric(
+        STAT_LABELS[stat], f"{total:,}",
+        help=f"{rate:.2f} per 90 · {pct:.0f}th percentile among {position_group.lower()}s",
+    )
 st.caption(
-    "Signature stats are a fixed set per position group (not personalised to this player's "
-    f"strengths) — percentiles vs. {len(group_df)} {position_group.lower()}s across "
-    f"{group_df['competition'].nunique()} competitions."
+    "Season totals (not personalised to this player's strengths — a fixed set per position "
+    f"group). Hover a card for the per-90 rate and percentile vs. {len(group_df)} "
+    f"{position_group.lower()}s across {group_df['competition'].nunique()} competitions."
 )
 
 with st.expander(f"All per-90 stats ({len(PER90_FEATURE_COLUMNS)} metrics, vs. {position_group.lower()} peers)"):
     stat_table = pd.DataFrame({
         "Stat": [STAT_LABELS[c] for c in PER90_FEATURE_COLUMNS],
-        "Value": [player_row_full[c] for c in PER90_FEATURE_COLUMNS],
-        "Percentile": [f"{percentiles[c] * 100:.0f}th" for c in PER90_FEATURE_COLUMNS],
-    }).sort_values("Percentile", ascending=False)
-    st.dataframe(stat_table, hide_index=True, width="stretch")
+        "Total": [int(round(player_row_full[c])) for c in ACTION_COLUMNS],
+        "Per 90": [player_row_full[c] for c in PER90_FEATURE_COLUMNS],
+        "Percentile (numeric)": [percentiles[c] * 100 for c in PER90_FEATURE_COLUMNS],
+    }).sort_values("Percentile (numeric)", ascending=False)
+    stat_table["Percentile"] = stat_table["Percentile (numeric)"].map(lambda p: f"{p:.0f}th")
+    st.dataframe(
+        stat_table.drop(columns="Percentile (numeric)"), hide_index=True, width="stretch"
+    )
     st.caption(
         "Percentile within this player's position group (n="
-        f"{len(group_df)}). Counts only, not rates — e.g. no pass-completion % yet, since that "
-        "needs a new feature (passes attempted, not just completed) from raw events, not just a "
-        "different chart. Flagged as a follow-up, not faked here. Clearances are StatsBomb's "
-        "general Clearance event count, not a 'last-ditch/goal-line' sub-type — StatsBomb's "
-        "schema doesn't distinguish those, so this is the closest available proxy."
+        f"{len(group_df)}). No pass-completion % yet, since that needs a new feature (passes "
+        "attempted, not just completed) from raw events, not just a different chart. Flagged as "
+        "a follow-up, not faked here. Clearances are StatsBomb's general Clearance event count, "
+        "not a 'last-ditch/goal-line' sub-type — StatsBomb's schema doesn't distinguish those, "
+        "so this is the closest available proxy."
     )
 
 col_radar, col_similar = st.columns(2)
@@ -214,22 +232,27 @@ with col_similar:
     similar = find_similar_players(
         per90, PER90_FEATURE_COLUMNS, player=player_name, team=team_name, n=5
     )
-    st.dataframe(
-        similar[["player", "team", "competition", "distance"]].rename(
-            columns={
-                "player": "Player", "team": "Team",
-                "competition": "Competition", "distance": "Distance (standardised)",
-            }
-        ),
-        hide_index=True,
-        width="stretch",
-    )
+    fig, ax = plt.subplots(figsize=(7, 0.7 * len(similar) + 1))
+    plot_similar_players_bar(similar, accent_color=ACCENT_ORANGE, grid_color=GRID_LINE, ax=ax)
+    st.pyplot(fig)
+    plt.close(fig)
     st.caption(
         "Distance = Euclidean, standardised per-90 features, same position group only — now "
         "searched across the whole multi-competition pool, so a match can come from a different "
         "league. No cross-league normalisation yet (see \"Under the hood\" below), so treat a "
         "cross-league match as a coarser signal than a same-league one."
     )
+    with st.expander("Table view"):
+        st.dataframe(
+            similar[["player", "team", "competition", "distance"]].rename(
+                columns={
+                    "player": "Player", "team": "Team",
+                    "competition": "Competition", "distance": "Distance (standardised)",
+                }
+            ),
+            hide_index=True,
+            width="stretch",
+        )
 
 st.subheader("Finishing — is the output real?")
 xg_row = xg_table[(xg_table["player"] == player_name) & (xg_table["team"] == team_name)]

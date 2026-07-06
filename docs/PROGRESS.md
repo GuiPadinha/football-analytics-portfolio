@@ -6,108 +6,96 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
-## 2026-07-05 (cont.) — round 2 first-use feedback: real search, dark theme, defender stats, and Phase 4b actually wired in
+## 2026-07-06 (cont.) — got real browser eyes on the app; new feedback logged as backlog, not built
 
-Four asks in one message: the round-1 search still didn't read as "typing search," why the app is
-locked to one 2015/16 league, a dark teal/gray + orange/blue theme, and assists/clearances still
-not visible for a player.
+Guilherme asked whether "Chrome headless + screenshots" (a technique a friend uses) makes sense
+for Claude Code, since he suspected it might be terminal-only by design.
 
-**Real typing search:** swapped the round-1 `st.selectbox` for an `st.text_input` that narrows a
-match list live on every keystroke, feeding a selectbox of current matches with the top one
-pre-selected — the text box is now the obvious first thing to type into, not a dropdown you click
-open before typing.
+**It works, and it's now a documented capability.** Not a hard limitation — terminal access plus
+an image-capable file-read tool is enough once something puts a real screenshot on disk. Getting
+there took two wrong turns, both logged in [ML_TOOLING.md](ML_TOOLING.md): plain
+`msedge --headless --screenshot` only ever captured Streamlit's loading skeleton (it waits for
+the page `load` event, but Streamlit's content arrives after that, over a WebSocket); Playwright
+fixed the waiting problem but its own browser download failed on this machine (Avast HTTPS
+interception, the same class of issue as the earlier `certifi` gotcha) — worked around by pointing
+Playwright at the already-installed Edge (`channel="msedge"`) instead of downloading one.
 
-**Phase 4b actually wired in:** the app's player pool now spans `config.SIMILARITY_SETS` — PL/La
-Liga/Serie A/Ligue 1 2015/16 + Frauen Bundesliga/FA WSL 2023/24 — **1,511 players** (up from 300),
-clustered together per position group in `src/app_data.py`. Verified: typing "Kan" now surfaces
-Kanté, Kane, Kankava, Kana-Biyik, Zukanović, Rytting-Kaneryd and Mbokani across 4 different
-competitions in one search. Named the real ceiling explicitly rather than just widening quietly:
-StatsBomb's free data has no recent men's top-flight season at all (2015/16 is the cap for all
-four men's leagues here), so this is "wider," not "newer," for the men's side — the women's
-leagues (2023/24) are the newest full-season data anywhere in this project. **No cross-league
-normalisation yet** — flagged in the app's "players like X" panel and "Under the hood" expander as
-a coarser signal than a same-league match, matching Phase 4b's original open item rather than
-quietly resolving it.
+**Used it to actually verify the previous round's fixes** — confirmed via real screenshots (not
+just re-reading the diff) that the radar chart's dark background genuinely renders now, signature
+stats show whole numbers, and the "players like X" bar chart's colour ramp is correct (checked
+actual pixel RGB values: closest match = full accent orange, fading toward the background for
+farther matches).
 
-**Dark theme:** `.streamlit/config.toml` repainted (`base="dark"`, orange primary, teal/gray
-backgrounds); `app.py` mirrors the palette in matplotlib rcParams (figure/axes backgrounds, text,
-grid, a custom orange/blue property cycle) so charts match the surrounding chrome. `plot_player_radar`
-gained optional dark-friendly colour params (default unchanged — notebooks/pipeline PNGs unaffected).
-**Not visually verified in a browser** — no screenshot tool available this session; verified via
-Streamlit's headless `AppTest` harness only (script-level correctness). Asked Guilherme to eyeball
-`streamlit run app.py` before calling the look done.
+**Found one real inaccuracy while poking at it further:** the app's search box does not rerun on
+every keystroke the way earlier session comments/docs claimed — `st.text_input` needs Enter or a
+blur to commit (it shows its own "Press Enter to apply" hint). Corrected the claim in `app.py`,
+`docs/PRODUCT_SPEC.md`, and the placeholder text; left already-dated PROGRESS_ARCHIVE.md entries
+alone (append-only history records what was believed at the time, same policy as the old 0.798
+xG figure). The underlying UX (type a name, hit Enter, get filtered results) is unaffected — only
+the "how it works" description was wrong, not the behaviour itself.
 
-**Assists + defender stats:** `assists_p90` promoted into Midfielder/Forward signature stats (it
-was already computed, just buried in the stat expander); new `clearances`/`blocks` action columns
-(`ACTION_COLUMNS` 9→11) for Defender's signature stats. Checked StatsBomb's real `Clearance`/`Block`
-event schema on cached data first — no goal-line-specific sub-type exists, so a plain clearance
-count is the honest available proxy, stated as such in the app and MODULES.md.
+**New feedback captured as backlog, deliberately not built tonight** (Guilherme's own call —
+"save all that for next session"): a sortable all-players leaderboard with goals *including*
+penalties (so outliers like Sergio Ramos's penalty count show up) and visible xG where available;
+the "Under the hood" methodology expander flagged as low-value/under review pending more charts;
+goalkeepers still not wired into the app (feature engineering has existed since 2026-07-05); and
+clickable "similar player" names for recursive drill-down (his message was cut off after "but" —
+there was an unstated caveat, needs confirming before building). Full detail in
+[PRODUCT_SPEC.md](PRODUCT_SPEC.md)'s new "Backlog from 2026-07-06 feedback" section.
 
-**A real bug found along the way, not by production data:** the new clearances/blocks test exposed
-that `extract_player_match_actions`'s zero-completed-passes fallback built a shapeless empty Series
-(plain `RangeIndex` instead of the `(player, team)` `MultiIndex` every other action Series carries
-even when empty) — corrupted `pd.concat`'s output shape whenever it was the only all-empty column.
-Fixed by deriving the empty case the same way as everywhere else in the function. Unreachable with
-real StatsBomb matches (always have passes), but a real landmine. See ML_LEARNING_LOG.md.
-
-**Housekeeping:** regenerated `metrics.json` (silhouette shifted slightly for the new feature count,
-e.g. defender 0.236→0.223 — same "soft continuum" finding, doc-lint test still green) and the
-pipeline's cached per-90 pickle, so neither silently serves stale 9-column data. **Not done:**
-re-executing notebook 03 — its saved cluster/neighbour tables were computed on 9 features and are
-now a snapshot of the last real run, not current code; deferred rather than rushed, since the
-clustering outcome could shift enough (which players land in which cluster) to need a careful
-narrative re-check, not just a mechanical re-run.
-
-Tests **61 → 65 green**. Full pytest suite + a headless `AppTest` smoke script covering typing
-search, competition filter, and all 3 position groups, all green.
-
-**Also raised, not yet addressed:** wanting all La Liga data available (not just the one full
-season — the 16 Barcelona-only seasons are pulled but not wired in) and a new "player career" page
-with multi-season drill-down + international-tournament stats + trophies/individual awards/MOTMs.
-The last part doesn't exist in any current data source (StatsBomb has no honours/awards data at
-all) — scoping this with Guilherme rather than guessing at it.
+Tests **65 green, unchanged** — only doc/comment accuracy fixes this pass, no behaviour change.
 
 ---
 
-## 2026-07-05 (cont.) — goalkeeper feature engineering + a World Cup 2026 backlog note
+## 2026-07-06 — real screenshots surfaced a real bug: radar chart stayed white; whole-number totals added
 
-Two asks that arrived mid-session: add goalkeepers to Module B, and note a 2026 World Cup
-predictive-model idea for later.
+Guilherme finally saw the round-2 theme pass running (screenshots) and the dark theme was broken
+in one specific place — the radar chart — plus two functional asks: raw counting stats (not
+per-90 decimals) as the headline numbers, and more visually engaging charts.
 
-**Goalkeepers:** investigated StatsBomb's `Goal Keeper` event schema on real cached data before
-writing anything (`goalkeeper_type` values across 15 matches: Shot Faced, Shot Saved [+3 rarer
-synonyms], Goal Conceded, Collected, Punch, Keeper Sweeper). New `extract_goalkeeper_match_actions`
-+ `build_goalkeeper_per90_features` (`src/similarity.py`) give keepers their own feature set —
-shots faced, saves, goals conceded, claims, punches, sweeper actions per 90, plus `save_pct` — kept
-deliberately separate from the outfield `ACTION_COLUMNS` rather than a branch inside the same
-function (a keeper's tackle/pass-progression rate is meaningless; same "cluster per position
-group" lesson as S6, one step further). Refactored the shared match-iteration loop out of
-`build_player_per90_features` into `_build_season_minutes_and_actions` so both builders reuse it —
-verified byte-identical output for the existing outfield function before trusting the refactor.
-+2 tests (`test_similarity.py`). Verified on real PL 2015/16 data: 27 keepers clear the 900-minute
-floor, recognisable names (Čech, de Gea, Lloris, Courtois, Schmeichel). One honest caveat found by
-actually looking at the numbers: `save_pct` (25-51%) reads lower than the broadcast "save %" stat
-(usually 65-75%) — likely because StatsBomb's `Shot Faced` count isn't restricted to shots on
-target. Documented in MODULES.md rather than hidden or asserted-correct without checking.
+**Real bug, root-caused not patched around:** mplsoccer's `Radar.setup_axis()` defaults
+`facecolor='#FFFFFF'` and calls `ax.set_facecolor()` itself *after* the axes already had the
+correct dark background from rcParams — silently overwriting it. Every other chart (silhouette
+curve, etc.) was already fine, which is what made this one white chart suspicious rather than "the
+whole theme is broken." Fixed by threading `circle_facecolor` through to `setup_axis()` too.
+Verified by actually rendering a synthetic radar and reading the saved PNG's pixel RGB values
+(`#12181a` at the axes region) rather than re-reading the code and assuming.
 
-**Not done in this pass, on purpose:** wiring goalkeepers into `config.py`, clustering (own K?),
-or the app's position filter — a separate integration decision, not rushed into the same pass as
-the feature engineering.
+**Whole-number totals:** `build_player_per90_features` now keeps raw `ACTION_COLUMNS` season
+totals alongside the `_p90` rates (both in the same table — no separate rebuild path). Signature
+stat cards now lead with the season total (e.g. "29" goals) with the per-90 rate + percentile
+moved into the hover tooltip. Sanity-checked against reality: Cristiano Ronaldo's 2015/16 La Liga
+non-penalty-goal total came out to 29 (real total was 35 incl. penalties) — checks out.
 
-**World Cup 2026 note:** added to ROADMAP.md/INITIATIVE.md's Phase 9 backlog — flagged that the
-first step has to be checking whether StatsBomb has released *any* open data for it yet, since
-every tournament this project already uses was released after the tournament ended, not live, and
-the 2026 World Cup may still be running. Scope (target, features, train set) deliberately left
-undefined until that's checked.
+**A second real bug found while touching this table:** the "All per-90 stats" table sorted on a
+pre-formatted percentile *string* ("98th"/"9th"), which sorts lexically wrong for single- vs
+double-digit values. Fixed by sorting on the numeric percentile before formatting for display.
 
-Tests **59 → 61 green**. `src/similarity.py` + `tests/test_similarity.py` changed; docs updated
-(MODULES.md, ML_LEARNING_LOG.md, ROADMAP.md, INITIATIVE.md, CLAUDE.md test count).
+**More visual interest, per the dataviz skill:** invoked it before touching any chart/stat-tile
+code. "Players like X" was a plain dataframe — converted to a horizontal bar chart
+(`plot_similar_players_bar`, new in `visualisation.py`): one hue (the app's orange accent) with an
+opacity ramp for closeness, direct distance labels at each bar's tip, recessive gridlines — the
+skill's "compare magnitude → bar, sequential" form, not a categorical palette, since each row is
+one entity's distance, not several parallel series. Kept the old dataframe as a "Table view"
+expander underneath (the skill's "every chart needs a table-view twin" rule).
+
+Tests **65 green, unchanged** (no new src logic needing a test — `plot_similar_players_bar`
+follows the existing convention of not unit-testing plotting functions; `build_player_per90_features`'s
+new raw columns are exercised by the full suite passing unchanged). `app_data/player_per90.parquet`
+rebuilt (1,511 players, unchanged counts — just wider columns) and re-verified via the `AppTest`
+headless smoke script.
+
+**Answered, not yet actioned:** whether 2015/16 across the four men's leagues is "for
+normalisation" — no, it's StatsBomb's actual data ceiling (that's the *only* full season available
+for each), not a deliberate choice; and yes, real data is still on the table — the 16 Barcelona-only
+La Liga seasons (2004/05–2020/21) are pulled (events) but not wired in (no lineups yet), which is
+the direct lever for multi-season "career" depth already under discussion.
 
 ---
 
 ## Commit Status
 
-Verified against `git log`/`git status` 2026-07-05. Committed through `29f753f`:
+Verified against `git log`/`git status` 2026-07-06. Committed through `428496f`:
 
 - `25bbf79` — S6/7 — Radar charts + visuals + final polish + README
 - `a3ff7cd` — Initiative Phases 0–1: framework charter, foundation hardening, data-integrity rebuild
@@ -122,10 +110,9 @@ Verified against `git log`/`git status` 2026-07-05. Committed through `29f753f`:
 - `1c8d90d` — Model validation tests + Module A-B-C ordering pass + a real sparse-column fix
 - `7f7a4e4` — Phase 8 minimal build: Streamlit app + build step, plus first-use fixes
 - `29f753f` — Goalkeeper feature engineering (Module B) + 2026 World Cup backlog note
+- `428496f` — Round-2 app UX pass: real typing search, dark theme, wider player pool, defensive stats
 
-**Uncommitted as of this entry:** today's round-2 UX/data pass — `app.py`, `src/app_data.py`,
-`src/config.py`, `src/similarity.py`, `src/visualisation.py`, `.streamlit/config.toml`,
-`app_data/player_per90.parquet`, `metrics.json`, `tests/test_similarity.py`, and docs
-(`CLAUDE.md`, `ML_LEARNING_LOG.md`, `docs/INITIATIVE.md`, `docs/MODULES.md`, `docs/ROADMAP.md`,
-`docs/PRODUCT_SPEC.md`, `docs/PROGRESS.md`, `docs/PROGRESS_ARCHIVE.md`) — ready to commit once
+**Uncommitted as of this entry:** the 2026-07-06 fix-up pass — `app.py`, `src/similarity.py`,
+`src/visualisation.py`, `app_data/player_per90.parquet`, `ML_LEARNING_LOG.md`, `docs/MODULES.md`,
+`docs/ML_TOOLING.md`, `docs/PROGRESS.md`, `docs/PROGRESS_ARCHIVE.md` — ready to commit once
 Guilherme gives the go-ahead (not yet asked for this round).

@@ -5,8 +5,11 @@
 **Status:** spec expanded 2026-07-01; minimal v1 built 2026-07-04; two rounds of first-use
 feedback on 2026-07-05 (see "Post-v1 additions" below) added real-time player search, per-position
 "signature stats," a full per-90 stat table, a widened multi-competition player pool, a dark theme,
-and defender-facing clearances/blocks stats. Deployment to Streamlit Community Cloud is the one
-step left for the maintainer to do (needs their account) — see the Build Checklist.
+and defender-facing clearances/blocks stats; a 2026-07-06 fix-up pass corrected a real dark-theme
+rendering bug (radar chart) and added whole-number season totals. A further round of feedback
+(2026-07-06 evening) is logged below as backlog, not yet started — see "Backlog from 2026-07-06
+feedback." Deployment to Streamlit Community Cloud is the one step left for the maintainer to do
+(needs their account) — see the Build Checklist.
 
 ### Post-v1 additions (2026-07-05)
 
@@ -37,8 +40,10 @@ Streamlit's stock light theme, and assists/defensive-contribution stats were sti
 expander rather than surfaced.
 
 - **Real typing search:** replaced the dropdown-first `st.selectbox` with an `st.text_input`
-  ("Search for a player") that narrows a match list live on every keystroke (Streamlit reruns on
-  each character), feeding a selectbox of current matches with the top one pre-selected — the text
+  ("Search for a player") that narrows a match list once committed (Enter or clicking away —
+  `st.text_input` does not rerun per keystroke; corrected 2026-07-06 after actually driving the
+  app with Playwright, see ML_TOOLING.md), feeding a selectbox of current matches with the top
+  one pre-selected — the text
   box is now the obvious first thing to type into, not a combobox you click open before typing.
 - **Widened player pool (Phase 4b real wiring):** the similarity pool now spans
   `config.SIMILARITY_SETS` — PL/La Liga/Serie A/Ligue 1 2015/16 plus Frauen Bundesliga/FA WSL
@@ -61,6 +66,37 @@ expander rather than surfaced.
   `extract_player_match_actions` produced a shapeless empty Series that could corrupt the whole
   function's output shape — surfaced by the new clearances/blocks test, not by production data
   (see ML_LEARNING_LOG.md). Fixed, not worked around.
+
+### Backlog from 2026-07-06 feedback (not started — deliberately deferred to next session)
+
+Guilherme reviewed the round-2 build (actual screenshots, then live via Playwright — see
+ML_TOOLING.md) and asked for the following; explicitly agreed to save all of it for next session
+rather than rush it in tonight:
+
+- **Full player leaderboard, sortable by relevance, goals *including* penalties.** Wants to browse
+  all players (not just the searched one) to spot outliers like Sergio Ramos's penalty-inflated
+  goal total for a center-back. `ACTION_COLUMNS`'s `non_penalty_goals` deliberately excludes
+  penalties (a Module A modelling choice — penalties convert at near-100%, so including them would
+  skew the xG-adjacent framing); a *separate* raw `goals` (incl. penalties) column for display
+  purposes is the likely fix, not changing the existing non-penalty column clustering/xG code
+  depends on. Needs a new leaderboard view (a sortable multi-player table, not the current
+  one-player-at-a-time layout).
+- **xG/performance visible in that broader view.** Currently "is this real" (goals vs. xG) only
+  shows for the one selected player, and only if they're in Module A's training set (PL 2015/16 +
+  Leverkusen — most of the wider similarity pool isn't). In a leaderboard, join in `total_xg`/
+  `xg_diff` where available, dash/blank otherwise — don't fake it for players outside that set.
+- **"Under the hood (methodology)" flagged as low-value, under review.** Guilherme doesn't find it
+  useful/understandable as-is; expects more charts to be added later that may reshape or replace
+  it. Not touching it until there's a clearer idea of what replaces it — no redesign work now.
+- **Goalkeepers still not wired into the app** — `build_goalkeeper_per90_features` exists
+  (2026-07-05) but isn't in `config.py`/clustering/the app's position filter. Still an open
+  integration decision (own K? own silhouette check? a 4th position-filter option?), now with an
+  explicit ask to actually do it next session rather than leave it deferred indefinitely.
+- **Clickable "similar player" names** — jump from the "players like X" list into that player's own
+  page (and see *their* similar players — a recursive drill-down). Guilherme's message was cut off
+  after "but" — there was a caveat/condition that didn't get typed. Confirm what it was before
+  building this, since the un-stated condition could change the design (e.g. maybe only within the
+  same competition, or maybe excluding a "back" trail).
 
 ---
 

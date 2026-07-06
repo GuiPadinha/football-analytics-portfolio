@@ -394,9 +394,14 @@ def build_player_per90_features(competition_id, season_id, min_minutes=900):
 
     Returns:
         pandas.DataFrame: one row per player, with `position_group`,
-            `minutes_played`, and one `<action>_p90` column per entry in
-            `ACTION_COLUMNS`. Goalkeepers are excluded — see
-            `build_goalkeeper_per90_features` for their own feature set.
+            `minutes_played`, one raw season-total `<action>` column and one
+            `<action>_p90` rate column per entry in `ACTION_COLUMNS` — the
+            raw totals are kept alongside the rates (not just an intermediate
+            dropped after dividing) since a whole-number season total (e.g.
+            "24 goals") is what a human reads as the headline number, while
+            the per-90 rate is what clustering/percentiles actually compare
+            on. Goalkeepers are excluded — see `build_goalkeeper_per90_features`
+            for their own feature set.
     """
     season_minutes, actions_df = _build_season_minutes_and_actions(
         competition_id, season_id, extract_player_match_actions
@@ -415,7 +420,7 @@ def build_player_per90_features(competition_id, season_id, min_minutes=900):
         features[f"{col}_p90"] = features[col] / features["minutes_played"] * 90
 
     keep_columns = ["player", "team", "position_group", "minutes_played"] + \
-        [f"{col}_p90" for col in ACTION_COLUMNS]
+        ACTION_COLUMNS + [f"{col}_p90" for col in ACTION_COLUMNS]
     return features[keep_columns].reset_index(drop=True)
 
 
