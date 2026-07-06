@@ -187,6 +187,20 @@ def test_extract_player_match_actions_handles_zero_clearances_and_blocks():
     assert result.loc[0, "blocks"] == 0
 
 
+def test_extract_player_match_actions_goals_include_penalties_but_np_goals_do_not():
+    # The whole point of the display-only `goals` column: it counts penalties, while the
+    # modelling `non_penalty_goals` column strips them. A penalty-heavy scorer must show up
+    # in `goals` but not be rewarded for it in the clustering feature.
+    events = pd.DataFrame([
+        {"type": "Shot", "player": "Striker A", "team": "T", "shot_outcome": "Goal", "shot_type": "Open Play"},
+        {"type": "Shot", "player": "Striker A", "team": "T", "shot_outcome": "Goal", "shot_type": "Penalty"},
+        {"type": "Shot", "player": "Striker A", "team": "T", "shot_outcome": "Saved", "shot_type": "Open Play"},
+    ])
+    result = extract_player_match_actions(events).set_index(["player", "team"])
+    assert result.loc[("Striker A", "T"), "goals"] == 2  # open-play + penalty
+    assert result.loc[("Striker A", "T"), "non_penalty_goals"] == 1  # penalty excluded
+
+
 def test_compute_silhouette_scores_prefers_true_cluster_count():
     # Two tight, well-separated blobs: the silhouette score should peak at K=2,
     # the real cluster count — the property that lets it recommend a K where the

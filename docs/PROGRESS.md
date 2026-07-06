@@ -6,6 +6,46 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-07-06 (cont. 2) — shipped the player leaderboard (backlog item #1) + goals-incl-penalties column
+
+Picked up the 2026-07-06 backlog. Of the five deferred items, the **all-players leaderboard** was
+the only one with no blocker — goalkeepers still need a clustering/K design call, and the clickable
+drill-down is blocked on an unfinished "but..." caveat from the last feedback message. Built it end
+to end.
+
+**New display-only `goals` column (incl. penalties).** The whole point of the leaderboard (per
+Guilherme: spot penalty-inflated tallies like a centre-back topping the goals list) needs a goal
+total *with* penalties — which didn't exist. `ACTION_COLUMNS`' `non_penalty_goals` strips them on
+purpose (penalties convert ~100%, so counting them in the similarity features would just reward
+penalty-takers as scoring skill). Added `goals` to `extract_player_match_actions` and a new
+`DISPLAY_COUNT_COLUMNS = ["goals"]` constant threaded through `build_player_per90_features` —
+kept deliberately *out* of `ACTION_COLUMNS`/`PER90_FEATURE_COLUMNS`, so it never enters
+clustering / PCA / radar / percentiles, only the human-readable table. No `_p90` rate for it (a
+"penalty-goals per 90" stat nobody asked for). New unit test locks the split in
+(`goals` counts a penalty, `non_penalty_goals` doesn't).
+
+**Leaderboard view in `app.py`.** A sidebar `View` radio toggles Player explorer ↔ Leaderboard;
+the leaderboard branch renders after the shared position/competition filters and `st.stop()`s
+before any player-only widget, so it's a minimal-diff addition, not a re-indent of the existing
+page. `render_leaderboard` shows one sortable `st.dataframe` (Player/Team/Competition/Position/
+Minutes/Goals/Non-pen goals/Assists) left-joined to the flagship xG table for `xG`/`G-xG` —
+**blank, not faked**, for the ~2/3 of the pool outside Module A's training set, same honesty as
+the single-player finishing panel. `st.column_config.NumberColumn` keeps columns numeric (so
+header-click sort is real) while formatting ints/`%+.1f`. Default sort Goals desc.
+
+**Verified headless** (rebuilt `app_data`, then AppTest drove the Leaderboard view: 1511 rows, no
+exception, sorted Goals-desc). Data sanity-checked against reality: Suárez tops La Liga 2015/16 at
+40, Ronaldo 35 goals / 29 non-pen (6 pens — matches the earlier CR7 check), and Fabinho surfaces
+as a **defender with 6 goals, all penalties** — the exact Sergio-Ramos-style outlier the feature
+was built to expose. **Not yet eyeballed in a real browser** — low risk (stock `st.dataframe`, not
+custom matplotlib), worth a glance next session before deploy.
+
+Tests **66 green** (65 + the new penalty-split test). `app_data/player_per90.parquet` rebuilt
+(1511 players, unchanged count — one new column). Backlog items #2 (xG in a broad view) folded in
+here; #3 methodology expander, #4 goalkeepers, #5 clickable drill-down still open.
+
+---
+
 ## 2026-07-06 (cont.) — got real browser eyes on the app; new feedback logged as backlog, not built
 
 Guilherme asked whether "Chrome headless + screenshots" (a technique a friend uses) makes sense
@@ -111,8 +151,8 @@ Verified against `git log`/`git status` 2026-07-06. Committed through `428496f`:
 - `7f7a4e4` — Phase 8 minimal build: Streamlit app + build step, plus first-use fixes
 - `29f753f` — Goalkeeper feature engineering (Module B) + 2026 World Cup backlog note
 - `428496f` — Round-2 app UX pass: real typing search, dark theme, wider player pool, defensive stats
+- `b7c0662` — Fix radar chart dark-theme bug, add whole-number stat totals, verify visually
 
-**Uncommitted as of this entry:** the 2026-07-06 fix-up pass — `app.py`, `src/similarity.py`,
-`src/visualisation.py`, `app_data/player_per90.parquet`, `ML_LEARNING_LOG.md`, `docs/MODULES.md`,
-`docs/ML_TOOLING.md`, `docs/PROGRESS.md`, `docs/PROGRESS_ARCHIVE.md` — ready to commit once
-Guilherme gives the go-ahead (not yet asked for this round).
+**Uncommitted as of this entry:** the leaderboard pass — `app.py`, `src/similarity.py`,
+`tests/test_similarity.py`, `app_data/player_per90.parquet`, `docs/PROGRESS.md`,
+`docs/PRODUCT_SPEC.md`. Being committed + pushed now at Guilherme's explicit request.

@@ -107,11 +107,80 @@ def cached_silhouette_scores(position_group_df):
     return compute_silhouette_scores(X_scaled)
 
 
+def render_leaderboard(pool, xg_table):
+    """Render the all-players leaderboard: one sortable table over the current filter pool.
+
+    Deliberately different from the player-explorer page (one player at a time): this is the
+    "browse everyone, spot the outliers" view Guilherme asked for — e.g. a penalty-inflated
+    centre-back tops the Goals column even though `non_penalty_goals` (the modelling stat) is
+    modest. Goals here is the real total incl. penalties (see similarity.DISPLAY_COUNT_COLUMNS).
+
+    xG / G-xG are left-joined from the flagship xG table and blank for anyone outside Module A's
+    training set (PL 2015/16 + Leverkusen) — most of the wider similarity pool — rather than
+    faked, matching the single-player panel's honesty about that gap.
+
+    Args:
+        pool (pandas.DataFrame): the per-90 table already narrowed by the sidebar
+            position/competition filters (the app's `searchable`).
+        xg_table (pandas.DataFrame): flagship player xG table (`total_xg`, `xg_diff` per player).
+    """
+    st.title("Player leaderboard")
+    st.caption(
+        f"{len(pool):,} players across {pool['competition'].nunique()} competitions "
+        "(narrow with the sidebar position/competition filters). Click any column header to "
+        "sort — Goals *includes* penalties, so penalty-takers rise; the modelling stats use "
+        "non-penalty goals instead."
+    )
+
+    board = pool[[
+        "player", "team", "competition", "position_group",
+        "minutes_played", "goals", "non_penalty_goals", "assists",
+    ]].merge(
+        xg_table[["player", "team", "total_xg", "xg_diff"]],
+        on=["player", "team"], how="left",
+    )
+    board = board.rename(columns={
+        "player": "Player", "team": "Team", "competition": "Competition",
+        "position_group": "Position", "minutes_played": "Minutes",
+        "goals": "Goals", "non_penalty_goals": "Non-pen goals", "assists": "Assists",
+        "total_xg": "xG", "xg_diff": "G-xG",
+    }).sort_values("Goals", ascending=False)
+
+    st.dataframe(
+        board,
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "Minutes": st.column_config.NumberColumn(format="%d"),
+            "Goals": st.column_config.NumberColumn(format="%d"),
+            "Non-pen goals": st.column_config.NumberColumn(format="%d"),
+            "Assists": st.column_config.NumberColumn(format="%d"),
+            "xG": st.column_config.NumberColumn(format="%.1f", help="Flagship xG set only"),
+            "G-xG": st.column_config.NumberColumn(
+                format="%+.1f",
+                help="Goals minus xG. Positive = outscoring chance quality (expect regression); "
+                "negative = under-converting good chances (possible buy-low). Flagship set only.",
+            ),
+        },
+    )
+    st.caption(
+        "xG and G-xG are blank for players outside the xG training set (Premier League 2015/16 + "
+        "Bayer Leverkusen 2023/24) — the similarity pool is wider than the xG model's, so most "
+        "rows have no xG, shown blank rather than faked."
+    )
+
+
 per90, xg_table, shots, metrics = load_artifacts()
 
 st.sidebar.title("Player Evaluation Framework")
 st.sidebar.caption(
     f"{per90['competition'].nunique()} competitions · StatsBomb open data (2015/16-2023/24)"
+)
+
+view = st.sidebar.radio(
+    "View", ["Player explorer", "Leaderboard"],
+    help="Player explorer: one player's radar, similar players and finishing. "
+    "Leaderboard: browse and sort every player in the current filters.",
 )
 
 position_filter = st.sidebar.selectbox(
@@ -125,6 +194,16 @@ if position_filter != "All":
     searchable = searchable[searchable["position_group"] == position_filter]
 if competition_filter != "All":
     searchable = searchable[searchable["competition"] == competition_filter]
+
+# Leaderboard is a whole-pool table, not a per-player drill-down: render it here (after the
+# shared filters, before any player-explorer-only widget) and stop, so the search box / radar
+# controls below never render in this view.
+if view == "Leaderboard":
+    if searchable.empty:
+        st.warning("No players match the current filters.")
+        st.stop()
+    render_leaderboard(searchable, xg_table)
+    st.stop()
 
 radar_axes = st.sidebar.multiselect(
     "Radar axes", PER90_FEATURE_COLUMNS, default=list(PER90_FEATURE_COLUMNS)

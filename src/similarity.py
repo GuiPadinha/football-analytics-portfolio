@@ -199,6 +199,15 @@ def extract_player_match_actions(events):
         shots[(shots["shot_outcome"] == "Goal") & (shots["shot_type"] != "Penalty")]
         .groupby(["player", "team"]).size().rename("non_penalty_goals")
     )
+    # Goals *including* penalties — display-only (see DISPLAY_COUNT_COLUMNS), never fed to
+    # clustering/xG. Penalties convert at ~100%, so counting them in the similarity features
+    # would just reward penalty-takers as if it were open-play scoring skill; the headline
+    # "career goals" number a human reads (and outliers like a penalty-heavy centre-back)
+    # still want the real total, so both live in the table for different jobs.
+    goals = (
+        shots[shots["shot_outcome"] == "Goal"]
+        .groupby(["player", "team"]).size().rename("goals")
+    )
     shot_counts = shots.groupby(["player", "team"]).size().rename("shots")
 
     passes = events[events["type"] == "Pass"].copy()
@@ -265,7 +274,7 @@ def extract_player_match_actions(events):
     )
 
     actions = pd.concat(
-        [non_penalty_goals, shot_counts, key_passes, assists, progressive_passes,
+        [non_penalty_goals, goals, shot_counts, key_passes, assists, progressive_passes,
          dribbles_completed, pressures, interceptions, tackles, clearances, blocks],
         axis=1,
     ).fillna(0)
@@ -276,6 +285,12 @@ ACTION_COLUMNS = [
     "non_penalty_goals", "shots", "key_passes", "assists", "progressive_passes",
     "dribbles_completed", "pressures", "interceptions", "tackles", "clearances", "blocks",
 ]
+
+# Counted per match alongside ACTION_COLUMNS but deliberately NOT part of it: display-only
+# season totals that must never enter clustering / PCA / radar / percentiles. `goals` here is
+# the real total incl. penalties (the human-readable "career goals" number and the lever for
+# spotting penalty-inflated tallies); ACTION_COLUMNS' `non_penalty_goals` is the modelling one.
+DISPLAY_COUNT_COLUMNS = ["goals"]
 
 
 def extract_goalkeeper_match_actions(events):
@@ -406,21 +421,24 @@ def build_player_per90_features(competition_id, season_id, min_minutes=900):
     season_minutes, actions_df = _build_season_minutes_and_actions(
         competition_id, season_id, extract_player_match_actions
     )
+    count_columns = ACTION_COLUMNS + DISPLAY_COUNT_COLUMNS
     season_actions = (
-        actions_df.groupby(["player", "team"])[ACTION_COLUMNS].sum().reset_index()
+        actions_df.groupby(["player", "team"])[count_columns].sum().reset_index()
     )
 
     features = season_minutes.merge(season_actions, on=["player", "team"], how="left")
-    features[ACTION_COLUMNS] = features[ACTION_COLUMNS].fillna(0)
+    features[count_columns] = features[count_columns].fillna(0)
 
     features = features[features["minutes_played"] >= min_minutes]
     features = features[features["position_group"] != "Goalkeeper"]
 
+    # Per-90 rates only for the modelling columns; DISPLAY_COUNT_COLUMNS stay raw season totals
+    # (a "goals incl. penalties" per-90 rate would be a stat nobody asked for and easy to misread).
     for col in ACTION_COLUMNS:
         features[f"{col}_p90"] = features[col] / features["minutes_played"] * 90
 
     keep_columns = ["player", "team", "position_group", "minutes_played"] + \
-        ACTION_COLUMNS + [f"{col}_p90" for col in ACTION_COLUMNS]
+        ACTION_COLUMNS + DISPLAY_COUNT_COLUMNS + [f"{col}_p90" for col in ACTION_COLUMNS]
     return features[keep_columns].reset_index(drop=True)
 
 
