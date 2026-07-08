@@ -92,10 +92,16 @@ rest are still open.
   integration decision (own K? own silhouette check? a 4th position-filter option?), now with an
   explicit ask to actually do it next session rather than leave it deferred indefinitely.
 - **Clickable "similar player" names** — jump from the "players like X" list into that player's own
-  page (and see *their* similar players — a recursive drill-down). Guilherme's message was cut off
-  after "but" — there was a caveat/condition that didn't get typed. Confirm what it was before
-  building this, since the un-stated condition could change the design (e.g. maybe only within the
-  same competition, or maybe excluding a "back" trail).
+  page (and see *their* similar players — a recursive drill-down). *(No caveat after all — the
+  earlier feedback message just got cut off mid-word; confirmed 2026-07-08 there was no unstated
+  condition. Straightforwardly wanted, unblocked.)*
+- **Penalty info on the player page** (raised 2026-07-08). The single-player "Player explorer" page
+  shows only `non_penalty_goals` (e.g. Zlatan reads "31") and nothing about penalties or total
+  goals — so the page looks like it has *no* penalty data even though the leaderboard total includes
+  them. The `goals` (incl. penalties) column already ships in `app_data/player_per90.parquet`, so
+  `penalties = goals - non_penalty_goals` is available with no data/rebuild work — this is a
+  presentation-only add (e.g. a total-goals figure and/or a penalties count/split on the signature
+  cards or the per-90 table). Small; the data's already there.
 
 ---
 

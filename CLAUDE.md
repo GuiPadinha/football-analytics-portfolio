@@ -15,10 +15,11 @@ all-players **leaderboard** (goals incl. penalties + xG where available) and ver
 in a real browser (Playwright-over-Edge screenshots — the app renders correctly, see PROGRESS.md).
 See [docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renumbered 0–9 program on
 2026-07-02.
-**Next (open backlog from 2026-07-06 feedback): wire goalkeepers into the app (needs a K/silhouette
-call), rework the low-value "Under the hood" methodology expander, and clickable "similar player"
-drill-down (BLOCKED — Guilherme's feedback message was cut off after "but"; need the missing caveat
-before building). A "player career" page/view is also under discussion (multi-season drill-down,
+**Next (open backlog): show penalty info on the single-player page (it currently shows only
+non-penalty goals — data already in `app_data`, presentation-only, small); clickable "similar
+player" drill-down (unblocked — no caveat after all); wire goalkeepers into the app (needs a
+K/silhouette call); rework the low-value "Under the hood" methodology expander. A "player career"
+page/view is also under discussion (multi-season drill-down,
 international tournament data — trophies/awards/MOTM data does not exist in any current source and
 would need new scraping infra); deploy Phase 8 to Streamlit Community Cloud remains the maintainer's
 own step.**
