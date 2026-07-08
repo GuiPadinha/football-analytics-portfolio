@@ -30,6 +30,7 @@ from src.metrics import write_metrics
 from src.models import (
     build_feature_matrix,
     build_player_xg_table,
+    evaluate_by_competition,
     evaluate_model,
     get_calibration_curve,
     get_feature_importance,
@@ -53,6 +54,7 @@ from src.visualisation import (
     plot_player_xg_ranking,
     plot_shot_map,
     plot_silhouette_curve,
+    plot_xg_generalisation_bar,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -96,6 +98,24 @@ def build_shot_tables(force=False, data_dir=DATA_DIR):
     return pd.read_parquet(train_path), pd.read_parquet(test_path)
 
 
+def build_generalisation_table(force=False, data_dir=DATA_DIR):
+    """Rebuild (or load) the combined held-out shot table for Phase 4c's per-tournament check.
+
+    Mirrors `build_shot_tables`'s cache-or-build pattern, one level up: a single combined
+    table across every dataset in `config.GENERALISATION_TEST_SETS`, later split back out
+    per-competition by `models.evaluate_by_competition` (via `metrics.write_metrics`).
+
+    Returns:
+        pandas.DataFrame: combined shots across `config.GENERALISATION_TEST_SETS`.
+    """
+    data_dir = Path(data_dir)
+    path = data_dir / "shots_generalisation.parquet"
+
+    if force or not path.exists():
+        build_training_dataset(config.GENERALISATION_TEST_SETS).to_parquet(path)
+    return pd.read_parquet(path)
+
+
 def build_similarity_table(force=False, data_dir=DATA_DIR):
     """Rebuild (or load) the per-90 similarity feature table for `config.SIMILARITY_SET`.
 
@@ -111,8 +131,16 @@ def build_similarity_table(force=False, data_dir=DATA_DIR):
     return pd.read_pickle(path)
 
 
-def run_xg_pipeline(shots_train, shots_test, outputs_dir=OUTPUTS_DIR):
+def run_xg_pipeline(shots_train, shots_test, generalisation_shots=None, outputs_dir=OUTPUTS_DIR):
     """Train the Module A models and regenerate every xG output PNG (notebook 02).
+
+    Args:
+        shots_train (pandas.DataFrame): engineered training shots (league).
+        shots_test (pandas.DataFrame): engineered held-out EURO 2024 shots.
+        generalisation_shots (pandas.DataFrame, optional): combined output of
+            `build_generalisation_table` (Phase 4c) — if given, also writes
+            `xg_generalisation_by_tournament.png`, the per-tournament ROC-AUC breakdown.
+        outputs_dir (Path): directory to write PNGs to.
 
     Returns:
         dict: the fitted logistic model's held-out ROC-AUC, as a cheap sanity check
@@ -133,6 +161,16 @@ def run_xg_pipeline(shots_train, shots_test, outputs_dir=OUTPUTS_DIR):
     ax.set_title("Calibration - league vs tournament")
     ax.figure.savefig(outputs_dir / "calibration_curve.png", dpi=150, bbox_inches="tight")
     plt.close(ax.figure)
+
+    if generalisation_shots is not None:
+        breakdown = evaluate_by_competition(model, generalisation_shots, config.GENERALISATION_TEST_SETS)
+        generalisation_df = pd.DataFrame(breakdown.values())
+        ax = plot_xg_generalisation_bar(generalisation_df)
+        ax.set_title("xG generalisation - held-out ROC-AUC by tournament (Phase 4c)")
+        ax.figure.savefig(
+            outputs_dir / "xg_generalisation_by_tournament.png", dpi=150, bbox_inches="tight"
+        )
+        plt.close(ax.figure)
 
     ax = plot_shot_map(
         shots_test, test_eval["predicted_xg"], title="Euro 2024 - all shots, sized by predicted xG"
@@ -228,24 +266,29 @@ def run_similarity_pipeline(per90_features, outputs_dir=OUTPUTS_DIR):
 
 def run(force=False, skip_plots=False, data_dir=DATA_DIR, outputs_dir=OUTPUTS_DIR):
     """Run the full headless rebuild: data -> models -> outputs -> manifest -> metrics.json."""
-    print("[1/5] Building xG shot tables...")
+    print("[1/6] Building xG shot tables...")
     shots_train, shots_test = build_shot_tables(force=force, data_dir=data_dir)
     print(f"      train: {len(shots_train)} shots, test: {len(shots_test)} shots")
 
-    print("[2/5] Building similarity per-90 table...")
+    print("[2/6] Building Phase 4c generalisation shot table...")
+    generalisation_shots = build_generalisation_table(force=force, data_dir=data_dir)
+    n_tournaments = len(config.GENERALISATION_TEST_SETS)
+    print(f"      {len(generalisation_shots)} shots across {n_tournaments} held-out tournaments")
+
+    print("[3/6] Building similarity per-90 table...")
     per90_features = build_similarity_table(force=force, data_dir=data_dir)
     print(f"      {len(per90_features)} players")
 
     if skip_plots:
-        print("[3/5] Skipped (--skip-plots)")
-        print("[4/5] Skipped (--skip-plots)")
+        print("[4/6] Skipped (--skip-plots)")
+        print("[5/6] Skipped (--skip-plots)")
     else:
-        print("[3/5] Training xG models + writing output PNGs...")
-        run_xg_pipeline(shots_train, shots_test, outputs_dir=outputs_dir)
-        print("[4/5] Clustering + writing similarity PNGs...")
+        print("[4/6] Training xG models + writing output PNGs...")
+        run_xg_pipeline(shots_train, shots_test, generalisation_shots=generalisation_shots, outputs_dir=outputs_dir)
+        print("[5/6] Clustering + writing similarity PNGs...")
         run_similarity_pipeline(per90_features, outputs_dir=outputs_dir)
 
-    print("[5/5] Writing data/manifest.json and metrics.json...")
+    print("[6/6] Writing data/manifest.json and metrics.json...")
     write_manifest()
     write_metrics()
     print("Done.")

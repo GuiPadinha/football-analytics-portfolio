@@ -9,7 +9,8 @@ it's the one piece of real logic `pipeline.py` adds; the rest is orchestration o
 
 import pandas as pd
 
-from src.pipeline import build_shot_tables, build_similarity_table
+from src import config
+from src.pipeline import build_generalisation_table, build_shot_tables, build_similarity_table
 
 
 def _fake_builder(calls, marker):
@@ -60,6 +61,29 @@ def test_build_shot_tables_force_ignores_existing_cache(tmp_path, monkeypatch):
     assert len(calls) == 2
     assert train["marker"].iloc[0] == "rebuilt"
     assert test["marker"].iloc[0] == "rebuilt"
+
+
+def test_build_generalisation_table_reuses_existing_cache(tmp_path, monkeypatch):
+    pd.DataFrame({"marker": ["cached"]}).to_parquet(tmp_path / "shots_generalisation.parquet")
+
+    calls = []
+    monkeypatch.setattr("src.pipeline.build_training_dataset", _fake_builder(calls, "rebuilt"))
+
+    shots = build_generalisation_table(force=False, data_dir=tmp_path)
+
+    assert calls == []
+    assert shots["marker"].iloc[0] == "cached"
+
+
+def test_build_generalisation_table_missing_cache_triggers_build(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr("src.pipeline.build_training_dataset", _fake_builder(calls, "rebuilt"))
+
+    shots = build_generalisation_table(force=False, data_dir=tmp_path)
+
+    assert len(calls) == 1
+    assert calls[0] == config.GENERALISATION_TEST_SETS
+    assert shots["marker"].iloc[0] == "rebuilt"
 
 
 def test_build_similarity_table_reuses_existing_cache(tmp_path, monkeypatch):

@@ -29,7 +29,7 @@ was folded in — the old Phase 3 (360 xG) and Phase 5 (product) moved *later* b
 | **1** | Foundation: `config.py`, per-match cache, penalty/shootout fix, pinned deps, robustness fixes, first tests | 1 | ✅ Done |
 | **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | 2 | ✅ Done |
 | **3** | Engineering & reproducibility spine: CI, `pipeline.py`/Makefile, `metrics.json` single-source, data manifest | *new* | ✅ Done |
-| **4** | Multi-competition ingestion + data expansion: config-driven pipeline, Module A generalization, Module B cross-league | 4 (reshaped) | 🟡 4a/4d done, 4b wired into app (2026-07-05), 4c pending |
+| **4** | Multi-competition ingestion + data expansion: config-driven pipeline, Module A generalization, Module B cross-league | 4 (reshaped) | ✅ Done (4a/4b/4d done, 4c done 2026-07-09) |
 | **5** | xG uncertainty + hierarchical/empirical-Bayes finishing model; header/foot interaction; calibration by stratum | *new* | ⬜ Not started |
 | **6** | Module B upgrades: Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features | part of old 6 | ⬜ Not started |
 | **7** | New model: 360-context xG + post-shot xG (xGOT) | **3** | ⬜ Not started |
@@ -160,6 +160,24 @@ structurally kills the doc drift — so every later phase writes into a clean, s
   2004/05-2020/21 data, international-tournament stats) — **trophies/individual awards/MOTM data
   does not exist in any current source** and would need new scraping infrastructure (see DATA.md's
   SofaScore/FlashScore candidate) — scoping this with Guilherme before building.
+- **2026-07-09** — **Phase 4c done → Phase 4 fully ✅ Done.** Scored the three Phase 4 tournament
+  pulls (Copa América 2024, FIFA World Cup 2022, Africa Cup of Nations 2023) that had sat cached-
+  but-unscored since 2026-07-04, plus EURO 2024, against the `TRAIN_SETS`-fitted logistic model —
+  **per tournament, not pooled** (a new `config.GENERALISATION_TEST_SETS`,
+  `models.evaluate_by_competition`, `metrics.py`'s `xg_generalisation` section,
+  `pipeline.build_generalisation_table`, and a new `visualisation.plot_xg_generalisation_bar` chart,
+  dataviz-skill-guided). `config.TEST_SETS` (`[EURO_2024]`) and the quoted `0.765` headline stay
+  untouched — this is an addition, not a replacement. **Finding:** EURO 2024's 0.765 is the *floor*
+  of the four, not a fluke — World Cup 2022 scores 0.808, AFCON 2023 0.807, Copa América 2024 0.763
+  (smallest sample, 751 shots) — so the honest generalisation claim strengthens from "holds up on
+  one tournament" to "holds up as well or better everywhere tested." Attempted Women's EURO 2025
+  too (never cached, unlike the other three) but hit a persistent GitHub raw-content rate limit
+  (`429`) across several retries — left genuinely unwired rather than forced; a future session's
+  retry resumes for free thanks to the per-match disk cache. +6 tests (66→72 green). Full
+  `python -m src.pipeline` run regenerated `metrics.json`/`data/manifest.json` against real (not
+  just synthetic-test) data. Notebook 02 left untouched, same precedent as Phase 4a/4b (multi-
+  dataset checks live in `src`/`metrics.json` only, notebooks stay the fixed single-tournament
+  teaching example). **Next: Phase 5 (xG uncertainty + hierarchical finishing model).**
 
 ---
 

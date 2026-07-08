@@ -35,6 +35,7 @@ from src.models import (
     build_feature_matrix,
     build_logistic_pipeline,
     cross_validate_model,
+    evaluate_by_competition,
     evaluate_model,
     train_baseline_classifier,
     train_logistic_regression,
@@ -129,6 +130,30 @@ def compute_xg_metrics(shots_train, shots_test, cv=5):
     }
 
 
+def compute_generalisation_metrics(shots_train, generalisation_shots, datasets):
+    """Score the Module A logistic model on each held-out tournament separately (Phase 4c).
+
+    Fits its own model from `shots_train` (same recipe as `compute_xg_metrics`, so this
+    stays a pure function of its inputs rather than depending on another function's fitted
+    model) and evaluates it per-competition via `models.evaluate_by_competition`. See
+    `config.GENERALISATION_TEST_SETS` for why these are reported separately rather than
+    pooled into one aggregate number.
+
+    Args:
+        shots_train (pandas.DataFrame): engineered training shots (league).
+        generalisation_shots (pandas.DataFrame): combined output of
+            `features.build_training_dataset(datasets)` — one or more held-out
+            tournaments' shots, must carry a `competition_id` column.
+        datasets (list[config.Dataset]): datasets to report on.
+
+    Returns:
+        dict[str, dict]: `models.evaluate_by_competition`'s per-competition breakdown.
+    """
+    X_train, y_train = build_feature_matrix(shots_train)
+    model = train_logistic_regression(X_train, y_train)
+    return evaluate_by_competition(model, generalisation_shots, datasets)
+
+
 def compute_similarity_metrics(per90_features, groups=POSITION_GROUP_ORDER, k_range=SILHOUETTE_K_RANGE):
     """Compute the Module B per-group silhouette peaks from a per-90 feature table.
 
@@ -159,10 +184,18 @@ def compute_similarity_metrics(per90_features, groups=POSITION_GROUP_ORDER, k_ra
     return out
 
 
-def build_metrics(shots_train, shots_test, per90_features, similarity_set=None):
-    """Assemble the full metrics dict from in-memory frames (pure, no IO)."""
+def build_metrics(
+    shots_train, shots_test, per90_features, similarity_set=None,
+    generalisation_shots=None, generalisation_datasets=None,
+):
+    """Assemble the full metrics dict from in-memory frames (pure, no IO).
+
+    `generalisation_shots`/`generalisation_datasets` are optional (Phase 4c): omit them
+    (the default) to get exactly the pre-4c dict shape, or pass a combined held-out shot
+    table plus the datasets it covers to add the per-tournament `xg_generalisation` section.
+    """
     similarity_set = similarity_set if similarity_set is not None else config.SIMILARITY_SET
-    return {
+    metrics = {
         "note": "Headline metrics - single source. Regenerate with `python -m src.metrics`.",
         "xg": compute_xg_metrics(shots_train, shots_test),
         "similarity": {
@@ -174,6 +207,15 @@ def build_metrics(shots_train, shots_test, per90_features, similarity_set=None):
             "groups": compute_similarity_metrics(per90_features),
         },
     }
+    if generalisation_shots is not None:
+        generalisation_datasets = (
+            generalisation_datasets if generalisation_datasets is not None
+            else config.GENERALISATION_TEST_SETS
+        )
+        metrics["xg_generalisation"] = compute_generalisation_metrics(
+            shots_train, generalisation_shots, generalisation_datasets
+        )
+    return metrics
 
 
 def write_metrics(path=METRICS_PATH, data_dir=DATA_DIR, similarity_set=None):
@@ -183,6 +225,10 @@ def write_metrics(path=METRICS_PATH, data_dir=DATA_DIR, similarity_set=None):
     reads the cached event data for the similarity competition — the slow part), so this needs
     ``data/`` present. Deterministic and timestamp-free like the manifest: an unchanged model
     regenerates byte-for-byte, so only a real metric move produces a diff.
+
+    The Phase 4c generalisation section is included only if ``data/shots_generalisation.parquet``
+    already exists (built by `pipeline.build_generalisation_table`) — its absence doesn't fail
+    the build, so this stays backward compatible with a `data/` that predates Phase 4c.
     """
     similarity_set = similarity_set if similarity_set is not None else config.SIMILARITY_SET
     data_dir = Path(data_dir)
@@ -193,7 +239,15 @@ def write_metrics(path=METRICS_PATH, data_dir=DATA_DIR, similarity_set=None):
         similarity_set.comp_id, similarity_set.season_id, min_minutes=SIMILARITY_MIN_MINUTES
     )
 
-    metrics = build_metrics(shots_train, shots_test, per90_features, similarity_set=similarity_set)
+    generalisation_path = data_dir / "shots_generalisation.parquet"
+    generalisation_shots = (
+        pd.read_parquet(generalisation_path) if generalisation_path.exists() else None
+    )
+
+    metrics = build_metrics(
+        shots_train, shots_test, per90_features, similarity_set=similarity_set,
+        generalisation_shots=generalisation_shots,
+    )
 
     path = Path(path)
     path.write_text(json.dumps(metrics, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -211,3 +265,10 @@ if __name__ == "__main__":
         f"ladder {xg['baseline_ladder_test_roc_auc']}"
     )
     print(f"  similarity groups: {written['similarity']['groups']}")
+    if "xg_generalisation" in written:
+        print("  xg generalisation (Phase 4c):")
+        for row in written["xg_generalisation"].values():
+            print(
+                f"    {row['label']}: ROC-AUC {row['roc_auc']} "
+                f"(n={row['n_shots']}, goal rate {row['goal_rate']})"
+            )

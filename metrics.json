@@ -44,5 +44,35 @@
     "n_test_shots": 1316,
     "n_train_shots": 10824,
     "train_goal_rate": 0.101
+  },
+  "xg_generalisation": {
+    "1267": {
+      "brier_score": 0.071,
+      "goal_rate": 0.097,
+      "label": "Africa Cup of Nations 2023",
+      "n_shots": 1184,
+      "roc_auc": 0.807
+    },
+    "223": {
+      "brier_score": 0.075,
+      "goal_rate": 0.092,
+      "label": "Copa Am\u00e9rica 2024",
+      "n_shots": 751,
+      "roc_auc": 0.763
+    },
+    "43": {
+      "brier_score": 0.083,
+      "goal_rate": 0.116,
+      "label": "FIFA World Cup 2022",
+      "n_shots": 1453,
+      "roc_auc": 0.808
+    },
+    "55": {
+      "brier_score": 0.065,
+      "goal_rate": 0.081,
+      "label": "UEFA EURO 2024",
+      "n_shots": 1316,
+      "roc_auc": 0.765
+    }
   }
 }

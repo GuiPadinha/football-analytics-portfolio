@@ -11,6 +11,7 @@ from src.models import (
     build_logistic_pipeline,
     build_player_xg_table,
     cross_validate_model,
+    evaluate_by_competition,
     get_coefficients,
     train_baseline_classifier,
     train_logistic_regression,
@@ -176,6 +177,36 @@ def test_logistic_regression_is_deterministic_given_fixed_data():
     coefficients_1 = get_coefficients(train_logistic_regression(X, y))
     coefficients_2 = get_coefficients(train_logistic_regression(X, y))
     pd.testing.assert_series_equal(coefficients_1, coefficients_2)
+
+
+def test_evaluate_by_competition_scores_each_dataset_separately():
+    # Phase 4c: a combined held-out shot table spanning two competitions must be scored
+    # per-competition, not pooled into one aggregate number.
+    from types import SimpleNamespace
+
+    X, y = build_feature_matrix(_synthetic_shots(n=200, seed=7))
+    model = train_logistic_regression(X, y)
+
+    shots_a = _synthetic_shots(n=40, seed=8)
+    shots_a["competition_id"] = 111
+    shots_b = _synthetic_shots(n=25, seed=9)
+    shots_b["competition_id"] = 222
+    combined = pd.concat([shots_a, shots_b], ignore_index=True)
+
+    datasets = [
+        SimpleNamespace(comp_id=111, label="Tournament A"),
+        SimpleNamespace(comp_id=222, label="Tournament B"),
+        SimpleNamespace(comp_id=333, label="Not present"),
+    ]
+    result = evaluate_by_competition(model, combined, datasets)
+
+    assert set(result) == {"111", "222"}  # dataset with no matching rows is skipped
+    assert result["111"]["label"] == "Tournament A"
+    assert result["111"]["n_shots"] == 40
+    assert result["222"]["n_shots"] == 25
+    for row in result.values():
+        assert 0.0 <= row["roc_auc"] <= 1.0
+        assert 0.0 <= row["goal_rate"] <= 1.0
 
 
 def test_logistic_accepts_numeric_feature_subset():

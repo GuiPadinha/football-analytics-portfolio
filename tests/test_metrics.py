@@ -22,6 +22,7 @@ import pytest
 from src.metrics import (
     METRICS_PATH,
     build_metrics,
+    compute_generalisation_metrics,
     compute_similarity_metrics,
     compute_xg_metrics,
 )
@@ -80,6 +81,56 @@ def test_compute_xg_metrics_structure_and_invariants():
     assert m["cv_in_distribution"]["roc_auc_std"] >= 0.0
     for score in m["logistic"].values():
         assert 0.0 <= score <= 1.0
+
+
+def test_compute_generalisation_metrics_scores_each_tournament_separately():
+    from types import SimpleNamespace
+
+    train = _synth_shots(200, seed=10)
+    tournament_a = _synth_shots(60, seed=11)
+    tournament_a["competition_id"] = 55
+    tournament_b = _synth_shots(30, seed=12)
+    tournament_b["competition_id"] = 223
+    generalisation_shots = pd.concat([tournament_a, tournament_b], ignore_index=True)
+
+    datasets = [
+        SimpleNamespace(comp_id=55, label="UEFA EURO 2024"),
+        SimpleNamespace(comp_id=223, label="Copa América 2024"),
+    ]
+    result = compute_generalisation_metrics(train, generalisation_shots, datasets)
+
+    assert set(result) == {"55", "223"}
+    assert result["55"]["n_shots"] == 60
+    assert result["223"]["n_shots"] == 30
+    for row in result.values():
+        assert 0.0 <= row["roc_auc"] <= 1.0
+
+
+def test_build_metrics_omits_generalisation_section_by_default():
+    # Backward compatible: existing callers that don't pass generalisation data get exactly
+    # the pre-Phase-4c dict shape.
+    train, test = _synth_shots(200, seed=4), _synth_shots(80, seed=5)
+    per90 = _synth_per90(["Defender", "Midfielder", "Forward"], per_group=12, seed=6)
+    metrics = build_metrics(train, test, per90)
+    assert "xg_generalisation" not in metrics
+
+
+def test_build_metrics_includes_generalisation_section_when_provided():
+    from types import SimpleNamespace
+
+    train, test = _synth_shots(200, seed=4), _synth_shots(80, seed=5)
+    per90 = _synth_per90(["Defender", "Midfielder", "Forward"], per_group=12, seed=6)
+    generalisation_shots = _synth_shots(50, seed=13)
+    generalisation_shots["competition_id"] = 55
+    datasets = [SimpleNamespace(comp_id=55, label="UEFA EURO 2024")]
+
+    metrics = build_metrics(
+        train, test, per90,
+        generalisation_shots=generalisation_shots, generalisation_datasets=datasets,
+    )
+
+    assert json.loads(json.dumps(metrics)) == metrics
+    assert metrics["xg_generalisation"]["55"]["label"] == "UEFA EURO 2024"
 
 
 def test_compute_similarity_metrics_per_group():

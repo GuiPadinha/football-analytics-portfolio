@@ -59,7 +59,7 @@ of Phase 4's ingestion pipeline and 3b (`metrics.json`) must exist before the da
 - **3e — Data manifest:** `data/manifest.json` pinning comp/season/match IDs + row counts + content
   hash per dataset; catches upstream StatsBomb changes; feeds Phase 4.
 
-## Phase 4 — Multi-competition ingestion + data expansion  🟡 Data pull in progress
+## Phase 4 — Multi-competition ingestion + data expansion  ✅ Done
 
 The flagship overlap item: engineering-at-scale in service of ML. Turns Module A's "generalises
 from n=2 contexts" into a defensible claim and fixes Module B's single-season thinness.
@@ -81,8 +81,17 @@ from n=2 contexts" into a defensible claim and fixes Module B's single-season th
   top-flight season at all, so "wider" (6 competitions) rather than "newer" is what Phase 4b
   actually delivers for the men's leagues; the women's leagues (2023/24) are the newest
   full-season data anywhere in this project.
-- **4c — Module A generalisation:** held-out test candidates pulled (Copa América 2024, FIFA World
-  Cup 2022, Africa Cup of Nations 2023, Women's EURO 2025) — not yet wired into `TEST_SETS`.
+- **4c — Module A generalisation** (done 2026-07-09): the three cached-but-unscored Phase 4
+  tournaments (Copa América 2024, FIFA World Cup 2022, Africa Cup of Nations 2023) are now scored
+  against the `TRAIN_SETS`-fitted logistic model via a new `config.GENERALISATION_TEST_SETS` +
+  `models.evaluate_by_competition` — **per tournament, not pooled into `TEST_SETS`**, so the
+  headline `0.765` (EURO 2024) stays the one number every doc quotes while `metrics.json`'s new
+  `xg_generalisation` section and `outputs/xg_generalisation_by_tournament.png` carry the wider
+  picture. Result: EURO 2024 is the *floor* of the four (0.765), not a fluke — World Cup 2022 0.808,
+  AFCON 2023 0.807, Copa América 2024 0.763 (751 shots, smallest sample). Women's EURO 2025 is still
+  **not wired** — never cached, and a pull attempt hit a persistent GitHub rate limit (`429`) this
+  session rather than the usual transient one; see [ML_TOOLING.md](ML_TOOLING.md). Full detail:
+  [PROGRESS.md](PROGRESS.md)'s 2026-07-09 entry.
 - **4d — Availability friction:** resolved for now — full-season non-La-Liga leagues (Serie A,
   Ligue 1, both women's leagues) were more available than assumed once verified by match/team
   count instead of competition name. Understat.com (free, Big-5-league shot coordinates,

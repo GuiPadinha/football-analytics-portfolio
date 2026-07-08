@@ -6,6 +6,59 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-07-09 — Phase 4c done: Module A generalisation across 4 held-out tournaments (Phase 4 now fully ✅)
+
+Picked up the model-track backlog (not the app UX one): Phase 4c was the one remaining open item
+in Phase 4 — Copa América 2024, FIFA World Cup 2022, and Africa Cup of Nations 2023 were pulled
+back on 2026-07-04 but never scored against the trained xG model, leaving EURO 2024 as the only
+held-out generalisation evidence anywhere in the docs.
+
+**Design call: report per-tournament, don't pool.** `config.TEST_SETS` (still `[EURO_2024]`) and
+the headline `0.765` test ROC-AUC every doc quotes are untouched on purpose — folding four
+structurally different tournaments (a settled European field, a smaller CONMEBOL sample, a
+different tactical culture, etc.) into one aggregate number would answer a coarser question than
+the honest one Phase 4c actually asks: does the model generalise *evenly*? New
+`config.GENERALISATION_TEST_SETS` (EURO 2024 + the three Phase 4 tournaments) is scored
+separately per competition by a new `models.evaluate_by_competition` (fits once on `TRAIN_SETS`,
+then slices the combined held-out table by `competition_id`), assembled into
+`metrics.json`'s new `xg_generalisation` section by `metrics.compute_generalisation_metrics`, and
+plotted by a new `visualisation.plot_xg_generalisation_bar` (invoked the dataviz skill first: a
+magnitude comparison across a handful of named categories is a single-hue bar chart, not a
+categorical palette — direct ROC-AUC labels at each tip, a dashed no-skill/0.5 reference line,
+sample size folded into the label itself since a small held-out sample is exactly the caveat that
+shouldn't be missable). `pipeline.py` gained a `build_generalisation_table` step (same
+cache-or-rebuild pattern as the existing shot tables) and now writes
+`outputs/xg_generalisation_by_tournament.png`; `manifest.py`'s default dataset list now includes
+the three new tournaments too (deduped against `TEST_SETS`, since `GENERALISATION_TEST_SETS`
+overlaps it on `EURO_2024`).
+
+**The actual finding is a good one, not just a wiring exercise:** EURO 2024 (0.765) turns out to be
+the *floor*, not a fluke — the same model scores 0.808 on FIFA World Cup 2022, 0.807 on Africa Cup
+of Nations 2023, and 0.763 on Copa América 2024 (751 shots, the smallest sample of the four, flagged
+as such). The honest story sharpens from "the model holds up reasonably on one tournament" to "the
+model holds up as well or better everywhere tested" — a stronger generalisation claim than the
+single EURO 2024 number alone supported, and worth surfacing over README's/CLAUDE.md's headline
+number rather than replacing it.
+
+**Women's EURO 2025 stays unwired — a real rate limit, not a data problem.** Attempted the pull
+(never previously cached, unlike the other three) and hit persistent `429 Too Many Requests` from
+`raw.githubusercontent.com` on the first or second match across several retries spaced minutes
+apart — this didn't clear the way the one-off `IncompleteRead` from the original Phase 4 pull did.
+Left genuinely unwired rather than forcing it or guessing at a fix; logged in
+[ML_TOOLING.md](ML_TOOLING.md). The resumable per-match cache means a later session's retry picks
+up wherever this one stopped, at no extra cost.
+
+Notebook 02 is deliberately untouched — same precedent as Phase 4a/4b (the notebook stays the
+fixed single-competition/single-tournament teaching example; the wider multi-dataset checks live in
+`src`/`metrics.json`/`pipeline.py` only). +6 tests (`evaluate_by_competition`,
+`compute_generalisation_metrics`, `build_metrics`'s new optional section, `build_generalisation_table`'s
+cache logic) — **72 green** (66 → 72). Full `python -m src.pipeline` run regenerated `metrics.json`
+and `data/manifest.json` against real data (not synthetic-only tests) — every dataset now shows
+`n_cached_locally == n_matches`, confirming no partial/rate-limited state leaked into what's
+actually wired in.
+
+---
+
 ## 2026-07-08 — real-browser verification of both app views; "black screen" is environment, not code
 
 Guilherme reported running `streamlit run app.py` locally and seeing "nothing but a black screen,"
@@ -72,93 +125,6 @@ custom matplotlib), worth a glance next session before deploy.
 Tests **66 green** (65 + the new penalty-split test). `app_data/player_per90.parquet` rebuilt
 (1511 players, unchanged count — one new column). Backlog items #2 (xG in a broad view) folded in
 here; #3 methodology expander, #4 goalkeepers, #5 clickable drill-down still open.
-
----
-
-## 2026-07-06 (cont.) — got real browser eyes on the app; new feedback logged as backlog, not built
-
-Guilherme asked whether "Chrome headless + screenshots" (a technique a friend uses) makes sense
-for Claude Code, since he suspected it might be terminal-only by design.
-
-**It works, and it's now a documented capability.** Not a hard limitation — terminal access plus
-an image-capable file-read tool is enough once something puts a real screenshot on disk. Getting
-there took two wrong turns, both logged in [ML_TOOLING.md](ML_TOOLING.md): plain
-`msedge --headless --screenshot` only ever captured Streamlit's loading skeleton (it waits for
-the page `load` event, but Streamlit's content arrives after that, over a WebSocket); Playwright
-fixed the waiting problem but its own browser download failed on this machine (Avast HTTPS
-interception, the same class of issue as the earlier `certifi` gotcha) — worked around by pointing
-Playwright at the already-installed Edge (`channel="msedge"`) instead of downloading one.
-
-**Used it to actually verify the previous round's fixes** — confirmed via real screenshots (not
-just re-reading the diff) that the radar chart's dark background genuinely renders now, signature
-stats show whole numbers, and the "players like X" bar chart's colour ramp is correct (checked
-actual pixel RGB values: closest match = full accent orange, fading toward the background for
-farther matches).
-
-**Found one real inaccuracy while poking at it further:** the app's search box does not rerun on
-every keystroke the way earlier session comments/docs claimed — `st.text_input` needs Enter or a
-blur to commit (it shows its own "Press Enter to apply" hint). Corrected the claim in `app.py`,
-`docs/PRODUCT_SPEC.md`, and the placeholder text; left already-dated PROGRESS_ARCHIVE.md entries
-alone (append-only history records what was believed at the time, same policy as the old 0.798
-xG figure). The underlying UX (type a name, hit Enter, get filtered results) is unaffected — only
-the "how it works" description was wrong, not the behaviour itself.
-
-**New feedback captured as backlog, deliberately not built tonight** (Guilherme's own call —
-"save all that for next session"): a sortable all-players leaderboard with goals *including*
-penalties (so outliers like Sergio Ramos's penalty count show up) and visible xG where available;
-the "Under the hood" methodology expander flagged as low-value/under review pending more charts;
-goalkeepers still not wired into the app (feature engineering has existed since 2026-07-05); and
-clickable "similar player" names for recursive drill-down (his message was cut off after "but" —
-there was an unstated caveat, needs confirming before building). Full detail in
-[PRODUCT_SPEC.md](PRODUCT_SPEC.md)'s new "Backlog from 2026-07-06 feedback" section.
-
-Tests **65 green, unchanged** — only doc/comment accuracy fixes this pass, no behaviour change.
-
----
-
-## 2026-07-06 — real screenshots surfaced a real bug: radar chart stayed white; whole-number totals added
-
-Guilherme finally saw the round-2 theme pass running (screenshots) and the dark theme was broken
-in one specific place — the radar chart — plus two functional asks: raw counting stats (not
-per-90 decimals) as the headline numbers, and more visually engaging charts.
-
-**Real bug, root-caused not patched around:** mplsoccer's `Radar.setup_axis()` defaults
-`facecolor='#FFFFFF'` and calls `ax.set_facecolor()` itself *after* the axes already had the
-correct dark background from rcParams — silently overwriting it. Every other chart (silhouette
-curve, etc.) was already fine, which is what made this one white chart suspicious rather than "the
-whole theme is broken." Fixed by threading `circle_facecolor` through to `setup_axis()` too.
-Verified by actually rendering a synthetic radar and reading the saved PNG's pixel RGB values
-(`#12181a` at the axes region) rather than re-reading the code and assuming.
-
-**Whole-number totals:** `build_player_per90_features` now keeps raw `ACTION_COLUMNS` season
-totals alongside the `_p90` rates (both in the same table — no separate rebuild path). Signature
-stat cards now lead with the season total (e.g. "29" goals) with the per-90 rate + percentile
-moved into the hover tooltip. Sanity-checked against reality: Cristiano Ronaldo's 2015/16 La Liga
-non-penalty-goal total came out to 29 (real total was 35 incl. penalties) — checks out.
-
-**A second real bug found while touching this table:** the "All per-90 stats" table sorted on a
-pre-formatted percentile *string* ("98th"/"9th"), which sorts lexically wrong for single- vs
-double-digit values. Fixed by sorting on the numeric percentile before formatting for display.
-
-**More visual interest, per the dataviz skill:** invoked it before touching any chart/stat-tile
-code. "Players like X" was a plain dataframe — converted to a horizontal bar chart
-(`plot_similar_players_bar`, new in `visualisation.py`): one hue (the app's orange accent) with an
-opacity ramp for closeness, direct distance labels at each bar's tip, recessive gridlines — the
-skill's "compare magnitude → bar, sequential" form, not a categorical palette, since each row is
-one entity's distance, not several parallel series. Kept the old dataframe as a "Table view"
-expander underneath (the skill's "every chart needs a table-view twin" rule).
-
-Tests **65 green, unchanged** (no new src logic needing a test — `plot_similar_players_bar`
-follows the existing convention of not unit-testing plotting functions; `build_player_per90_features`'s
-new raw columns are exercised by the full suite passing unchanged). `app_data/player_per90.parquet`
-rebuilt (1,511 players, unchanged counts — just wider columns) and re-verified via the `AppTest`
-headless smoke script.
-
-**Answered, not yet actioned:** whether 2015/16 across the four men's leagues is "for
-normalisation" — no, it's StatsBomb's actual data ceiling (that's the *only* full season available
-for each), not a deliberate choice; and yes, real data is still on the table — the 16 Barcelona-only
-La Liga seasons (2004/05–2020/21) are pulled (events) but not wired in (no lineups yet), which is
-the direct lever for multi-season "career" depth already under discussion.
 
 ---
 

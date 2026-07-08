@@ -342,6 +342,47 @@ def get_feature_importance(model, feature_names):
     return pd.Series(model.feature_importances_, index=feature_names).sort_values(ascending=False)
 
 
+def evaluate_by_competition(model, shots, datasets):
+    """Score a fitted model separately on each competition present in a shot table.
+
+    Phase 4c's generalisation check: pooling several held-out tournaments into one
+    aggregate ROC-AUC would hide whether the model generalises evenly or does
+    noticeably better/worse in a specific context (tournament size, tactical culture,
+    women's vs. men's football). Scoring each `competition_id` slice on its own keeps
+    that comparison honest and visible instead of averaging it away.
+
+    Args:
+        model: fitted classifier exposing `predict_proba` (e.g. from
+            `train_logistic_regression`), trained on a *different* dataset than `shots`.
+        shots (pandas.DataFrame): combined shot table (e.g. from
+            `features.build_training_dataset`) covering one or more competitions, must
+            carry a `competition_id` column.
+        datasets (list[config.Dataset]): datasets to report on; only those whose
+            `comp_id` actually appears in `shots` produce a row (skips silently
+            otherwise, e.g. a dataset not yet cached/wired).
+
+    Returns:
+        dict[str, dict]: keyed by `str(dataset.comp_id)`, each value holding `label`,
+            `n_shots`, `goal_rate`, `roc_auc`, and `brier_score` for that competition's
+            shots scored by `model`.
+    """
+    out = {}
+    for dataset in datasets:
+        subset = shots[shots["competition_id"] == dataset.comp_id]
+        if subset.empty:
+            continue
+        X, y = build_feature_matrix(subset)
+        eval_ = evaluate_model(model, X, y)
+        out[str(dataset.comp_id)] = {
+            "label": dataset.label,
+            "n_shots": int(len(y)),
+            "goal_rate": round(float(y.mean()), 3),
+            "roc_auc": round(float(eval_["roc_auc"]), 3),
+            "brier_score": round(float(eval_["brier_score"]), 3),
+        }
+    return out
+
+
 def build_player_xg_table(shots, predicted_xg):
     """Aggregate shot-level predictions into a per-player xG ranking.
 

@@ -6,13 +6,14 @@ Project source of truth. Read this first every session, then load linked docs on
 
 ## Current Status
 
-**Active initiative:** Framework Hardening & Expansion — Phases 0–3 complete; Phase 4a/4d done,
-4b wired into the app (2026-07-05, see below), 4c still pending; Phase 8 minimal Streamlit build
-shipped 2026-07-04 (ahead of strict phase order, for an upcoming demo), then extended 2026-07-05
-with real-time search, a dark theme, and a widened multi-competition player pool; a 2026-07-06 pass
-fixed a real radar dark-theme bug + added whole-number totals; a 2026-07-08 pass shipped the
-all-players **leaderboard** (goals incl. penalties + xG where available) and verified both app views
-in a real browser (Playwright-over-Edge screenshots — the app renders correctly, see PROGRESS.md).
+**Active initiative:** Framework Hardening & Expansion — Phases 0–4 complete (Phase 4c closed
+2026-07-09: Module A scored separately against three more held-out tournaments — see Key numbers
+below); Phase 8 minimal Streamlit build shipped 2026-07-04 (ahead of strict phase order, for an
+upcoming demo), then extended 2026-07-05 with real-time search, a dark theme, and a widened
+multi-competition player pool; a 2026-07-06 pass fixed a real radar dark-theme bug + added
+whole-number totals; a 2026-07-08 pass shipped the all-players **leaderboard** (goals incl.
+penalties + xG where available) and verified both app views in a real browser (Playwright-over-Edge
+screenshots — the app renders correctly, see PROGRESS.md).
 See [docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renumbered 0–9 program on
 2026-07-02.
 **Next (open backlog): show penalty info on the single-player page (it currently shows only
@@ -26,7 +27,7 @@ own step.**
 (360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
 Run the app locally: `python -m src.app_data` (once, to build `app_data/`) then `streamlit run app.py`.
 
-Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped). Similarity: K=4 per position group, silhouette ~0.24 (soft continuum) on the notebook/pipeline's single-competition (PL 2015/16) scope — the app's own player pool is wider (6 competitions, see MODULES.md). 66 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
+Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped) — Phase 4c (2026-07-09) shows this is the *floor* across four held-out tournaments, not a fluke: FIFA World Cup 2022 0.808, Africa Cup of Nations 2023 0.807, Copa América 2024 0.763 (see `metrics.json`'s `xg_generalisation`, [docs/MODULES.md](docs/MODULES.md)). Similarity: K=4 per position group, silhouette ~0.24 (soft continuum) on the notebook/pipeline's single-competition (PL 2015/16) scope — the app's own player pool is wider (6 competitions, see MODULES.md). 72 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
 
 → Phase tracker: [docs/INITIATIVE.md](docs/INITIATIVE.md) | Session log: [docs/PROGRESS.md](docs/PROGRESS.md)
 

@@ -93,6 +93,16 @@ Redirecting a background command's stdout to a custom log file (`> pull.log 2>&1
 
 A multi-season/multi-competition bulk pull (Phase 4: 24 datasets, ~2,400 matches) hit one `IncompleteRead` connection error mid-download (Serie A 2015/16) — StatsBomb's open-data hosting occasionally drops a long-running connection with no pattern to it, not something our code did wrong. Fix isn't retry logic inside the pull itself; it's making the *orchestrating* script resumable: skip any dataset whose cache file already exists on disk, so a transient failure only costs re-running the whole script (one retry pass picks up exactly the datasets that didn't finish), not manual bookkeeping of what succeeded. See the Phase 4 pull script's file-exists check.
 
+**Not every pull failure is transient — some are a real rate limit.** Attempting to pull Women's
+EURO 2025 (Phase 4c, 2026-07-09) hit `429 Too Many Requests` from
+`raw.githubusercontent.com` on the very first or second match every time, across several retries
+spaced minutes apart over one session — unlike the single one-off `IncompleteRead` above, this
+didn't clear with the existing "just retry, it's resumable" playbook. Likely a per-IP anonymous
+rate limit on GitHub's raw-content host, not StatsBomb's data or our code. The resumable-cache
+design still means a later retry (a different session, or after a longer cooldown) picks up
+exactly where it left off at no extra cost — this just wasn't a same-session fix. Left genuinely
+unwired rather than forcing it; see `INITIATIVE.md`'s Phase 4c log entry.
+
 ---
 
 ## Streamlit's first-run prompt blocks silently if nothing answers it

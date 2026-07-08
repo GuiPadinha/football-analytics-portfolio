@@ -285,6 +285,52 @@ def plot_similar_players_bar(similar, accent_color="steelblue", grid_color="#ddd
     return ax
 
 
+def plot_xg_generalisation_bar(generalisation, accent_color="darkorange", grid_color="#dddddd", ax=None):
+    """Horizontal bar chart of xG ROC-AUC per held-out tournament (Phase 4c).
+
+    One metric (ROC-AUC) compared across a handful of named tournaments is a magnitude
+    comparison, not a several-parallel-series case — so this is one hue, not a
+    categorical palette (see `plot_similar_players_bar` for the same reasoning applied
+    to a different metric). Sample size rides along in the label itself
+    (`"<Tournament> (n=<shots>)"`) rather than a second encoded channel, since a small
+    held-out sample is exactly the kind of caveat that should be impossible to miss.
+
+    Args:
+        generalisation (pandas.DataFrame): must contain `label`, `roc_auc`, `n_shots`
+            columns — e.g. built from `metrics.compute_generalisation_metrics`'s dict via
+            `pandas.DataFrame(d.values())`. Any row order is accepted; sorted internally.
+        accent_color (str): the single bar hue; matches `plot_similar_players_bar`'s
+            override pattern so the app's theme pass can recolour this too.
+        grid_color (str): vertical gridline colour, one step off the surface.
+        ax (matplotlib.axes.Axes, optional): existing axes to draw on.
+
+    Returns:
+        matplotlib.axes.Axes: the axes the bars were drawn on.
+    """
+    if ax is None:
+        _, ax = plt.subplots(figsize=(7, 0.6 * len(generalisation) + 1.5))
+
+    # Ascending so the best-generalising tournament ends up at the top (barh draws
+    # bottom-up) — the reader's eye lands on the strongest result first.
+    ordered = generalisation.sort_values("roc_auc")
+    labels = [f"{row.label} (n={row.n_shots})" for row in ordered.itertuples()]
+
+    ax.barh(labels, ordered["roc_auc"], color=accent_color)
+    ax.axvline(0.5, color="grey", linestyle="--", linewidth=1, label="No-skill (0.5)")
+
+    for y, roc_auc in enumerate(ordered["roc_auc"]):
+        ax.text(roc_auc + 0.01, y, f"{roc_auc:.3f}", va="center", fontsize=9)
+
+    ax.set_xlabel("Held-out ROC-AUC")
+    ax.set_xlim(0.4, 1.0)
+    ax.grid(axis="x", color=grid_color, linewidth=0.8)
+    ax.set_axisbelow(True)
+    for spine in ("top", "right"):
+        ax.spines[spine].set_visible(False)
+    ax.legend(loc="lower right", fontsize=9)
+    return ax
+
+
 def plot_calibration_curve(mean_predicted, observed_freq, ax=None, label=None):
     """Plot a model's calibration curve against the perfect-calibration diagonal.
 

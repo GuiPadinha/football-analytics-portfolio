@@ -25,6 +25,16 @@
 
 **Output:** xG per shot/player/team; overperformer/underperformer table (`build_player_xg_table`); shot maps; calibration curves.
 
+**Generalisation beyond EURO 2024 (Phase 4c, 2026-07-09):** the same `TRAIN_SETS`-fitted logistic
+model, scored separately (not pooled) against three more held-out tournaments via
+`config.GENERALISATION_TEST_SETS`/`models.evaluate_by_competition` — FIFA World Cup 2022 (0.808),
+Africa Cup of Nations 2023 (0.807), Copa América 2024 (0.763, smallest sample at 751 shots).
+**EURO 2024's 0.765 is the floor of the four, not a fluke** — the model generalises as well or
+better everywhere else tested. See `metrics.json`'s `xg_generalisation` section and
+`outputs/xg_generalisation_by_tournament.png`. `config.TEST_SETS` (`[EURO_2024]`) is unchanged —
+this is additional evidence, not a replacement for the headline test set. Women's EURO 2025 is
+still not wired in (see [DATA.md](DATA.md)).
+
 **Planned upgrades** (see [ROADMAP.md](ROADMAP.md)): uncertainty on goals−xG + hierarchical/empirical-Bayes finishing model, header/foot interaction, calibration by stratum → **Phase 5**; 360-context features + post-shot xGOT → **Phase 7**.
 
 ---

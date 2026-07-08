@@ -108,6 +108,16 @@ PHASE_4_EVENTS_AND_LINEUPS = [FRAUEN_BUNDESLIGA_2023_24, FA_WSL_2023_24]
 TRAIN_SETS = [LEVERKUSEN_2023_24, PL_2015_16]
 TEST_SETS = [EURO_2024]
 
+# Phase 4c — additional held-out tournaments for Module A generalisation, evaluated *separately*
+# per tournament rather than pooled into TEST_SETS. Pooling would answer a coarser question
+# ("what's the aggregate ROC-AUC across four very different tournaments?") than the honest one
+# Phase 4c actually asks: does the model generalise evenly, or better to some football contexts
+# (a data-rich European tournament) than others (a smaller sample, a different tactical culture,
+# women's football)? `metrics.py`/`pipeline.py` score each of these against the model trained on
+# TRAIN_SETS and report per-tournament numbers, leaving EURO_2024/TEST_SETS as the one, unchanged
+# headline test set every doc already quotes (see `tests/test_metrics.py`'s doc-lint test).
+GENERALISATION_TEST_SETS = [EURO_2024, COPA_AMERICA_2024, WORLD_CUP_2022, AFCON_2023]
+
 # Datasets usable by the 360-context xG model (Phase 7) — only those with freeze-frame coverage.
 SETS_WITH_360 = [ds for ds in (LEVERKUSEN_2023_24, PL_2015_16, EURO_2024) if ds.has_360]
 

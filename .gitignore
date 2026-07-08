@@ -1,7 +1,11 @@
 # Raw data and generated outputs (not tracked, see CLAUDE.md)
 data/*
 !data/.gitkeep
-!data/manifest.json   # provenance manifest is committed on purpose (see src/manifest.py)
+# Provenance manifest is committed on purpose (see src/manifest.py). Must be its own comment
+# line, not trailing the pattern below — gitignore has no inline-comment syntax, so
+# "!data/manifest.json   # ..." was previously matched literally and never actually un-ignored
+# the file (confirmed via `git log --all -- data/manifest.json`: zero commits, ever).
+!data/manifest.json
 outputs/*
 !outputs/.gitkeep
 

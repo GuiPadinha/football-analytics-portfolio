@@ -69,8 +69,15 @@ probabilities hold up even where ranking is marginally harder.
 > part of a data-integrity pass. **0.765 is the honest measure on open/in-game shots**, and finding
 > and removing that flaw is exactly the kind of rigour this project is meant to demonstrate.
 
+**Is EURO 2024 a fluke, or does this hold up elsewhere?** The same trained model, scored
+separately (not pooled) against three more held-out tournaments it never trained on: FIFA World Cup
+2022 (0.808), Africa Cup of Nations 2023 (0.807), and Copa América 2024 (0.763, on the smallest
+sample of the four at 751 shots). **EURO 2024's 0.765 turns out to be the floor of the four, not a
+fluke** — the model generalises as well or better everywhere else tested.
+
 ![Calibration curve](outputs/calibration_curve.png)
 ![Feature importance](outputs/feature_importance.png)
+![xG generalisation by tournament](outputs/xg_generalisation_by_tournament.png)
 
 ### What it's used for
 

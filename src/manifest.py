@@ -34,9 +34,10 @@ from src.data_loader import CACHE_DIR, load_matches
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = REPO_ROOT / "data" / "manifest.json"
 
-# The processed flat tables the models actually consume (built in notebook 02). Hashing them
-# catches a silent change in the feature pipeline, not just in the upstream raw data.
-PROCESSED_TABLES = ("shots_train.parquet", "shots_test.parquet")
+# The processed flat tables the models actually consume (built in notebook 02, plus the Phase 4c
+# generalisation table from `pipeline.build_generalisation_table`). Hashing them catches a silent
+# change in the feature pipeline, not just in the upstream raw data.
+PROCESSED_TABLES = ("shots_train.parquet", "shots_test.parquet", "shots_generalisation.parquet")
 
 # 16 hex chars (64 bits) is plenty to detect drift by eye; the full digest adds noise.
 _HASH_LEN = 16
@@ -128,7 +129,13 @@ def build_manifest(datasets, matches_loader=load_matches, data_dir=None, cache_d
 
 def write_manifest(path=MANIFEST_PATH, datasets=None):
     """Build the manifest for the in-use datasets and write it to ``path`` as sorted JSON."""
-    datasets = datasets if datasets is not None else (config.TRAIN_SETS + config.TEST_SETS)
+    if datasets is None:
+        in_use = config.TRAIN_SETS + config.TEST_SETS
+        # GENERALISATION_TEST_SETS overlaps TEST_SETS (both include EURO_2024) — add only the
+        # Phase 4c tournaments not already pinned above, so each dataset gets one manifest entry.
+        datasets = in_use + [ds for ds in config.GENERALISATION_TEST_SETS if ds not in in_use]
+    else:
+        in_use = datasets
     manifest = build_manifest(datasets)
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)

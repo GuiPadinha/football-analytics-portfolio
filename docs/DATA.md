@@ -28,8 +28,10 @@
 | SkillCorner 2024/25 | 10 matches, physical tracking | Physical layer for player similarity (Module B) |
 
 **Pulled 2026-07-04, Phase 4 data expansion (see below) — wired into `config.SIMILARITY_SETS`
-(the app's player pool, 2026-07-05) unless noted otherwise; `TRAIN_SETS`/`TEST_SETS` (Module A)
-remain untouched by design (see ML_LEARNING_LOG.md — more league volume didn't help):**
+(the app's player pool, 2026-07-05) or `config.GENERALISATION_TEST_SETS` (Module A held-out
+tournaments, 2026-07-09) unless noted otherwise. `TRAIN_SETS`/`TEST_SETS` themselves remain
+untouched by design (see ML_LEARNING_LOG.md — more league volume didn't help) — the Phase 4c
+tournaments are additional, separately-reported evidence, not folded into the headline test set:**
 
 | Dataset | Coverage | Role |
 |---|---|---|
@@ -39,10 +41,10 @@ remain untouched by design (see ML_LEARNING_LOG.md — more league volume didn't
 | Ligue 1 2015/16 | 377 matches, events + lineups (lineups pulled 2026-07-05) | In `SIMILARITY_SETS` — same-era full league as PL 2015/16 |
 | Frauen Bundesliga 2023/24 | 132 matches, events + lineups | In `SIMILARITY_SETS` — women's-football expansion, newest full-season data in this project |
 | FA Women's Super League 2023/24 | 132 matches, events + lineups | In `SIMILARITY_SETS` — women's-football expansion, newest full-season data in this project |
-| Women's EURO 2025 | 31 matches, events + 360 | xG test — women's-football held-out tournament; **not wired**, small-sample tournament shape doesn't suit a per-90 season pool |
-| Copa América 2024 | 32 matches, events | xG test — additional held-out tournament; **not wired** |
-| FIFA World Cup 2022 | 64 matches, events + 360 | xG test — additional held-out tournament; **not wired** |
-| Africa Cup of Nations 2023 | 52 matches, events + 360 | xG test — additional held-out tournament; **not wired** |
+| Women's EURO 2025 | 31 matches, events + 360 | xG test — women's-football held-out tournament; **not wired**. Not yet cached at all: a pull attempt (2026-07-09) hit a persistent GitHub raw-content rate limit (`429`) across several retries — see [ML_TOOLING.md](ML_TOOLING.md) |
+| Copa América 2024 | 32 matches, events | xG test — additional held-out tournament; **wired 2026-07-09** (Phase 4c), scored separately in `metrics.json`'s `xg_generalisation`: ROC-AUC 0.763 |
+| FIFA World Cup 2022 | 64 matches, events + 360 | xG test — additional held-out tournament; **wired 2026-07-09** (Phase 4c): ROC-AUC 0.808 |
+| Africa Cup of Nations 2023 | 52 matches, events + 360 | xG test — additional held-out tournament; **wired 2026-07-09** (Phase 4c): ROC-AUC 0.807 |
 
 ---
 
@@ -56,7 +58,10 @@ La Liga/Serie A/Ligue 1 2015/16 + Frauen Bundesliga/FA WSL 2023/24 now in `confi
 (their lineups pulled 2026-07-05 to enable minutes-played; La Liga/Serie A/Ligue 1 had only events
 before that). Cross-league normalisation is still not designed — per-90 rates are compared raw
 today, flagged as an open item in the app itself. `TRAIN_SETS`/`TEST_SETS` (Module A) remain
-untouched by design (see ML_LEARNING_LOG.md).
+untouched by design (see ML_LEARNING_LOG.md); the three tournament pulls (Copa América 2024, FIFA
+World Cup 2022, Africa Cup of Nations 2023) sat cached-but-unscored until Phase 4c (2026-07-09)
+wired them into `config.GENERALISATION_TEST_SETS` instead — see [MODULES.md](MODULES.md)'s Module A
+section and [ROADMAP.md](ROADMAP.md)'s Phase 4c entry for the generalisation finding.
 
 **Gotcha: StatsBomb's "La Liga" entry is mostly Barcelona, not the league.** Checked by
 match/team count (not assumed from the competition name — the same trap caught a "Bundesliga
@@ -127,6 +132,7 @@ Current processed data state:
 | `data/cache/*.pkl` | Pickle | Raw per-match StatsBomb events (nested dicts/lists — stays pickle, not Parquet) |
 | `data/shots_train.parquet` | Parquet | Processed xG training features (flat → parquet-safe) |
 | `data/shots_test.parquet` | Parquet | Processed xG test features (flat → parquet-safe) |
+| `data/shots_generalisation.parquet` | Parquet | Combined shots across `config.GENERALISATION_TEST_SETS` (Phase 4c held-out tournaments), scored per-competition by `metrics.compute_generalisation_metrics` |
 | `data/player_per90_pl_2015_16.pkl` | Pickle | Per-90 player features + position for PL 2015/16 clustering |
 | `data/physical_per90_skillcorner_sample.pkl` | Pickle | SkillCorner physical per-90 features for A-League sample |
 
