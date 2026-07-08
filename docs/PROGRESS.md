@@ -6,6 +6,35 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-07-08 — real-browser verification of both app views; "black screen" is environment, not code
+
+Guilherme reported running `streamlit run app.py` locally and seeing "nothing but a black screen,"
+and asked for a last real-browser peek + a docs sweep before the next session.
+
+**Drove the running app with Playwright-over-Edge** (the documented ML_TOOLING.md recipe:
+`channel="msedge"`, tall viewport, wait for WebSocket content) and screenshotted both views:
+- **Player explorer** renders correctly — dark theme, sidebar controls, dark radar chart, orange
+  "players like X" bar chart, signature-stat cards, finishing panel (checked live on Aaron
+  Cresswell). No exception, no white/black chart.
+- **Leaderboard** renders correctly — sortable table, Goals-desc default (Suárez 40, Zlatan/Higuaín
+  36, Ronaldo 35/29), xG populated only for Premier League players (Kane 20.8, Agüero 17.5, Vardy
+  20.7) and `None` elsewhere, exactly as designed.
+
+**Conclusion: the app is not broken.** The black screen is a client-side/environment issue on
+Guilherme's machine, not a code bug — the same server renders fine to headless Edge here. Most
+likely Streamlit's content never arrived over its WebSocket (content is delivered *after* the page
+`load` event; if the WebSocket is blocked — Avast web-shield on localhost, a stale cached tab, or
+looking before it connected — the dark page shell shows with no content). Suggested fixes for next
+run: hard-refresh (Ctrl+Shift+R), try another browser, confirm the `streamlit run` process is still
+alive and the right `localhost` URL is open, and temporarily disable Avast's web shield. Logged as
+an environment gotcha in [ML_TOOLING.md](ML_TOOLING.md).
+
+**Minor cosmetic noted, not changed:** blank xG cells render as the literal `None` (Streamlit shows
+`NaN` in a `NumberColumn` that way) rather than a dash — honest and explained in the caption, but a
+candidate polish later. No code change this pass; verification + docs only, tests still **66 green**.
+
+---
+
 ## 2026-07-06 (cont. 2) — shipped the player leaderboard (backlog item #1) + goals-incl-penalties column
 
 Picked up the 2026-07-06 backlog. Of the five deferred items, the **all-players leaderboard** was

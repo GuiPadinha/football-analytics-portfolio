@@ -268,8 +268,12 @@ dynamic and customizable" — better than the alternatives considered below:
 - [x] Smoke test: verified headless via Streamlit's `AppTest` harness (no browser needed) — all 3
       position groups, 8 different players (including one with zero logged shots, to exercise the
       "no shot data" branch, and one with an accented name), and the zero-radar-axes edge case, all
-      ran with zero exceptions. **Not yet visually checked in an actual browser** — run
-      `streamlit run app.py` locally to eyeball the real rendering before deploying.
+      ran with zero exceptions.
+- [x] Visually checked in a real browser (2026-07-08, Playwright-over-Edge screenshots) — both the
+      Player explorer and the Leaderboard views render correctly (dark theme, dark radar chart,
+      orange similar-players bars, sortable leaderboard). A locally-reported "black screen" was
+      diagnosed as an environment/WebSocket issue on the maintainer's machine, not a code bug — see
+      PROGRESS.md (2026-07-08) and ML_TOOLING.md.
 
 ---
 

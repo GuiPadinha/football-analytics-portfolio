@@ -153,6 +153,20 @@ actually put a real screenshot on disk. What worked, and what didn't:
 - Not added to `requirements.txt` — this is a local verification tool for actually looking at the
   app, not a runtime dependency of `app.py` itself.
 
+## A local Streamlit "black screen" is almost always the WebSocket, not the app
+
+Symptom (2026-07-08): `streamlit run app.py` opens a browser showing nothing but a black/empty
+page. The app was **not** broken — the identical server rendered both views perfectly to headless
+Edge via the Playwright recipe above. Streamlit delivers page content over a WebSocket *after* the
+HTML `load` event, so if that socket never connects the dark page shell paints with no content — a
+"black screen." Likely local causes and what to try, in order: hard-refresh to drop a stale cached
+tab (Ctrl+Shift+R); confirm the `streamlit run` process is still alive and you opened the exact
+`localhost:<port>` it printed (not an old tab on a dead port); try a different browser; temporarily
+disable Avast's web shield (it already interferes with HTTPS/cert validation on this machine — see
+the `certifi`/Playwright-download notes above — and can break localhost WebSocket upgrades too).
+Diagnose, don't guess: drive the running server with the Playwright-over-Edge script and check
+whether real content appears — if it does, the problem is the human's browser/network, not the code.
+
 ---
 
 ## How to use this file
