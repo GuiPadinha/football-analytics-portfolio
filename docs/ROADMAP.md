@@ -59,7 +59,7 @@ of Phase 4's ingestion pipeline and 3b (`metrics.json`) must exist before the da
 - **3e — Data manifest:** `data/manifest.json` pinning comp/season/match IDs + row counts + content
   hash per dataset; catches upstream StatsBomb changes; feeds Phase 4.
 
-## Phase 4 — Multi-competition ingestion + data expansion  ✅ Done
+## Phase 4 — Multi-competition ingestion + data expansion  🟡 4c mostly done (1 dataset pending)
 
 The flagship overlap item: engineering-at-scale in service of ML. Turns Module A's "generalises
 from n=2 contexts" into a defensible claim and fixes Module B's single-season thinness.
@@ -81,7 +81,8 @@ from n=2 contexts" into a defensible claim and fixes Module B's single-season th
   top-flight season at all, so "wider" (6 competitions) rather than "newer" is what Phase 4b
   actually delivers for the men's leagues; the women's leagues (2023/24) are the newest
   full-season data anywhere in this project.
-- **4c — Module A generalisation** (done 2026-07-09): the three cached-but-unscored Phase 4
+- **4c — Module A generalisation** (3/4 wired 2026-07-09, Women's EURO 2025 still pending): the
+  three cached-but-unscored Phase 4
   tournaments (Copa América 2024, FIFA World Cup 2022, Africa Cup of Nations 2023) are now scored
   against the `TRAIN_SETS`-fitted logistic model via a new `config.GENERALISATION_TEST_SETS` +
   `models.evaluate_by_competition` — **per tournament, not pooled into `TEST_SETS`**, so the

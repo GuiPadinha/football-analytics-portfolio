@@ -6,9 +6,10 @@ Project source of truth. Read this first every session, then load linked docs on
 
 ## Current Status
 
-**Active initiative:** Framework Hardening & Expansion — Phases 0–4 and Phase 8 now both fully ✅
-complete. Phase 4c closed 2026-07-09: Module A scored separately against three more held-out
-tournaments — see Key numbers below. Phase 8: minimal Streamlit build shipped 2026-07-04 (ahead of
+**Active initiative:** Framework Hardening & Expansion — Phases 0–3 and Phase 8 fully ✅ complete;
+Phase 4 is 🟡 4c mostly done (2026-07-09: Module A scored separately against three more held-out
+tournaments, see Key numbers below — a fourth, Women's EURO 2025, is still rate-limited and pending
+a retry, not folded into "done"). Phase 8: minimal Streamlit build shipped 2026-07-04 (ahead of
 strict phase order, for an upcoming demo), extended 2026-07-05 with real-time search, a dark theme,
 and a widened multi-competition player pool; a 2026-07-06 pass fixed a real radar dark-theme bug +
 added whole-number totals; a 2026-07-08 pass shipped the all-players **leaderboard** (goals incl.

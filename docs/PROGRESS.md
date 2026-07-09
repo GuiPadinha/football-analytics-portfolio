@@ -6,7 +6,7 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
-## 2026-07-09 — Phase 4c done: Module A generalisation across 4 held-out tournaments (Phase 4 now fully ✅)
+## 2026-07-09 — Phase 4c mostly done: Module A generalisation across 3 of 4 held-out tournaments
 
 Picked up the model-track backlog (not the app UX one): Phase 4c was the one remaining open item
 in Phase 4 — Copa América 2024, FIFA World Cup 2022, and Africa Cup of Nations 2023 were pulled

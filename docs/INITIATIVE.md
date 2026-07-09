@@ -29,7 +29,7 @@ was folded in — the old Phase 3 (360 xG) and Phase 5 (product) moved *later* b
 | **1** | Foundation: `config.py`, per-match cache, penalty/shootout fix, pinned deps, robustness fixes, first tests | 1 | ✅ Done |
 | **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | 2 | ✅ Done |
 | **3** | Engineering & reproducibility spine: CI, `pipeline.py`/Makefile, `metrics.json` single-source, data manifest | *new* | ✅ Done |
-| **4** | Multi-competition ingestion + data expansion: config-driven pipeline, Module A generalization, Module B cross-league | 4 (reshaped) | ✅ Done (4a/4b/4d done, 4c done 2026-07-09) |
+| **4** | Multi-competition ingestion + data expansion: config-driven pipeline, Module A generalization, Module B cross-league | 4 (reshaped) | 🟡 4a/4b/4d done, 4c mostly done 2026-07-09 (3/4 tournaments wired; Women's EURO 2025 still rate-limited, resumable, see log) |
 | **5** | xG uncertainty + hierarchical/empirical-Bayes finishing model; header/foot interaction; calibration by stratum | *new* | ⬜ Not started |
 | **6** | Module B upgrades: Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features | part of old 6 | ⬜ Not started |
 | **7** | New model: 360-context xG + post-shot xG (xGOT) | **3** | ⬜ Not started |
@@ -160,7 +160,8 @@ structurally kills the doc drift — so every later phase writes into a clean, s
   2004/05-2020/21 data, international-tournament stats) — **trophies/individual awards/MOTM data
   does not exist in any current source** and would need new scraping infrastructure (see DATA.md's
   SofaScore/FlashScore candidate) — scoping this with Guilherme before building.
-- **2026-07-09** — **Phase 4c done → Phase 4 fully ✅ Done.** Scored the three Phase 4 tournament
+- **2026-07-09** — **Phase 4c mostly done — 3 of 4 held-out tournaments wired, Women's EURO 2025
+  still open.** Scored the three Phase 4 tournament
   pulls (Copa América 2024, FIFA World Cup 2022, Africa Cup of Nations 2023) that had sat cached-
   but-unscored since 2026-07-04, plus EURO 2024, against the `TRAIN_SETS`-fitted logistic model —
   **per tournament, not pooled** (a new `config.GENERALISATION_TEST_SETS`,
