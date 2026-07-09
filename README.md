@@ -2,6 +2,8 @@
 
 [![tests](https://github.com/GuiPadinha/football-analytics-portfolio/actions/workflows/tests.yml/badge.svg)](https://github.com/GuiPadinha/football-analytics-portfolio/actions/workflows/tests.yml)
 
+**[Live demo](https://gpfootball-analytics-portfolio.streamlit.app)** — Streamlit Community Cloud, Phase 8 (deployed 2026-07-09).
+
 A two-part analytics project built on public StatsBomb and SkillCorner data, designed to answer
 two questions a recruitment or performance analysis team actually asks:
 

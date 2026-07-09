@@ -59,95 +59,34 @@ actually wired in.
 
 ---
 
-## 2026-07-08 — real-browser verification of both app views; "black screen" is environment, not code
+## 2026-07-09 (cont.) — Phase 8 deployed to Streamlit Community Cloud (Phase 8 now fully ✅)
 
-Guilherme reported running `streamlit run app.py` locally and seeing "nothing but a black screen,"
-and asked for a last real-browser peek + a docs sweep before the next session.
+Same-day continuation, ahead of the ~2026-07-11 friend demo. Guilherme deployed `app.py` himself
+via Streamlit Community Cloud's "New app" flow; I verified beforehand that the repo was actually
+ready (pinned `requirements.txt`, committed `app_data/*.parquet`, no secrets needed since the app
+reads only static local artifacts, no live StatsBomb pulls at runtime) and flagged one real risk in
+the deploy form: `app.py` imports `src.similarity` → `src.data_loader`, which imports `kloppy` at
+module level even though the app itself never calls it — `kloppy` is the heaviest/least-common
+dependency in `requirements.txt`, so a build failure would likely start there.
 
-**Drove the running app with Playwright-over-Edge** (the documented ML_TOOLING.md recipe:
-`channel="msedge"`, tall viewport, wait for WebSocket content) and screenshotted both views:
-- **Player explorer** renders correctly — dark theme, sidebar controls, dark radar chart, orange
-  "players like X" bar chart, signature-stat cards, finishing panel (checked live on Aaron
-  Cresswell). No exception, no white/black chart.
-- **Leaderboard** renders correctly — sortable table, Goals-desc default (Suárez 40, Zlatan/Higuaín
-  36, Ronaldo 35/29), xG populated only for Premier League players (Kane 20.8, Agüero 17.5, Vardy
-  20.7) and `None` elsewhere, exactly as designed.
+**Set Python version to 3.10 in the deploy's advanced settings, overriding Cloud's 3.14 default.**
+Every pinned dependency was tested against 3.10 locally; deploying on a newer interpreter risked
+missing wheels for `kloppy`/`pyarrow`/`statsbombpy`, forcing an unplanned dependency-bump-and-
+reverify right before the demo for zero functional gain. Recommended *against* actually modernising
+the project's Python target for the same reason when Guilherme asked — added as a low-priority
+Phase 9 opportunistic backlog item instead (see ROADMAP.md), explicitly not now.
 
-**Conclusion: the app is not broken.** The black screen is a client-side/environment issue on
-Guilherme's machine, not a code bug — the same server renders fine to headless Edge here. Most
-likely Streamlit's content never arrived over its WebSocket (content is delivered *after* the page
-`load` event; if the WebSocket is blocked — Avast web-shield on localhost, a stale cached tab, or
-looking before it connected — the dark page shell shows with no content). Suggested fixes for next
-run: hard-refresh (Ctrl+Shift+R), try another browser, confirm the `streamlit run` process is still
-alive and the right `localhost` URL is open, and temporarily disable Avast's web shield. Logged as
-an environment gotcha in [ML_TOOLING.md](ML_TOOLING.md).
-
-**Minor cosmetic noted, not changed:** blank xG cells render as the literal `None` (Streamlit shows
-`NaN` in a `NumberColumn` that way) rather than a dash — honest and explained in the caption, but a
-candidate polish later. No code change this pass; verification + docs only, tests still **66 green**.
-
----
-
-## 2026-07-06 (cont. 2) — shipped the player leaderboard (backlog item #1) + goals-incl-penalties column
-
-Picked up the 2026-07-06 backlog. Of the five deferred items, the **all-players leaderboard** was
-the only one with no blocker — goalkeepers still need a clustering/K design call, and the clickable
-drill-down is blocked on an unfinished "but..." caveat from the last feedback message. Built it end
-to end.
-
-**New display-only `goals` column (incl. penalties).** The whole point of the leaderboard (per
-Guilherme: spot penalty-inflated tallies like a centre-back topping the goals list) needs a goal
-total *with* penalties — which didn't exist. `ACTION_COLUMNS`' `non_penalty_goals` strips them on
-purpose (penalties convert ~100%, so counting them in the similarity features would just reward
-penalty-takers as scoring skill). Added `goals` to `extract_player_match_actions` and a new
-`DISPLAY_COUNT_COLUMNS = ["goals"]` constant threaded through `build_player_per90_features` —
-kept deliberately *out* of `ACTION_COLUMNS`/`PER90_FEATURE_COLUMNS`, so it never enters
-clustering / PCA / radar / percentiles, only the human-readable table. No `_p90` rate for it (a
-"penalty-goals per 90" stat nobody asked for). New unit test locks the split in
-(`goals` counts a penalty, `non_penalty_goals` doesn't).
-
-**Leaderboard view in `app.py`.** A sidebar `View` radio toggles Player explorer ↔ Leaderboard;
-the leaderboard branch renders after the shared position/competition filters and `st.stop()`s
-before any player-only widget, so it's a minimal-diff addition, not a re-indent of the existing
-page. `render_leaderboard` shows one sortable `st.dataframe` (Player/Team/Competition/Position/
-Minutes/Goals/Non-pen goals/Assists) left-joined to the flagship xG table for `xG`/`G-xG` —
-**blank, not faked**, for the ~2/3 of the pool outside Module A's training set, same honesty as
-the single-player finishing panel. `st.column_config.NumberColumn` keeps columns numeric (so
-header-click sort is real) while formatting ints/`%+.1f`. Default sort Goals desc.
-
-**Verified headless** (rebuilt `app_data`, then AppTest drove the Leaderboard view: 1511 rows, no
-exception, sorted Goals-desc). Data sanity-checked against reality: Suárez tops La Liga 2015/16 at
-40, Ronaldo 35 goals / 29 non-pen (6 pens — matches the earlier CR7 check), and Fabinho surfaces
-as a **defender with 6 goals, all penalties** — the exact Sergio-Ramos-style outlier the feature
-was built to expose. **Not yet eyeballed in a real browser** — low risk (stock `st.dataframe`, not
-custom matplotlib), worth a glance next session before deploy.
-
-Tests **66 green** (65 + the new penalty-split test). `app_data/player_per90.parquet` rebuilt
-(1511 players, unchanged count — one new column). Backlog items #2 (xG in a broad view) folded in
-here; #3 methodology expander, #4 goalkeepers, #5 clickable drill-down still open.
+**Live at [gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app)**,
+confirmed rendering correctly by Guilherme in a real browser — the strongest verification yet,
+stronger than the local Playwright-over-Edge check from 2026-07-08. README now links it at the top
+next to the CI badge. Phase 8 is now fully ✅ done; the only work left in the whole initiative is
+Phases 5–7 and the small app-UX backlog in CLAUDE.md's Current Status.
 
 ---
 
 ## Commit Status
 
-Verified against `git log`/`git status` 2026-07-06. Committed through `428496f`:
-
-- `25bbf79` — S6/7 — Radar charts + visuals + final polish + README
-- `a3ff7cd` — Initiative Phases 0–1: framework charter, foundation hardening, data-integrity rebuild
-- `bbc4ac8` — Phase 2 (Module A): xG ML-rigor (scaled logistic, CV, baseline ladder, calibrated GBM)
-- `5e5aaef` — Phase 2 Module B rigor: silhouette score + minutes-weighted positions
-- `4be7844` — Phase 5 (old numbering): expand product-layer interface spec + mockups (docs only)
-- `e862a59` — Refactoring priorities and plan
-- `6a1876c` — Phase 3 (spine A+B): CI workflow + data provenance manifest; config Phase 3→7 fix
-- `102a134` — Phase 3 (spine 3b): metrics.json single source + doc-lint; docs reference it
-- `ce45e74` — Phase 3 complete: headless pipeline.py + Makefile; add ARCHITECTURE.md; docs cleanup
-- `0d4d2fe` — Phase 4 data expansion: config-driven datasets, sparse-column bug fix, obstacle docs
-- `1c8d90d` — Model validation tests + Module A-B-C ordering pass + a real sparse-column fix
-- `7f7a4e4` — Phase 8 minimal build: Streamlit app + build step, plus first-use fixes
-- `29f753f` — Goalkeeper feature engineering (Module B) + 2026 World Cup backlog note
-- `428496f` — Round-2 app UX pass: real typing search, dark theme, wider player pool, defensive stats
-- `b7c0662` — Fix radar chart dark-theme bug, add whole-number stat totals, verify visually
-
-**Uncommitted as of this entry:** the leaderboard pass — `app.py`, `src/similarity.py`,
-`tests/test_similarity.py`, `app_data/player_per90.parquet`, `docs/PROGRESS.md`,
-`docs/PRODUCT_SPEC.md`. Being committed + pushed now at Guilherme's explicit request.
+Verified against `git log` 2026-07-09. Git CLI is used directly now (see CLAUDE.md's Session
+Workflow) — this section is a lightweight pointer, not a substitute for `git log`/`git status`.
+Latest commit: `d3093e7` (Phase 4c + the `.gitignore` fix, pushed to `origin/main`). Everything
+through this session's work is committed and pushed; nothing outstanding.

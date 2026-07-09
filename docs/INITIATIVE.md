@@ -33,7 +33,7 @@ was folded in — the old Phase 3 (360 xG) and Phase 5 (product) moved *later* b
 | **5** | xG uncertainty + hierarchical/empirical-Bayes finishing model; header/foot interaction; calibration by stratum | *new* | ⬜ Not started |
 | **6** | Module B upgrades: Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features | part of old 6 | ⬜ Not started |
 | **7** | New model: 360-context xG + post-shot xG (xGOT) | **3** | ⬜ Not started |
-| **8** | Product layer: lightweight Streamlit app — [spec done](PRODUCT_SPEC.md) 2026-07-01, minimal v1 built 2026-07-04 | **5** | 🟡 v1 built, deploy pending |
+| **8** | Product layer: lightweight Streamlit app — [spec done](PRODUCT_SPEC.md) 2026-07-01, minimal v1 built 2026-07-04 | **5** | ✅ Done — [live](https://gpfootball-analytics-portfolio.streamlit.app) (deployed 2026-07-09) |
 | **9** | Opportunistic: xA/chance-creation model, Module C (PUP), remaining alt-models (hierarchical, cosine, monotonic GBM), 2026 World Cup predictive model (data-availability check first) | old 6 + Module C | ⬜ Not started |
 
 Execution order: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8, with 9 opportunistic. Full per-phase task
@@ -178,6 +178,18 @@ structurally kills the doc drift — so every later phase writes into a clean, s
   just synthetic-test) data. Notebook 02 left untouched, same precedent as Phase 4a/4b (multi-
   dataset checks live in `src`/`metrics.json` only, notebooks stay the fixed single-tournament
   teaching example). **Next: Phase 5 (xG uncertainty + hierarchical finishing model).**
+- **2026-07-09 (cont.)** — **Phase 8 deployed → Phase 8 fully ✅ Done.** Deployed `app.py` to
+  Streamlit Community Cloud ahead of the ~2026-07-11 friend demo: repo already had everything
+  needed (pinned `requirements.txt`, committed `app_data/*.parquet`, no secrets since the app reads
+  only static local artifacts, no live StatsBomb pulls). Explicitly set the deploy's Python version
+  to **3.10** rather than Community Cloud's newer default (3.14) — matches what every pinned
+  dependency was tested against; a newer interpreter risked missing wheels for `kloppy`/`pyarrow`/
+  `statsbombpy`, which would force an unplanned dependency-bump-and-reverify right before the demo
+  for zero functional gain. Live at
+  [gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app),
+  confirmed rendering correctly by Guilherme himself in a real browser. Bumping the project's actual
+  Python target to something newer than 3.10 is now a Phase 9 opportunistic backlog item — no
+  functional upside, real risk of breaking pinned deps, and no deadline pressure to do it now.
 
 ---
 

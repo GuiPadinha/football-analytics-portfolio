@@ -6,14 +6,17 @@ Project source of truth. Read this first every session, then load linked docs on
 
 ## Current Status
 
-**Active initiative:** Framework Hardening & Expansion — Phases 0–4 complete (Phase 4c closed
-2026-07-09: Module A scored separately against three more held-out tournaments — see Key numbers
-below); Phase 8 minimal Streamlit build shipped 2026-07-04 (ahead of strict phase order, for an
-upcoming demo), then extended 2026-07-05 with real-time search, a dark theme, and a widened
-multi-competition player pool; a 2026-07-06 pass fixed a real radar dark-theme bug + added
-whole-number totals; a 2026-07-08 pass shipped the all-players **leaderboard** (goals incl.
+**Active initiative:** Framework Hardening & Expansion — Phases 0–4 and Phase 8 now both fully ✅
+complete. Phase 4c closed 2026-07-09: Module A scored separately against three more held-out
+tournaments — see Key numbers below. Phase 8: minimal Streamlit build shipped 2026-07-04 (ahead of
+strict phase order, for an upcoming demo), extended 2026-07-05 with real-time search, a dark theme,
+and a widened multi-competition player pool; a 2026-07-06 pass fixed a real radar dark-theme bug +
+added whole-number totals; a 2026-07-08 pass shipped the all-players **leaderboard** (goals incl.
 penalties + xG where available) and verified both app views in a real browser (Playwright-over-Edge
-screenshots — the app renders correctly, see PROGRESS.md).
+screenshots); **deployed to Streamlit Community Cloud 2026-07-09** —
+**[live demo](https://gpfootball-analytics-portfolio.streamlit.app)** (Python 3.10 pinned in the
+deploy settings to match `requirements.txt`, not Cloud's newer default — see ROADMAP.md's Phase 9
+backlog note on why that version bump is deliberately deferred).
 See [docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renumbered 0–9 program on
 2026-07-02.
 **Next (open backlog): show penalty info on the single-player page (it currently shows only
@@ -22,10 +25,10 @@ player" drill-down (unblocked — no caveat after all); wire goalkeepers into th
 K/silhouette call); rework the low-value "Under the hood" methodology expander. A "player career"
 page/view is also under discussion (multi-season drill-down,
 international tournament data — trophies/awards/MOTM data does not exist in any current source and
-would need new scraping infra); deploy Phase 8 to Streamlit Community Cloud remains the maintainer's
-own step.**
+would need new scraping infra).**
 (360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
-Run the app locally: `python -m src.app_data` (once, to build `app_data/`) then `streamlit run app.py`.
+Run the app locally: `python -m src.app_data` (once, to build `app_data/`) then `streamlit run app.py`
+— or just use the [live demo](https://gpfootball-analytics-portfolio.streamlit.app).
 
 Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped) — Phase 4c (2026-07-09) shows this is the *floor* across four held-out tournaments, not a fluke: FIFA World Cup 2022 0.808, Africa Cup of Nations 2023 0.807, Copa América 2024 0.763 (see `metrics.json`'s `xg_generalisation`, [docs/MODULES.md](docs/MODULES.md)). Similarity: K=4 per position group, silhouette ~0.24 (soft continuum) on the notebook/pipeline's single-competition (PL 2015/16) scope — the app's own player pool is wider (6 competitions, see MODULES.md). 72 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
 

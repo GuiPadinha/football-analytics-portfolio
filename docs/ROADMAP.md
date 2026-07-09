@@ -144,7 +144,7 @@ StatsBomb `three-sixty` data gives freeze-frames (every visible player's positio
 - [ ] Verify `data/cache/` has Leverkusen 2023/24 360 frames (should already be pulled)
 - [ ] Check StatsBomb `three-sixty` schema: `statsbombpy.sb.three_sixty(match_id=X)`
 
-## Phase 8 — Product layer build (Streamlit)  🟡 minimal v1 built, deploy pending  *(was Phase 5)*
+## Phase 8 — Product layer build (Streamlit)  ✅ Done  *(was Phase 5)*
 
 Minimal v1 built 2026-07-04, ahead of strict phase order — a friend demo (~2026-07-11) made
 "something clickable" more valuable than finishing 4–6 first this time; see
@@ -152,12 +152,21 @@ Minimal v1 built 2026-07-04, ahead of strict phase order — a friend demo (~202
 Premier League 2015/16 (the one dataset with a full similarity + xG pool already computed) — a
 later pass can widen this once Phase 4b/4c pick a wider training/similarity set to showcase.
 
-**Remaining:** deploy to Streamlit Community Cloud (needs the maintainer's account — not
-automatable) and a from-scratch visual check in a real browser (verified so far via Streamlit's
-headless `AppTest` harness only — script-level correctness, not a look at the actual rendering).
+**Deployed 2026-07-09** to Streamlit Community Cloud:
+[gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app)
+— Python version pinned to 3.10 in the deploy's advanced settings (matches `requirements.txt`'s
+tested versions; Cloud's newer default risked missing wheels for `kloppy`/`pyarrow`). Real-browser
+rendering already confirmed locally via Playwright-over-Edge (2026-07-08) and now confirmed live in
+the cloud by Guilherme directly.
 
 ## Phase 9 — Opportunistic  ⬜
 
+- **Modernize the pinned Python target (3.10 → a newer stable, e.g. 3.14)** — flagged 2026-07-09
+  during the Phase 8 Streamlit Cloud deploy (Cloud's dropdown defaulted to 3.14; deployed on 3.10
+  instead to match `requirements.txt`). No functional upside and a real risk: `kloppy`, `pyarrow`,
+  and `statsbombpy` would all need re-checking for wheel availability and behaviour on a newer
+  interpreter, which is unplanned rework for zero model/product gain. Pure housekeeping — pick up
+  only when there's no deadline pressure, not opportunistically mid-demo-prep.
 - **xA / chance-creation model** — sibling to xG on the same pipeline; also upgrades 6d.
 - **Module C (PUP)** — only if desired; carries a selection-bias confound + label-acquisition cost,
   and Phase 5 already delivers most of its payoff. Spec: [MODULES.md](MODULES.md#L53).
