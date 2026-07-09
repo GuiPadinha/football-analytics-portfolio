@@ -87,21 +87,36 @@ rest are still open.
 - **"Under the hood (methodology)" flagged as low-value, under review.** Guilherme doesn't find it
   useful/understandable as-is; expects more charts to be added later that may reshape or replace
   it. Not touching it until there's a clearer idea of what replaces it — no redesign work now.
+  → entry point: `app.py`'s `st.expander("Under the hood (methodology)")` (currently ~line 367).
 - **Goalkeepers still not wired into the app** — `build_goalkeeper_per90_features` exists
-  (2026-07-05) but isn't in `config.py`/clustering/the app's position filter. Still an open
-  integration decision (own K? own silhouette check? a 4th position-filter option?), now with an
-  explicit ask to actually do it next session rather than leave it deferred indefinitely.
+  (`src/similarity.py:445`, verified still present 2026-07-09) but isn't in `config.py`/clustering/
+  the app's position filter. Still an open integration decision (own K? own silhouette check? a 4th
+  position-filter option alongside Defender/Midfielder/Forward?), now with an explicit ask to
+  actually do it next session rather than leave it deferred indefinitely. Would touch: `config.py`
+  (a GK dataset grouping), `src/app_data.py` (a 4th precomputed table or an extra column), `app.py`'s
+  `SIGNATURE_STATS_BY_POSITION` + position filter + radar-axis choices (GK features are shots
+  faced/saves/goals conceded/claims/punches/save_pct — none of the outfield `PER90_FEATURE_COLUMNS`
+  apply, so several places assume exactly 3 groups and would need a look, not just a 4th dict key).
 - **Clickable "similar player" names** — jump from the "players like X" list into that player's own
   page (and see *their* similar players — a recursive drill-down). *(No caveat after all — the
   earlier feedback message just got cut off mid-word; confirmed 2026-07-08 there was no unstated
-  condition. Straightforwardly wanted, unblocked.)*
+  condition. Straightforwardly wanted, unblocked.)* → entry point: `app.py`'s `col_similar` block
+  (currently ~lines 309–325) — the chart is a static `st.pyplot(plot_similar_players_bar(...))`,
+  genuinely not clickable; the "Table view" `st.dataframe` just below it is the more promising path
+  since Streamlit 1.58.0 (pinned in `requirements.txt`) supports
+  `st.dataframe(..., on_select="rerun", selection_mode="single-row")` — a row click could set the
+  picked-player state and rerun, without swapping chart libraries. Verified this is genuinely
+  unbuilt: no `st.button`/`on_select` anywhere in `app.py` today.
 - **Penalty info on the player page** (raised 2026-07-08). The single-player "Player explorer" page
   shows only `non_penalty_goals` (e.g. Zlatan reads "31") and nothing about penalties or total
   goals — so the page looks like it has *no* penalty data even though the leaderboard total includes
-  them. The `goals` (incl. penalties) column already ships in `app_data/player_per90.parquet`, so
-  `penalties = goals - non_penalty_goals` is available with no data/rebuild work — this is a
-  presentation-only add (e.g. a total-goals figure and/or a penalties count/split on the signature
-  cards or the per-90 table). Small; the data's already there.
+  them. The `goals` (incl. penalties) column already ships in `app_data/player_per90.parquet`
+  (confirmed present 2026-07-09), so `penalties = goals - non_penalty_goals` is available with no
+  data/rebuild work — this is a presentation-only add (e.g. a total-goals figure and/or a penalties
+  count/split on the signature cards or the per-90 table). Small; the data's already there.
+  → entry points: `SIGNATURE_STATS_BY_POSITION["Forward"]` uses `non_penalty_goals_p90`
+  (`app.py:78`); the metric-card render loop that reads `player_row_full[raw_col]` is `app.py:258-267`
+  — both `goals` and `non_penalty_goals` are already columns on `player_row_full`, no lookup needed.
 
 ---
 

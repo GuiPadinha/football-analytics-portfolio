@@ -1,0 +1,41 @@
+#!/bin/sh
+# Pre-commit: nudge (block by default) when code/tests change but none of the three
+# "evolving log" docs (docs/PROGRESS.md, docs/ML_TOOLING.md, ML_LEARNING_LOG.md) do.
+#
+# Why this exists: CLAUDE.md's Session Workflow always *asked* for these logs to be kept
+# current "as it happens" - but that only worked when whoever was committing (human or
+# an AI assistant working the repo) remembered to do it unprompted. It's easy to ship a
+# real behaviour/finding change and just forget the narrative log entry that explains it -
+# this hook makes that failure mode visible at commit time instead of relying on memory.
+#
+# Enable once per clone (not automatic - .githooks/ is tracked, but git's hooksPath isn't):
+#   git config core.hooksPath .githooks
+#
+# Deliberate escape hatch for genuinely trivial commits (typo fixes, formatting, a comment):
+# re-run with DOC_CHECK_ACK=1, e.g. `DOC_CHECK_ACK=1 git commit -m "..."`. This is a
+# conscious opt-out per commit, not a blanket bypass - prefer it over `--no-verify`, which
+# skips every hook, not just this check.
+
+staged=$(git diff --cached --name-only)
+
+touches_code=$(printf '%s\n' "$staged" | grep -E '^(src/|app\.py$|tests/|notebooks/)')
+touches_log=$(printf '%s\n' "$staged" | grep -E '^(docs/PROGRESS\.md|docs/ML_TOOLING\.md|ML_LEARNING_LOG\.md)$')
+
+if [ -n "$touches_code" ] && [ -z "$touches_log" ] && [ -z "$DOC_CHECK_ACK" ]; then
+    echo ""
+    echo "pre-commit: this commit touches code/tests but none of the evolving logs:"
+    echo "  docs/PROGRESS.md | docs/ML_TOOLING.md | ML_LEARNING_LOG.md"
+    echo ""
+    echo "Files staged that triggered this:"
+    printf '%s\n' "$touches_code" | sed 's/^/  - /'
+    echo ""
+    echo "If this commit represents a real behaviour/finding/obstacle, log it in the"
+    echo "relevant file (see CLAUDE.md's Session Workflow) before committing again."
+    echo ""
+    echo "If it's genuinely trivial (typo, formatting, a comment), commit again with:"
+    echo "  DOC_CHECK_ACK=1 git commit ..."
+    echo ""
+    exit 1
+fi
+
+exit 0

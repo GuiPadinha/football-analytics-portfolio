@@ -23,8 +23,10 @@ See [docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renu
 **Next (open backlog): show penalty info on the single-player page (it currently shows only
 non-penalty goals — data already in `app_data`, presentation-only, small); clickable "similar
 player" drill-down (unblocked — no caveat after all); wire goalkeepers into the app (needs a
-K/silhouette call); rework the low-value "Under the hood" methodology expander. A "player career"
-page/view is also under discussion (multi-season drill-down,
+K/silhouette call); rework the low-value "Under the hood" methodology expander. Exact code entry
+points for all four (verified current 2026-07-09, not just described) are in
+[PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s "Backlog from 2026-07-06 feedback" section. A "player
+career" page/view is also under discussion (multi-season drill-down,
 international tournament data — trophies/awards/MOTM data does not exist in any current source and
 would need new scraping infra).**
 (360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
@@ -66,6 +68,7 @@ Makefile               ← thin wrapper around src/pipeline.py
 app.py                 ← Phase 8 Streamlit app (`streamlit run app.py`) — reads app_data/, no live pulls
 app_data/              ← precomputed Parquet artifacts the app reads (small, committed — not gitignored)
 .streamlit/config.toml ← Streamlit theme
+.githooks/pre-commit    ← enforces the "End of session" doc-log rule below (see Session Workflow)
 notebooks/
   01_data_exploration.ipynb
   02_xg_model.ipynb          ← Phase 2 ML rigor section added
@@ -103,6 +106,18 @@ data/                    ← per-match cache + Parquet feature tables (gitignore
 1. Add dated entry to [docs/PROGRESS.md](docs/PROGRESS.md) (move old entries to PROGRESS_ARCHIVE.md when it exceeds 150 lines)
 2. Log any new environment/tooling obstacle to [docs/ML_TOOLING.md](docs/ML_TOOLING.md), any new ML/data gotcha to [ML_LEARNING_LOG.md](ML_LEARNING_LOG.md) — as it happens, not just when asked to retrospectively
 3. Give 3-line summary: done / unresolved / commit message suggestion
+
+**This is enforced, not just requested (added 2026-07-09):** relying on memory to follow the rule
+above failed within a single session (a real retry attempt went unlogged until asked twice). Two
+mechanisms now backstop it — see `.githooks/pre-commit`'s own header comment for full detail:
+- **Local hook** (`.githooks/pre-commit`, active once `git config core.hooksPath .githooks` has
+  been run in a given clone): blocks a commit that touches `src/`/`app.py`/`tests/`/`notebooks/`
+  without touching `docs/PROGRESS.md`, `docs/ML_TOOLING.md`, or `ML_LEARNING_LOG.md`. Escape hatch
+  for genuinely trivial commits: `DOC_CHECK_ACK=1 git commit ...` (prefer this over `--no-verify`,
+  which would skip every hook, not just this check).
+- **CI backstop** (`.github/workflows/tests.yml`'s "Check evolving docs were touched" step): the
+  same check against every push/PR diff, as a non-blocking `::warning::` annotation — fires even
+  if the local hook was never enabled (e.g. a fresh clone).
 
 ---
 

@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history, needed by the doc-freshness check's git diff below
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -30,3 +32,25 @@ jobs:
         env:
           MPLBACKEND: Agg   # headless: visualisation.py imports matplotlib at import time
         run: pytest -q
+
+      - name: Check evolving docs were touched
+        # Backstop for the local .githooks/pre-commit check (which only fires if that hook is
+        # actually enabled via `git config core.hooksPath .githooks` - not automatic on a fresh
+        # clone). Non-blocking: annotates the run with a warning rather than failing the build,
+        # since not every code change needs a log entry and this is a nudge, not a hard gate.
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+          if [ -z "$base" ] || ! git cat-file -e "$base" 2>/dev/null; then
+            echo "No comparable base commit (first push to a new ref) - skipping."
+            exit 0
+          fi
+          changed=$(git diff --name-only "$base" "${{ github.sha }}")
+          touches_code=$(printf '%s\n' "$changed" | grep -E '^(src/|app\.py$|tests/|notebooks/)' || true)
+          touches_log=$(printf '%s\n' "$changed" | grep -E '^(docs/PROGRESS\.md|docs/ML_TOOLING\.md|ML_LEARNING_LOG\.md)$' || true)
+          if [ -n "$touches_code" ] && [ -z "$touches_log" ]; then
+            echo "::warning::Code/tests changed without touching docs/PROGRESS.md, docs/ML_TOOLING.md, or ML_LEARNING_LOG.md. If this represents a real behaviour/finding/obstacle, add a log entry (see CLAUDE.md's Session Workflow)."
+          fi

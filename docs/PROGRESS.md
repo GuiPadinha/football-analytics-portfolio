@@ -6,6 +6,36 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-07-09 (cont. 3) — doc-freshness enforcement: a git hook + CI backstop, not just a rule
+
+Guilherme caught, twice in the same session, that the "log obstacles/findings as they happen"
+convention in CLAUDE.md's Session Workflow was being followed inconsistently (a retry attempt went
+unlogged; doc edits sat uncommitted) — then asked for an actual **mechanism**, not just a
+restatement of the rule, since relying on memory had just visibly failed.
+
+**Built two backstops, deliberately not just more prose in CLAUDE.md:**
+- `.githooks/pre-commit` — blocks a commit touching `src/`/`app.py`/`tests/`/`notebooks/` unless
+  the commit also touches `docs/PROGRESS.md`, `docs/ML_TOOLING.md`, or `ML_LEARNING_LOG.md`.
+  Escape hatch for real trivial commits: `DOC_CHECK_ACK=1 git commit ...` (kept distinct from
+  `--no-verify`, which would skip every hook, not just this one check).
+- `.github/workflows/tests.yml`'s new "Check evolving docs were touched" step — the same check
+  against the push/PR diff, as a non-blocking `::warning::` annotation, so the mechanism still
+  fires even if the local hook was never enabled (a fresh clone doesn't auto-activate hooks).
+
+**Enabling the hook is itself a persistence decision, not a passive doc edit** — the sandbox's own
+auto-mode classifier correctly paused on `git config core.hooksPath .githooks` (a mechanism that
+runs on every future commit, not just this session) until Guilherme explicitly confirmed enabling
+both. Verified all three code paths actually work before relying on them: a code-only staged change
+correctly blocks (exit 1, printed the exact violating files); `DOC_CHECK_ACK=1` correctly overrides
+(exit 0); staging a real log-file touch alongside the code change correctly passes (exit 0) —
+tested via scratch edits to `src/config.py`, fully reverted after, not left staged or committed.
+
+Documented in `CLAUDE.md`'s Session Workflow ("This is enforced, not just requested") rather than
+just added silently — the point is that a future session (or a human contributor) can see *why*
+a blocked commit is happening, not just hit a wall.
+
+---
+
 ## 2026-07-09 — Phase 4c mostly done: Module A generalisation across 3 of 4 held-out tournaments
 
 Picked up the model-track backlog (not the app UX one): Phase 4c was the one remaining open item
@@ -56,6 +86,14 @@ cache logic) — **72 green** (66 → 72). Full `python -m src.pipeline` run reg
 and `data/manifest.json` against real data (not synthetic-only tests) — every dataset now shows
 `n_cached_locally == n_matches`, confirming no partial/rate-limited state leaked into what's
 actually wired in.
+
+**Status language corrected same session** (Guilherme flagged it): calling Phase 4/4c "✅ Done"
+overstated it while Women's EURO 2025 stays unwired — downgraded to 🟡 "3/4 tournaments wired"
+across CLAUDE/INITIATIVE/ROADMAP/this file. **One further retry attempt, later the same session**
+(time-boxed per an explicit "don't waste time on it" ask): still `429`, and this time even
+`sb.matches()` (metadata, not an event pull) was already rate-limited — a broader block than the
+first attempt showed. Stopped after one try; logged in [ML_TOOLING.md](ML_TOOLING.md). Status
+unchanged: still 3/4, still resumable for free whenever the limit clears.
 
 ---
 

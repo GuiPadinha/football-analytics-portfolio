@@ -60,6 +60,12 @@ Key gotchas and lessons — most recent first:
 - **Calibrated GBM didn't rescue it** (Phase 2). Brier 0.0661→0.0659. S4 tuned-shallow GBM wasn't pathologically miscalibrated to begin with. "Logistic stays" survives a harder test.
 - **Baseline ladder** (Phase 2). Geometry-only 0.712 → full 0.765. ~80% of discrimination is pure shot geometry.
 - **5-fold CV as variance estimate** (Phase 2). In-distribution 0.783 ± 0.009; EURO test 0.765 at bottom edge → real ~1.7-pt league→tournament cost. CV ≠ substitute for OOD test.
+- **Multiple OOD test sets should be scored separately, not pooled** (Phase 4c). Scoring the same
+  TRAIN_SETS-fitted model against 4 held-out tournaments individually (World Cup 2022 0.808, AFCON
+  2023 0.807, EURO 2024 0.765, Copa América 2024 0.763) showed EURO 2024's long-standing headline
+  number is the *floor* of the four, not a fluke. A single pooled aggregate across all four would
+  have hidden that spread entirely. One OOD test set answers "does it generalise here"; several,
+  scored separately, answer the stronger question "does it generalise evenly."
 - **Scaling a logistic model — the non-movement is the lesson** (Phase 2). Test ROC-AUC barely moved; the win is clean convergence and coefficient comparability (`distance_to_goal` −0.10 raw → −0.84 per-SD).
 - **ROC-AUC inflated by trivially-rankable cases** (Phase 1). Penalty-shootout shots (period 5) padded test ROC-AUC 0.798 → 0.765 after removal. Evaluation population is itself a modelling decision.
 - **Python NaN gotcha with ML consequences** (S2). `bool(float('nan'))` is `True` — `pass_cross`/`pass_through_ball`/`pass_cut_back` columns hold `True`/`NaN`, so ~72% of assists misclassified as crosses. Fixed with explicit `is True` checks.
