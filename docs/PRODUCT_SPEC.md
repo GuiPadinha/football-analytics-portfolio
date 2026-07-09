@@ -8,9 +8,11 @@ feedback on 2026-07-05 (see "Post-v1 additions" below) added real-time player se
 and defender-facing clearances/blocks stats; a 2026-07-06 fix-up pass corrected a real dark-theme
 rendering bug (radar chart) and added whole-number season totals; a later 2026-07-06 pass shipped
 the all-players **leaderboard** (goals incl. penalties + xG where available) — the first item off
-the evening-feedback backlog below. Remaining backlog items (goalkeepers, clickable drill-down,
-methodology-expander rework) are still open. Deployment to Streamlit Community Cloud is the one step
-left for the maintainer to do (needs their account) — see the Build Checklist.
+the evening-feedback backlog below. **Deployed to Streamlit Community Cloud 2026-07-09** —
+[gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app)
+(Python 3.10 pinned in the deploy settings, see ROADMAP.md's Phase 9 backlog note). Phase 8 is now
+fully done; the remaining backlog items (goalkeepers, clickable drill-down, methodology-expander
+rework, penalty info) below are app-polish, not Phase 8 build items.
 
 ### Post-v1 additions (2026-07-05)
 
@@ -284,8 +286,11 @@ dynamic and customizable" — better than the alternatives considered below:
       live (cached) per-group silhouette curve; the full diagnostic-plot suite (calibration curve,
       elbow curve) stayed a v2 idea rather than shipping a fourth precomputed artifact for it.
 - [x] Add `streamlit` to `requirements.txt` (pinned, `1.58.0`).
-- [ ] **Deploy to Streamlit Community Cloud; put the URL in `README.md` and the portfolio** — the
-      one step that needs the maintainer's own account, not something to automate.
+- [x] **Deploy to Streamlit Community Cloud; put the URL in `README.md` and the portfolio**
+      (2026-07-09) —
+      [gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app).
+      Python 3.10 pinned explicitly in the deploy's advanced settings (Cloud's newer 3.14 default
+      risked missing wheels for `kloppy`/`pyarrow`/`statsbombpy`, all pinned against 3.10 locally).
 - [x] Smoke test: verified headless via Streamlit's `AppTest` harness (no browser needed) — all 3
       position groups, 8 different players (including one with zero logged shots, to exercise the
       "no shot data" branch, and one with an accented name), and the zero-radar-axes edge case, all

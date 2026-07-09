@@ -113,6 +113,16 @@ visualisation.plot_calibration_curve / plot_shot_map / plot_player_xg_ranking
 `metrics.compute_xg_metrics` re-runs this same chain (minus the plots) to produce the headline
 numbers written to `metrics.json`; `pipeline.run_xg_pipeline` re-runs it complete with the plots.
 
+**Phase 4c generalisation branch (2026-07-09):** a second, parallel scoring path off the same
+fitted `models.train_logistic_regression` model — `models.evaluate_by_competition` slices a
+combined held-out shot table (`features.build_training_dataset(config.GENERALISATION_TEST_SETS)`,
+cached via `pipeline.build_generalisation_table`) by `competition_id` and scores each tournament
+separately, deliberately *not* through the single-aggregate `models.evaluate_model` path above.
+`metrics.compute_generalisation_metrics` wraps this into `metrics.json`'s `xg_generalisation`
+section; `visualisation.plot_xg_generalisation_bar` is its one dedicated chart. This is additive,
+not a fork of the main chain — `config.TEST_SETS`/`shots_test.parquet`/the headline
+`test_roc_auc` above are completely untouched by it.
+
 ## Data Flow — Module B (Similarity)
 
 ```
