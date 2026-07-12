@@ -14,21 +14,23 @@ strict phase order, for an upcoming demo), extended 2026-07-05 with real-time se
 and a widened multi-competition player pool; a 2026-07-06 pass fixed a real radar dark-theme bug +
 added whole-number totals; a 2026-07-08 pass shipped the all-players **leaderboard** (goals incl.
 penalties + xG where available) and verified both app views in a real browser (Playwright-over-Edge
-screenshots); **deployed to Streamlit Community Cloud 2026-07-09** —
+screenshots); **deployed to Streamlit Community Cloud 2026-07-09**; a 2026-07-09 (cont. 4) pass
+shipped penalty info (total goals + penalty split) on the single-player page; a 2026-07-09 (cont. 5)
+pass shipped the clickable "similar player" recursive drill-down (and fixed a real infinite-jump
+cascade bug it exposed — see PROGRESS.md) —
 **[live demo](https://gpfootball-analytics-portfolio.streamlit.app)** (Python 3.10 pinned in the
 deploy settings to match `requirements.txt`, not Cloud's newer default — see ROADMAP.md's Phase 9
 backlog note on why that version bump is deliberately deferred).
 See [docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renumbered 0–9 program on
 2026-07-02.
-**Next (open backlog): show penalty info on the single-player page (it currently shows only
-non-penalty goals — data already in `app_data`, presentation-only, small); clickable "similar
-player" drill-down (unblocked — no caveat after all); wire goalkeepers into the app (needs a
-K/silhouette call); rework the low-value "Under the hood" methodology expander. Exact code entry
-points for all four (verified current 2026-07-09, not just described) are in
-[PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s "Backlog from 2026-07-06 feedback" section. A "player
-career" page/view is also under discussion (multi-season drill-down,
-international tournament data — trophies/awards/MOTM data does not exist in any current source and
-would need new scraping infra).**
+**Next (open backlog): wire goalkeepers into the app (needs a K/silhouette call); rework the
+low-value "Under the hood" methodology expander. Exact code entry points for both (verified current
+2026-07-09, not just described) are in [PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s "Backlog from
+2026-07-06 feedback" section — that section also has one minor open cosmetic follow-up from the
+drill-down work (an expander's open/closed state not always carrying over consistently across a
+jump). A "player career" page/view is also under discussion (multi-season drill-down, international
+tournament data — trophies/awards/MOTM data does not exist in any current source and would need new
+scraping infra).**
 (360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
 Run the app locally: `python -m src.app_data` (once, to build `app_data/`) then `streamlit run app.py`
 — or just use the [live demo](https://gpfootball-analytics-portfolio.streamlit.app).

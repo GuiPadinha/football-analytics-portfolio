@@ -172,6 +172,24 @@ def render_leaderboard(pool, xg_table):
 
 per90, xg_table, shots, metrics = load_artifacts()
 
+# "Similar player" row-click drill-down (2026-07-09 backlog item): clicking a row in the
+# "Players like X" table (near the bottom of this script) stashes a (player, team) pair in
+# session_state and calls st.rerun(). This block is what that rerun lands on — it runs before
+# any widget below is created, which is the only point Streamlit allows a script to set a
+# widget's value programmatically (by pre-seeding st.session_state[key] ahead of the matching
+# st.xxx(key=...) call). Resets position/competition filters and the search box so the target
+# player can't be hidden by whatever the user had filtered/typed before the click.
+if "jump_to_player" in st.session_state:
+    jump_player, jump_team = st.session_state.pop("jump_to_player")
+    jump_match = per90[(per90["player"] == jump_player) & (per90["team"] == jump_team)]
+    if not jump_match.empty:
+        st.session_state["view_radio"] = "Player explorer"
+        st.session_state["position_filter"] = "All"
+        st.session_state["competition_filter"] = "All"
+        st.session_state["player_search_query"] = ""
+        jump_competition = jump_match.iloc[0]["competition"]
+        st.session_state["player_pick_All_All_"] = f"{jump_player} ({jump_team}) · {jump_competition}"
+
 st.sidebar.title("Player Evaluation Framework")
 st.sidebar.caption(
     f"{per90['competition'].nunique()} competitions · StatsBomb open data (2015/16-2023/24)"
@@ -181,13 +199,16 @@ view = st.sidebar.radio(
     "View", ["Player explorer", "Leaderboard"],
     help="Player explorer: one player's radar, similar players and finishing. "
     "Leaderboard: browse and sort every player in the current filters.",
+    key="view_radio",
 )
 
 position_filter = st.sidebar.selectbox(
-    "Filter by position (optional)", ["All"] + sorted(per90["position_group"].unique())
+    "Filter by position (optional)", ["All"] + sorted(per90["position_group"].unique()),
+    key="position_filter",
 )
 competition_filter = st.sidebar.selectbox(
-    "Filter by competition (optional)", ["All"] + sorted(per90["competition"].unique())
+    "Filter by competition (optional)", ["All"] + sorted(per90["competition"].unique()),
+    key="competition_filter",
 )
 searchable = per90
 if position_filter != "All":
@@ -217,7 +238,10 @@ radar_axes = st.sidebar.multiselect(
 # is still a deliberately different interaction from a plain combobox (click to open, then type
 # inside it) — the text box is the obvious first thing to type into, matching "typing search"
 # as asked, not a searchable-but-still-dropdown-shaped control.
-search_query = st.text_input("Search for a player", placeholder="Type a name, then press Enter...")
+search_query = st.text_input(
+    "Search for a player", placeholder="Type a name, then press Enter...",
+    key="player_search_query",
+)
 if search_query:
     matches = searchable[searchable["player"].str.contains(search_query, case=False, regex=False, na=False)]
 else:
@@ -271,6 +295,18 @@ st.caption(
     f"{position_group.lower()}s across {group_df['competition'].nunique()} competitions."
 )
 
+# Penalty breakdown (2026-07-09 backlog item): signature stats show non_penalty_goals only, so a
+# penalty-taker's card understates their real total. `goals` (incl. penalties) already ships in
+# app_data/player_per90.parquet — display-only, computed by src/similarity.py, never fed to
+# clustering/xG (see DISPLAY_COUNT_COLUMNS). Skipped for zero-goal players to avoid a "0 goals, 0
+# from penalties" line cluttering every non-scorer's page.
+total_goals = int(round(player_row_full["goals"]))
+non_penalty_goals = int(round(player_row_full["non_penalty_goals"]))
+penalty_goals = total_goals - non_penalty_goals
+if total_goals > 0:
+    penalty_note = f" ({penalty_goals} from penalties)" if penalty_goals > 0 else ""
+    st.caption(f"**Goals (incl. penalties): {total_goals}**{penalty_note}")
+
 with st.expander(f"All per-90 stats ({len(PER90_FEATURE_COLUMNS)} metrics, vs. {position_group.lower()} peers)"):
     stat_table = pd.DataFrame({
         "Stat": [STAT_LABELS[c] for c in PER90_FEATURE_COLUMNS],
@@ -310,7 +346,7 @@ with col_similar:
     st.subheader(f"Players like {player_name}")
     similar = find_similar_players(
         per90, PER90_FEATURE_COLUMNS, player=player_name, team=team_name, n=5
-    )
+    ).reset_index(drop=True)
     fig, ax = plt.subplots(figsize=(7, 0.7 * len(similar) + 1))
     plot_similar_players_bar(similar, accent_color=ACCENT_ORANGE, grid_color=GRID_LINE, ax=ax)
     st.pyplot(fig)
@@ -321,8 +357,21 @@ with col_similar:
         "league. No cross-league normalisation yet (see \"Under the hood\" below), so treat a "
         "cross-league match as a coarser signal than a same-league one."
     )
-    with st.expander("Table view"):
-        st.dataframe(
+    with st.expander("Table view — click a row to jump to that player", expanded=False):
+        # `similar` was reset_index(drop=True) above so its positions line up 1:1 with the
+        # rendered rows Streamlit reports in `selection.rows`. A click sets `jump_to_player` and
+        # reruns; the block at the very top of the script (before any widget is created) turns
+        # that into a pre-seeded selectbox value — see its comment for why a rerun is needed
+        # instead of just overwriting `player_name` in place.
+        #
+        # `key` is scoped to the current player/team, not a fixed string: `st.dataframe`
+        # selection state persists in session_state by key across reruns, so a fixed key would
+        # leave "row 0 selected" true after landing on the new page, since it renders a table
+        # under the very same key — immediately re-triggering another jump, and cascading into
+        # an infinite chain through each player's own most-similar match. Caught by actually
+        # driving the click via Playwright, not by reasoning about it in the abstract: the app
+        # visibly kept jumping player-to-player instead of settling on one page.
+        selection_event = st.dataframe(
             similar[["player", "team", "competition", "distance"]].rename(
                 columns={
                     "player": "Player", "team": "Team",
@@ -331,7 +380,15 @@ with col_similar:
             ),
             hide_index=True,
             width="stretch",
+            on_select="rerun",
+            selection_mode="single-row",
+            key=f"similar_table_{player_name}_{team_name}",
         )
+        selected_rows = selection_event.selection["rows"] if selection_event else []
+        if selected_rows:
+            picked = similar.iloc[selected_rows[0]]
+            st.session_state["jump_to_player"] = (picked["player"], picked["team"])
+            st.rerun()
 
 st.subheader("Finishing — is the output real?")
 xg_row = xg_table[(xg_table["player"] == player_name) & (xg_table["team"] == team_name)]
