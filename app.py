@@ -59,6 +59,12 @@ TEXT_LIGHT = "#e6e6e6"
 ACCENT_ORANGE = "#e8752f"
 ACCENT_BLUE = "#1a78cf"
 
+# Brand identity (2026-07-13 visual pass) — one icon/slogan pair reused everywhere (browser tab,
+# sidebar, every page header) so the app reads as one product rather than a stack of bare
+# st.title() calls with no shared identity.
+BRAND_ICON = "⚽"
+SLOGAN = "Scout by data, not by reputation."
+
 # Applied once at import time — this is its own process (a `streamlit run` script), so mutating
 # rcParams here can't bleed into the notebooks/pipeline.py's own matplotlib usage, which stays on
 # the light/paper-friendly default look on purpose (see visualisation.py's docstring notes).
@@ -100,7 +106,7 @@ STAT_LABELS = {
 }
 STAT_LABELS["save_pct"] = "Save %"
 
-st.set_page_config(page_title="Player Evaluation Framework", layout="wide")
+st.set_page_config(page_title="Player Evaluation Framework", page_icon=BRAND_ICON, layout="wide")
 
 
 @st.cache_data
@@ -127,6 +133,18 @@ def cached_silhouette_scores(position_group_df):
     return compute_silhouette_scores(X_scaled)
 
 
+def render_page_header(title):
+    """Shared header chrome: a big page title on the left, a small brand badge (icon + slogan) in
+    the top-right corner — so every view (Leaderboard, Player explorer, a player's own page) reads
+    as one product rather than a bare `st.title()` with no shared identity (2026-07-13 visual pass).
+    """
+    header_left, header_right = st.columns([5, 1])
+    with header_left:
+        st.title(title)
+    with header_right:
+        st.caption(f"{BRAND_ICON} *{SLOGAN}*")
+
+
 def render_leaderboard(pool, xg_table):
     """Render the all-players leaderboard: one sortable table over the current filter pool.
 
@@ -144,13 +162,13 @@ def render_leaderboard(pool, xg_table):
             position/competition filters (the app's `searchable`).
         xg_table (pandas.DataFrame): flagship player xG table (`total_xg`, `xg_diff` per player).
     """
-    st.title("Player leaderboard")
+    render_page_header("Player leaderboard")
     st.markdown(
         "Every player in the current filters, one sortable table — the **\"browse and spot "
         "outliers\"** view, as opposed to the Player explorer's one-player-at-a-time deep dive. "
         f"**{len(pool):,} players** across **{pool['competition'].nunique()} competitions** right "
-        "now; narrow with the sidebar's position/competition filters, or click any column header "
-        "to sort (click again to reverse)."
+        "now; narrow further below by name or position, or click any column header to sort (click "
+        "again to reverse)."
     )
     st.markdown(
         "**What to look for:**\n"
@@ -165,7 +183,31 @@ def render_leaderboard(pool, xg_table):
         "(different feature set, see their own Player explorer page for saves/save %)."
     )
 
-    board = pool[[
+    # In-page filters (2026-07-13, requested on top of the sidebar's position/competition
+    # filters): a name search plus a position multiselect scoped to this view only, so browsing
+    # the whole table doesn't require leaving it to touch the sidebar.
+    filter_name_col, filter_position_col = st.columns([2, 1])
+    with filter_name_col:
+        name_query = st.text_input(
+            "Filter by player name", placeholder="Type a name...", key="leaderboard_name_filter"
+        )
+    with filter_position_col:
+        position_options = sorted(pool["position_group"].unique())
+        position_pick = st.multiselect(
+            "Filter by position", position_options, default=position_options,
+            key="leaderboard_position_filter",
+        )
+
+    filtered = pool[pool["position_group"].isin(position_pick)] if position_pick else pool.iloc[0:0]
+    if name_query:
+        filtered = filtered[filtered["player"].str.contains(name_query, case=False, regex=False, na=False)]
+    if filtered.empty:
+        st.warning("No players match the name/position filters above.")
+        return
+    if len(filtered) != len(pool):
+        st.caption(f"Showing {len(filtered):,} of {len(pool):,} players after the filters above.")
+
+    board = filtered[[
         "player", "team", "competition", "position_group",
         "minutes_played", "goals", "non_penalty_goals", "assists",
     ]].merge(
@@ -219,7 +261,8 @@ def render_about_and_roadmap(per90, metrics):
     n_generalisation_shots = sum(v["n_shots"] for v in metrics["xg_generalisation"].values())
     n_tournaments = len(metrics["xg_generalisation"])
 
-    st.title("⚽ Player Evaluation Framework")
+    st.title(f"{BRAND_ICON} Player Evaluation Framework")
+    st.caption(f"*{SLOGAN}*")
     st.markdown(
         "A recruitment-led player evaluation tool over StatsBomb open data — two independent ML "
         "models, nothing scraped live, everything reproducible via `python -m src.pipeline`. "
@@ -295,22 +338,70 @@ def render_about_and_roadmap(per90, metrics):
             "plus a shot map."
         )
 
+    st.subheader("Data used")
+    st.markdown(
+        "All open data — **StatsBomb** event data and **SkillCorner** tracking data. No paid "
+        "licence, nothing scraped live; the app only reads precomputed tables built by "
+        "`python -m src.pipeline`.\n\n"
+        "- **Similarity pool, 6 competitions:** Premier League, La Liga, Serie A, Ligue 1 (all "
+        "2015/16), Frauen-Bundesliga and the FA Women's Super League (both 2023/24) — the newest "
+        "full season StatsBomb's free tier has for each league.\n"
+        "- **xG training set:** Premier League 2015/16 + Bayer Leverkusen 2023/24 — a different "
+        "league and country from the test set below, on purpose.\n"
+        "- **xG generalisation tests, 4 tournaments never trained on:** UEFA EURO 2024 (the "
+        "headline test), FIFA World Cup 2022, Africa Cup of Nations 2023, Copa América 2024.\n"
+        "- **SkillCorner tracking data (A-League):** a standalone physical-metrics demo (distance, "
+        "high-speed running, sprints per 90) — no player overlap with the datasets above yet, so "
+        "it doesn't feed either model.\n\n"
+        "Full dataset-by-dataset detail, including honest caveats about what each competition "
+        "actually contains: "
+        "[DATA.md](https://github.com/GuiPadinha/football-analytics-portfolio/blob/main/docs/DATA.md)."
+    )
+
+    st.subheader("How each model works")
+    st.markdown(
+        "**Similarity (scouting lens).** Every player's per-90 stats — shots, key passes, "
+        "tackles, progressive passes, and more (a different set for goalkeepers: saves, shots "
+        "faced, claims) — are standardised and split by position group, then grouped with "
+        "**K-means clustering**. \"Players like X\" doesn't actually use the cluster label: it "
+        "ranks every other player in the same group by raw **Euclidean distance** in that "
+        "standardised space, a continuous measure rather than a same-cluster/different-cluster "
+        "cutoff. **PCA** compresses the same features to 2D for the cluster scatterplot in the "
+        "project notebooks.\n\n"
+        "**Valuation (luck-vs-skill lens).** A **logistic regression** scores every shot from its "
+        "geometry (distance and angle to goal), how it was struck (header vs. foot, first-time, "
+        "under pressure), how it was created (cross, through-ball, cut-back, or unassisted), and "
+        "the game state (score difference, penalty, free-kick). It's trained once on league data, "
+        "then scored — never retrained — against tournaments it has never seen, to check the "
+        "ranking still holds outside its training league."
+    )
+
     st.subheader("What's already shipped, and what's next")
     st.markdown(
-        "**Done:** the full similarity + xG pipeline across 6 competitions, a leaderboard view, "
-        "clickable similar-player drill-down, penalty-aware goal totals, goalkeepers wired in "
-        "with their own feature set (saves, shots faced, goals conceded, claims, save %), and "
-        "this app deployed live.\n\n"
+        "**Done:** the full similarity + xG pipeline across 6 competitions, a leaderboard view "
+        "with name/position filters, clickable similar-player drill-down, penalty-aware goal "
+        "totals, goalkeepers wired in with their own feature set (saves, shots faced, goals "
+        "conceded, claims, save %), and this app deployed live.\n\n"
         "**Open, small:** goalkeepers don't have a chosen K / silhouette check yet, so they aren't "
         "formally clustered into style archetypes the way outfield players are (\"players like X\" "
         "still works for them — it ranks by raw distance, which doesn't need a cluster label); the "
         "similarity match doesn't yet adjust for different leagues' competitiveness (a cross-league "
         "match today is a coarser signal than a same-league one).\n\n"
-        "**Bigger, not started:** uncertainty ranges on the xG number; a smarter distance metric "
-        "for similarity (today's treats correlated stats as independent); shot context from "
-        "player-tracking freeze-frames (360°-context xG); a side-by-side player comparison view; "
-        "market-value data alongside a similarity match (a usable data source has been found, but "
-        "it needs player-identity matching work first — no shared ID between data sources)."
+        "**Bigger modelling upgrades:** uncertainty ranges on the xG number instead of one point "
+        "estimate; a smarter distance metric for similarity (today's treats correlated stats — "
+        "e.g. tackles and interceptions — as independent, which double-counts overlapping skill); "
+        "shot context from player-tracking freeze-frames (360°-context xG, building on the same "
+        "kind of tracking data already demoed for physical metrics); a side-by-side player "
+        "comparison view; market-value data alongside a similarity match (a usable open dataset "
+        "has been found, but it needs player-identity matching work first — no shared ID between "
+        "data sources).\n\n"
+        "**A third lens, not started:** a **\"performance under pressure\"** module — do players "
+        "who perform well in high-stakes league moments (title races, relegation battles, derbies) "
+        "also perform well in tournaments? There's a real 51-player overlap between one league "
+        "training squad and a EURO 2024 squad to test this against, but it needs external "
+        "match-importance data StatsBomb doesn't provide (league-table position, rivalry context), "
+        "and has to be framed as a correlation check, not a causal one — tournament squads are "
+        "themselves selection-biased."
     )
     st.caption(
         "Full phase-by-phase detail: "
@@ -400,10 +491,23 @@ if "jump_to_player" in st.session_state:
         jump_competition = jump_match.iloc[0]["competition"]
         st.session_state["player_pick_All_All_"] = f"{jump_player} ({jump_team}) · {jump_competition}"
 
-st.sidebar.title("Player Evaluation Framework")
+# Brand header (2026-07-13 visual pass): icon + name + slogan, then a few live quick-facts so the
+# sidebar carries more than just filter widgets — the same "what's this app made of" numbers as
+# the About & Roadmap page's headline tiles, computed live rather than hardcoded so they can't
+# drift from the data the way a copy-pasted number in a doc can.
+st.sidebar.markdown(f"## {BRAND_ICON} Player Evaluation Framework")
+st.sidebar.caption(f"*{SLOGAN}*")
+st.sidebar.divider()
+
+n_goalkeepers = int((per90["position_group"] == "Goalkeeper").sum())
+sidebar_metric_cols = st.sidebar.columns(2)
+sidebar_metric_cols[0].metric("Players", f"{len(per90):,}")
+sidebar_metric_cols[1].metric("Competitions", per90["competition"].nunique())
 st.sidebar.caption(
-    f"{per90['competition'].nunique()} competitions · StatsBomb open data (2015/16-2023/24)"
+    f"StatsBomb open data, 2015/16-2023/24 · includes {n_goalkeepers} goalkeepers · "
+    f"{metrics['xg']['n_train_shots']:,} shots power the xG model"
 )
+st.sidebar.divider()
 
 view = st.sidebar.radio(
     "View", ["Player explorer", "Leaderboard", "About & Roadmap"],
@@ -412,6 +516,10 @@ view = st.sidebar.radio(
     "About & Roadmap: what this is, how to use it, what's built, and what's next.",
     key="view_radio",
 )
+if view != "About & Roadmap":
+    st.sidebar.caption("New here? Start with **About & Roadmap** for the full story.")
+st.sidebar.divider()
+st.sidebar.caption("[Source on GitHub](https://github.com/GuiPadinha/football-analytics-portfolio)")
 
 # "About & Roadmap" is a static informational page, not a player/filter view — branch and stop
 # here, before the position/competition filter widgets below, so its sidebar stays uncluttered
@@ -420,12 +528,6 @@ view = st.sidebar.radio(
 if view == "About & Roadmap":
     render_about_and_roadmap(per90, metrics)
     st.stop()
-
-st.caption(
-    "A recruitment-led player evaluation tool over StatsBomb open data — two independent ML "
-    "models, nothing scraped live. See **About & Roadmap** in the sidebar for the full story, "
-    "credibility numbers and what's next."
-)
 
 position_filter = st.sidebar.selectbox(
     "Filter by position (optional)", ["All"] + sorted(per90["position_group"].unique()),
@@ -450,6 +552,15 @@ if view == "Leaderboard":
         st.stop()
     render_leaderboard(searchable, xg_table)
     st.stop()
+
+render_page_header("Player explorer")
+st.markdown(
+    "One player at a time: pick anyone below to see their **signature stats**, a **radar** "
+    "against their position-group peers, a ranked **\"Players like X\"** shortlist you can click "
+    "through (a recursive drill-down, not a static list), and — for players inside the xG "
+    "training set — a **Finishing** panel comparing goals to expected goals.\n\n"
+    "Narrow the pool with the sidebar's position/competition filters, then search by name below."
+)
 
 # Typing search: a free-text query narrows the match list once committed (Enter, or clicking
 # away — st.text_input shows its own "Press Enter to apply" hint while a keystroke is pending;
@@ -514,7 +625,7 @@ radar_axes = st.sidebar.multiselect(
     key=f"radar_axes_{position_group}",
 )
 
-st.title(f"{player_name} · {team_name} · {position_group}")
+render_page_header(f"{player_name} · {team_name} · {position_group}")
 st.caption(competition_name)
 
 st.subheader(f"Signature stats for a {position_group.lower()}")

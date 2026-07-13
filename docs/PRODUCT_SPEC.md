@@ -138,6 +138,39 @@ across a jump).
   `total_goals > 0`, so non-scorers' pages are unaffected. Verified live via
   `streamlit run app.py` + the Playwright-over-Edge recipe (see PROGRESS.md).
 
+### Visual/brand pass — 2026-07-13 (cont. 4)
+
+A same-day follow-up, after the goalkeeper wiring above, asked for: Leaderboard filters (name +
+position), a stronger Player explorer intro, a more visually developed sidebar/header with a
+brand icon and slogan, and an expanded About & Roadmap covering data/methods/direction. All four
+shipped in `app.py`:
+
+- **Leaderboard filters:** `render_leaderboard` gained an in-page `st.text_input` (name) and
+  `st.multiselect` (position, defaulting to all options) above the table — additive to, not a
+  replacement for, the sidebar's existing position/competition filters, since those narrow the
+  *whole* player pool (shared with Player explorer) while these two are Leaderboard-only.
+- **Player explorer intro:** previously had no page-level title or explanation at all — a bare
+  search box. Now opens with `render_page_header("Player explorer")` plus a short markdown intro
+  naming every panel the page contains.
+- **Brand identity:** two new module constants, `BRAND_ICON = "⚽"` and
+  `SLOGAN = "Scout by data, not by reputation."`, used in the browser tab (`page_icon`), a new
+  `render_page_header()` helper (title + a top-right icon/slogan badge, used by the Leaderboard,
+  Player explorer, and per-player pages), and an enriched sidebar (brand header, two live
+  `st.metric` quick-facts computed from `per90`/`metrics.json` rather than hardcoded, a "New here?"
+  pointer to About & Roadmap, and a GitHub source link).
+- **About & Roadmap expansion:** two new visible (non-collapsed) sections, "Data used" (the actual
+  competitions/seasons behind each model, per [DATA.md](DATA.md)) and "How each model works" (a
+  qualitative K-means/Euclidean-distance/PCA description for similarity, logistic regression for
+  xG) — both prose/dataset-name content, no bare decimals, so they don't conflict with the
+  whole-number-headline rule the "Methodology" expander already follows. The "what's next" roadmap
+  paragraph was also expanded into three tiers (small/open, bigger modelling upgrades, and a new
+  "third lens, not started" paragraph naming Module C/PUP explicitly — it hadn't been mentioned
+  anywhere in the app before this pass).
+
+Verified via a scripted `AppTest` pass over all three views plus the two new Leaderboard filters
+and a goalkeeper pick (no exceptions), then Playwright-over-Edge screenshots of all three pages —
+see PROGRESS.md.
+
 ---
 
 ## Purpose

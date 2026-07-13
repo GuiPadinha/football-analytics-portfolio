@@ -6,6 +6,49 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-07-13 (cont. 4) — Visual/brand pass: Leaderboard filters, Player explorer intro, brand identity, About & Roadmap expansion
+
+Same-day follow-up after the goalkeeper wiring below. Guilherme asked for four things: filter the
+Leaderboard by name/position, improve the Player explorer page's intro, make the sidebar/page
+headers more visually developed with an appealing icon/brand/slogan, and expand About & Roadmap
+with the data used, the methods, and where the models are headed next.
+
+**Leaderboard filters.** `render_leaderboard` (`app.py`) gained an in-page name search
+(`st.text_input`) and a position `st.multiselect` (defaulting to all options) above the table —
+additive to the sidebar's shared position/competition filters, not a replacement, since the
+sidebar narrows the whole pool (shared with Player explorer) while these two are scoped to
+Leaderboard browsing itself. Empty-selection and no-match states both handled (a warning, not a
+crash).
+
+**Player explorer intro.** The page previously opened straight into a bare search box with no
+title or explanation at all. Now opens with a proper header + a short markdown paragraph naming
+every panel on the page (signature stats, radar, "players like X," Finishing).
+
+**Brand identity.** New `BRAND_ICON = "⚽"` / `SLOGAN = "Scout by data, not by reputation."`
+constants, threaded through: the browser tab (`st.set_page_config(page_icon=...)`), a new
+`render_page_header()` helper (title on the left, a small icon+slogan badge in the top-right —
+used by the Leaderboard, Player explorer, and every per-player page), and a rebuilt sidebar (brand
+header, two live `st.metric` quick-facts — Players, Competitions — computed from `per90`, not
+hardcoded, a "New here? Start with About & Roadmap" pointer, and a GitHub source link).
+
+**About & Roadmap expansion.** Two new always-visible sections: "Data used" (the actual
+competitions/seasons feeding each model — similarity pool, xG training set, the 4 generalisation
+tournaments, SkillCorner) and "How each model works" (plain-language K-means/Euclidean-distance/PCA
+for similarity, logistic regression for xG). Both are prose/dataset-name content with no bare
+decimals, so they don't collide with the whole-number-headline rule the "Methodology" expander
+already follows (see the 2026-07-13 cont. 2 entry in PROGRESS_ARCHIVE.md for that rule's origin).
+The "what's next" roadmap paragraph also grew a third tier, "**A third lens, not started**,"
+naming Module C (Performance Under Pressure) explicitly — it hadn't appeared anywhere in the app
+before this pass, only in MODULES.md/ROADMAP.md.
+
+**Verification:** a scripted `AppTest` pass over all three views plus both new Leaderboard filters
+and a goalkeeper pick came back with no exceptions; Playwright-over-Edge screenshots of all three
+pages confirmed the visual result matches intent (brand badge top-right of every header, sidebar
+quick-facts, filters both populated and functional). Full `pytest` suite re-run, still **72
+green** (no `src/` changes this pass, `app.py`-only).
+
+---
+
 ## 2026-07-13 (cont. 3) — Goalkeepers wired into the app; Leaderboard copy expanded
 
 Guilherme had a few hours left before the pitch and asked to attack the near-term backlog —
@@ -67,11 +110,10 @@ fix, still **72 green**.
 
 Verified against `git log`/`git status` 2026-07-13. Git CLI is used directly (see CLAUDE.md's
 Session Workflow) — this section is a lightweight pointer, not a substitute for `git log`/`git
-status`. Latest commit: `5b8a27e` ("Pitch-prep: app About & Roadmap tab, whole-number headline
-stats, doc-hygiene pass" — covers the earlier same-day work, now in
-[PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md)), pushed to `origin/main`. This session's changes
-(goalkeepers wired into `app.py`/`src/app_data.py`, the `src/similarity.py` raw-totals fix, the
-Leaderboard copy expansion, and doc updates across `MODULES.md`/`PRODUCT_SPEC.md`/`CLAUDE.md`/
-`ML_LEARNING_LOG.md`/this file) are **not yet committed** — Guilherme to review before committing.
-Entries through 2026-07-13 (cont. 2) moved to [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md) to keep
-this file under 150 lines.
+status`. Latest commit: `919b6ce` ("Wire goalkeepers into the app; expand Leaderboard copy" —
+covers the goalkeeper-wiring session above, now the "cont. 3" entry), pushed to `origin/main`.
+This session's changes (the visual/brand pass above — Leaderboard filters, Player explorer intro,
+`render_page_header`/sidebar branding, the About & Roadmap data/methods/roadmap expansion — plus
+doc updates to this file and `PRODUCT_SPEC.md`) are **not yet committed** — Guilherme to review
+before committing. Entries through 2026-07-13 (cont. 2) moved to
+[PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md) to keep this file under 150 lines.

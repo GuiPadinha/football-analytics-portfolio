@@ -23,7 +23,11 @@ built, what's next, and a "Methodology" expander), rewrote the headline stat til
 counts instead of decimal model scores, and wired the Phase 4c generalisation chart into the app for
 the first time; a same-day (cont. 3) pass **wired goalkeepers into the app** (own feature set, a 4th
 position filter, 124 keepers — not yet clustered, so no style-archetype layer for them — see
-MODULES.md) and expanded the Leaderboard view's own explanatory copy —
+MODULES.md) and expanded the Leaderboard view's own explanatory copy; a same-day (cont. 4) visual/
+brand pass added Leaderboard name/position filters, a proper Player explorer intro, a reusable
+`render_page_header` (icon + slogan badge on every page), a live-stat-carrying sidebar, and
+expanded "About & Roadmap" with visible (non-decimal) "Data used" and "How each model works"
+sections plus a third "Module C / Performance-Under-Pressure" roadmap paragraph —
 **[live demo](https://gpfootball-analytics-portfolio.streamlit.app)** (Python 3.10 pinned in the
 deploy settings to match `requirements.txt`, not Cloud's newer default — see ROADMAP.md's Phase 9
 backlog note on why that version bump is deliberately deferred).
