@@ -81,6 +81,40 @@ Key gotchas and lessons — most recent first:
 
 Key gotchas and lessons — most recent first:
 
+- **League-normalising the features barely moved the K decision — and that's the useful
+  finding, not a null result** (2026-07-13, cross-league normalisation + goalkeeper
+  clustering). Before committing to "z-score within competition" as the fix for comparing
+  per-90 rates raw across 6 leagues (Phase 4b's original open item), checked whether it would
+  also change which K the outfield groups should use — it didn't: silhouette still peaks at
+  K=2 for all three groups, and the K=4 value barely moves (Defender 0.149→0.137, Midfielder
+  0.133→0.133, Forward 0.137→0.153). That's the right outcome, not a wasted check: it confirms
+  the normalisation is doing its intended job (correcting *which* players look similar) without
+  quietly making the clusters themselves tighter or looser as a side effect — a "did this
+  secretly change K too" question worth asking of any feature-space change before trusting the
+  old K still applies. Implemented as `normalize_within_competition` (`src/similarity.py`): each
+  per-90 stat becomes "standard deviations above/below this player's own competition's average"
+  (`_lz`-suffixed columns) before clustering/`find_similar_players` ever touch it — a relative
+  fix, not a true competitiveness rating (no external league-strength data exists in this
+  project), so it assumes each league's stat *distribution shape* is roughly comparable, not
+  that the leagues are equally strong. Radar axes, percentiles, and signature stats deliberately
+  stay on the raw per-90 rates — those are "how good is this player in real units" displays, not
+  a similarity computation, so keeping them raw means a fan still reads an actual rate, not a
+  z-score they'd have to be taught to interpret.
+- **A K decided on the wrong pool would have been a real methodology mismatch, not just a
+  smaller number** (2026-07-13, goalkeeper clustering — first real K/silhouette check for
+  goalkeepers since they were wired into the app 2026-07-05). The outfield groups' K=4 decision
+  is documented (`metrics.json`) against the notebook's single-competition (PL 2015/16) scope,
+  but goalkeepers only ever existed in the app's wider 6-competition pool — there is no
+  single-league goalkeeper table to match that precedent against. Checking the silhouette curve
+  on the *actual pool that gets clustered* (124 keepers, league-normalised features) rather than
+  inventing a narrower comparison pool: peaks at K=2 (0.217, the same soft-continuum shape every
+  outfield group shows), K=4 gives 0.155 — close enough to the outfield groups' own K=4 values
+  (0.133–0.153) that the same "K=4 for archetype granularity over the metric's K=2 preference"
+  call generalises cleanly to goalkeepers too, not a different standard applied by fiat. Wired
+  via a generalised `_cluster_position_groups` (`src/app_data.py`) that both the three outfield
+  groups and `["Goalkeeper"]` now share, rather than a separate one-off goalkeeper clustering
+  function — same normalisation + K-means recipe, just parameterised by which groups and which
+  feature columns.
 - **A function built ahead of its consumer can be quietly incomplete in a way nothing catches
   until something actually calls it** (2026-07-13, wiring goalkeepers into the app).
   `build_goalkeeper_per90_features` (written 2026-07-05, `src/similarity.py`) only kept the

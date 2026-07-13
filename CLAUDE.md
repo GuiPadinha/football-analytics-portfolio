@@ -22,8 +22,9 @@ explanation into its own **"About & Roadmap"** sidebar view (what it is, how to 
 built, what's next, and a "Methodology" expander), rewrote the headline stat tiles to whole-number
 counts instead of decimal model scores, and wired the Phase 4c generalisation chart into the app for
 the first time; a same-day (cont. 3) pass **wired goalkeepers into the app** (own feature set, a 4th
-position filter, 124 keepers — not yet clustered, so no style-archetype layer for them — see
-MODULES.md) and expanded the Leaderboard view's own explanatory copy; a same-day (cont. 4) visual/
+position filter, 124 keepers — not yet clustered at that point, see MODULES.md; K-means clustered in
+a later same-day cont. 6 pass, below) and expanded the Leaderboard view's own explanatory copy; a
+same-day (cont. 4) visual/
 brand pass added Leaderboard name/position filters, a proper Player explorer intro, a reusable
 `render_page_header` (icon + slogan badge on every page), a live-stat-carrying sidebar, and
 expanded "About & Roadmap" with visible (non-decimal) "Data used" and "How each model works"
@@ -40,24 +41,26 @@ per-90 stats table, both via a new shared `visualisation.plot_diverging_bar`; pl
 background colour on the Leaderboard's G-xG column —
 **[live demo](https://gpfootball-analytics-portfolio.streamlit.app)** (Python 3.10 pinned in the
 deploy settings to match `requirements.txt`, not Cloud's newer default — see ROADMAP.md's Phase 9
-backlog note on why that version bump is deliberately deferred).
+backlog note on why that version bump is deliberately deferred); a same-day (cont. 6) pass closed
+out three explicitly-scoped items: goalkeepers are now **K-means clustered** (K=4, same
+silhouette-informed-but-archetype-driven call as the outfield groups, checked against the real
+124-keeper pool — see MODULES.md) and share the Style archetype panel with outfield players;
+**cross-league similarity normalisation** is designed and implemented
+(`similarity.normalize_within_competition` — per-90 stats are now z-scored within each competition
+before clustering/"players like X" ever compare across leagues, a relative fix since no external
+league-strength data exists in this project); and the Leaderboard's long-standing blank-cell-shows-
+"None" bug is fixed (confirmed as a real, still-open upstream Streamlit limitation — GitHub issue
+#7360 — fixed at the data layer via hand-formatted text columns, not the config layer three prior
+attempts tried). 75 tests green; `metrics.json` unchanged (byte-identical).
 See [docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renumbered 0–9 program on
 2026-07-02.
-**Next session, start here: the cont. 5 pass above is committed and pushed (`5abd590`) — decide
-whether to keep iterating on the visual/docs pass further (it was scoped as an open-ended "go
-bigger" ask, not a fixed task list, so more rounds are plausible) or move on to a different backlog
-item. One known, now-thoroughly-investigated but unfixed cosmetic gap surfaced again this pass:
-blank Leaderboard xG/G-xG cells render as the literal text "None" — three independent fixes tried
-and verified live, none worked; see [ML_TOOLING.md](docs/ML_TOOLING.md) for the full account before
-attempting a fourth.**
-**Next (open backlog): design cross-league normalisation for similarity (Phase 4b's original open
-item, still unresolved); decide a K/silhouette check for goalkeepers so they get a style-archetype
-layer like outfield players do now (they're wired into the app, just not clustered yet — the new
-Style archetype panel is outfield-only until that lands). A side-by-side two-player comparison view
-and a market-value integration alongside "players like X" (a usable open dataset was found —
-`dcaribou/transfermarkt-datasets` — but it's blocked on player-identity matching between data
-sources, not on data availability; see [DATA.md](docs/DATA.md)) are both scoped in the backlog, not
-started. Exact code entry points for what's still open are in
+**Next session, start here: the cont. 6 pass above is complete, verified (AppTest + Playwright),
+and documented, but not yet committed — see docs/PROGRESS.md's Commit Status section.** Decide
+whether to commit/push, then pick up the next backlog item.
+**Next (open backlog): a side-by-side two-player comparison view; a market-value integration
+alongside "players like X"** (a usable open dataset was found — `dcaribou/transfermarkt-datasets`
+— but it's blocked on player-identity matching between data sources, not on data availability; see
+[DATA.md](docs/DATA.md)) — neither started. Exact code entry points are in
 [PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s "Backlog from 2026-07-06 feedback" section and
 [ROADMAP.md](docs/ROADMAP.md)'s Phase 9 list — the PRODUCT_SPEC section also has one minor open
 cosmetic follow-up from the drill-down work (an expander's open/closed state not always carrying
@@ -68,7 +71,7 @@ source and would need new scraping infra).**
 Run the app locally: `python -m src.app_data` (once, to build `app_data/`) then `streamlit run app.py`
 — or just use the [live demo](https://gpfootball-analytics-portfolio.streamlit.app).
 
-Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped) — Phase 4c (2026-07-09) shows this is the *floor* across four held-out tournaments, not a fluke: FIFA World Cup 2022 0.808, Africa Cup of Nations 2023 0.807, Copa América 2024 0.763 (see `metrics.json`'s `xg_generalisation`, [docs/MODULES.md](docs/MODULES.md)). Similarity: K=4 per position group, silhouette ~0.24 (soft continuum) on the notebook/pipeline's single-competition (PL 2015/16) scope — the app's own player pool is wider (6 competitions, see MODULES.md). 72 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
+Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped) — Phase 4c (2026-07-09) shows this is the *floor* across four held-out tournaments, not a fluke: FIFA World Cup 2022 0.808, Africa Cup of Nations 2023 0.807, Copa América 2024 0.763 (see `metrics.json`'s `xg_generalisation`, [docs/MODULES.md](docs/MODULES.md)). Similarity: K=4 per position group, silhouette ~0.24 (soft continuum) on the notebook/pipeline's single-competition (PL 2015/16) scope — the app's own player pool is wider (6 competitions, now cross-league normalised, and goalkeepers are K-means clustered too — see MODULES.md). 75 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
 
 → Phase tracker: [docs/INITIATIVE.md](docs/INITIATIVE.md) | Session log: [docs/PROGRESS.md](docs/PROGRESS.md)
 
@@ -124,7 +127,7 @@ docs/
   ML_THEORY.md           ← ML/stats theory reference (textbook-level)
   ML_TOOLING.md          ← Windows/environment gotchas
 ML_LEARNING_LOG.md       ← ML gotchas and decisions log (pointers to above docs)
-tests/                   ← 72 pytest unit tests, all green
+tests/                   ← 75 pytest unit tests, all green
 outputs/                 ← saved PNGs (gitignored)
 data/                    ← per-match cache + Parquet feature tables (gitignored)
 ```

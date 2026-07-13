@@ -243,6 +243,30 @@ now-thoroughly-investigated cosmetic gap rather than faked as fixed — `board.s
 na_rep="–")` is kept in `app.py` anyway since it correctly formats every real value, it just does
 nothing for the missing ones.
 
+**Fixed 2026-07-13 (cont. 6), after a fourth pass — the bug is real Streamlit behaviour (GitHub
+issue #7360, "Allow configuration of missing value placeholder in `st.dataframe`", still open as
+of this Streamlit version), not something the first three attempts got wrong.** `WebSearch`
+against that issue confirmed the underlying cause: the "None" fallback applies to *numeric*
+columns' null cells specifically and has no config-level override — Styler `na_rep`,
+`column_config.NumberColumn`'s own `format=`, and pandas nullable dtypes all sit at layers the
+grid's null-handling ignores. The only fix that actually reaches the null-handling itself is at
+the data layer: **stop the column from being numeric at the point Streamlit sees it.** `xG`/
+`G-xG` are now hand-formatted **text** columns (`f"{v:.1f}"` / `f"{v:+.1f}"`, `""` for missing)
+via `column_config.TextColumn` instead of `NumberColumn` — a blank string isn't a null numeric
+cell, so the grid never reaches its hardcoded fallback. The one real complication: G-xG's
+diverging background colour (`Styler.background_gradient`) needs numeric input, so it can't run
+on the now-text column directly — worked around by computing the CSS colour per cell manually
+from the still-numeric `xg_diff` values (`app.py`'s `_diverging_css`) *before* they're
+overwritten by the display strings, then applying those precomputed colours via
+`Styler.apply(lambda _: colors, subset=["G-xG"])`. Verified live (fresh server restart,
+Playwright screenshot, La Liga-only filter to force a page full of blank cells): zero "None"
+occurrences, real values still show their diverging colour correctly. **Known, accepted
+trade-off:** a text column sorts lexically when a user clicks the column header ("+10.5" sorts
+before "+4.2"), not numerically — there is no `column_config` option in this Streamlit version
+to declare "sort by column A, display column B," so a perfectly numeric click-sort and a
+blank-for-missing cell are not simultaneously achievable here. Stated in a code comment rather
+than silently accepted; the default row order (sorted by Goals) is unaffected.
+
 **Self-inflicted false start along the way, worth flagging on its own:** the very first
 verification (the `Float64` dtype attempt) looked unchanged after a plain browser `page.reload()`
 against an already-running `streamlit run` dev server — but a *page* reload doesn't guarantee the

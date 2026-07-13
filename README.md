@@ -269,6 +269,6 @@ and an **About & Roadmap** tab explaining the framework, the data, and what's ne
   the 51 players who appear in both this project's league and tournament datasets. Fully scoped in
   `docs/MODULES.md`, not started — deprioritised behind Phase 5's hierarchical finishing model,
   which delivers most of the same "real or luck" payoff more cleanly.
-- **Cross-league similarity normalisation**, goalkeeper clustering, a side-by-side player
-  comparison view, and further modelling upgrades (xG uncertainty, 360°-context xG) — see
+- A side-by-side player comparison view, a market-value integration, and further modelling
+  upgrades (xG uncertainty, 360°-context xG, a smarter distance metric for similarity) — see
   `docs/INITIATIVE.md` for the full phase-by-phase roadmap.

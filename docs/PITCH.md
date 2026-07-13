@@ -46,7 +46,7 @@ colleague pitch (date TBD — today or the next day at the time of writing).
   2026-07-13 with their own feature set — saves, shots faced, goals conceded, claims, save %).
 - **10,824** shots trained the xG model; a further **4,704** held-out shots — across **4**
   different tournaments the model never trained on — used to check it generalises.
-- **72** automated tests, green on every push (CI), a reproducible one-command rebuild
+- **75** automated tests, green on every push (CI), a reproducible one-command rebuild
   (`python -m src.pipeline`), and a live deployed app.
 
 *(These are the numbers in the app's "About & Roadmap" → "What's been built" tiles — say them from
@@ -77,12 +77,12 @@ via `python -m src.metrics`).
 
 ## Roadmap to show (what's next)
 
-- **Open backlog (small, near-term):** goalkeepers are wired in but not yet K-means clustered (no
-  K/silhouette check chosen for them, so the new Style archetype panel — shipped 2026-07-13, see
-  the demo script above — is outfield-only for now); cross-league normalisation for similarity
-  still open. (The "About & Roadmap" view now also has visible, non-collapsed "Data used" and "How
-  each model works" sections, plus Leaderboard name/position filters — both shipped 2026-07-13,
-  same day as this cheat sheet's last refresh.)
+- **Open backlog (small, near-term):** the cross-league normalisation is a *relative* (z-score)
+  adjustment, not a true competitiveness rating — there's no external league-strength data behind
+  it. (Goalkeepers are now K-means clustered and share the Style archetype panel with outfield
+  players, and cross-league normalisation shipped — both 2026-07-13, same day as this cheat
+  sheet's last refresh. The "About & Roadmap" view also has visible, non-collapsed "Data used" and
+  "How each model works" sections, plus Leaderboard name/position filters, from the same day.)
 - **Backlog, bigger (not scoped further):** a side-by-side two-player comparison view.
 - **Phase 5 (not started):** uncertainty on the xG number (bootstrap intervals), a hierarchical
   finishing model — "is this player's over/underperformance statistically real."
@@ -104,8 +104,10 @@ Full phase-by-phase detail: [INITIATIVE.md](INITIATIVE.md) (status table + log) 
 - **Women's EURO 2025 (Phase 4c, 1 of 4 tournaments):** genuinely rate-limited by StatsBomb's raw
   data host across several retries, not a shelved decision — resumable for free once the limit
   clears (per-match cache is already in place).
-- **Cross-league normalisation (Phase 4b):** the similarity pool spans 6 competitions but compares
-  raw per-90 rates across them — flagged honestly in-app, not silently assumed away.
+- **Cross-league normalisation (Phase 4b):** resolved 2026-07-13 — per-90 rates are now
+  league-adjusted (z-scored within each competition) before comparing across the 6-competition
+  pool. Still a relative, data-only fix, not a true competitiveness rating — flagged honestly
+  in-app, not oversold as a full solution.
 - **Market value / transfer fees:** out of scope for *modelling* (this tool informs a human's
   valuation, it doesn't price players) — but *displaying* an external market-value number next to
   a similarity match was scoped 2026-07-13 as a good future addition; blocked on entity resolution

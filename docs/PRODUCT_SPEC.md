@@ -171,6 +171,34 @@ Verified via a scripted `AppTest` pass over all three views plus the two new Lea
 and a goalkeeper pick (no exceptions), then Playwright-over-Edge screenshots of all three pages —
 see PROGRESS.md.
 
+### Goalkeeper clustering, cross-league normalisation, and the Leaderboard "None" fix — 2026-07-13 (cont. 6)
+
+Three items carried in as this session's explicit scope, all shipped:
+
+- **Goalkeepers K-means clustered** (K=4, silhouette-informed like the outfield groups, checked
+  against the actual 124-keeper app pool) — `src/app_data.py::_cluster_position_groups`
+  generalises the old outfield-only `_add_cluster_labels`. The Style archetype panel
+  (`app.py`) is no longer outfield-only.
+- **Cross-league normalisation** — `similarity.normalize_within_competition` league-adjusts
+  per-90 features (z-score within each competition) before clustering/`find_similar_players`
+  compare across the 6-competition pool. Applied to clustering, the archetype panel's
+  cluster-profile z-scores, and "players like X" distance; radar axes, percentiles, and
+  signature stats stay on raw per-90 rates deliberately (real-unit displays, not a similarity
+  computation). See MODULES.md/ML_LEARNING_LOG.md for the full rationale and real silhouette
+  numbers behind both K decisions.
+- **Leaderboard "None" cell-text bug fixed** — a real, still-open upstream Streamlit limitation
+  (GitHub issue #7360), not a bug in three prior fix attempts. `xG`/`G-xG` are now hand-formatted
+  `TextColumn`s (blank string for missing, not a null numeric cell) instead of `NumberColumn`s;
+  the diverging background colour is computed manually from the still-numeric values before
+  they're overwritten by the display strings. See ML_TOOLING.md for the full account, including
+  the accepted trade-off (click-to-sort on these two columns is now lexical, not numeric).
+
+Verified: 75 tests green (72 + 3 new for `normalize_within_competition`), a scripted `AppTest`
+pass over all four position groups (incl. Goalkeeper) and all three views, and Playwright-over-Edge
+screenshots confirming both the goalkeeper archetype panel and a genuinely blank (not "None")
+Leaderboard cell for a La Liga-only filter. `metrics.json` unchanged (byte-identical) — this
+pass's scope is the app's wider pool, not the notebook/pipeline's narrow single-competition one.
+
 ---
 
 ## Purpose

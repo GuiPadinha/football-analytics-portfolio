@@ -78,17 +78,21 @@ from n=2 contexts" into a defensible claim and fixes Module B's single-season th
   script reusing `build_training_dataset`/`build_player_per90_features` — see [DATA.md](DATA.md#phase-4-data-expansion-2026-07-04)
   for the full dataset list, the "StatsBomb's La Liga = mostly Barcelona" gotcha, and the sampled
   women's-football viability check.
-- **4b — Module B cross-league/season** (app-wired 2026-07-05, normalisation still open): the
-  Streamlit app's player pool now spans `config.SIMILARITY_SETS` — PL/La Liga/Serie A/Ligue 1
-  2015/16 + Frauen Bundesliga/FA WSL 2023/24 — clustered together per position group
-  (`src/app_data.py`), not per league. `config.SIMILARITY_SET` (PL 2015/16 alone) is untouched
-  and still what `metrics.json`/notebook 03/`pipeline.py` describe — the teaching example stays
-  single-competition on purpose. **Still open:** cross-league normalisation (per-90 rates are
-  compared raw across leagues of different competitiveness today — flagged in-app as a coarser
-  signal, not resolved). Real ceiling, not a to-do: StatsBomb's free data has no recent men's
-  top-flight season at all, so "wider" (6 competitions) rather than "newer" is what Phase 4b
-  actually delivers for the men's leagues; the women's leagues (2023/24) are the newest
-  full-season data anywhere in this project.
+- **4b — Module B cross-league/season** (app-wired 2026-07-05, normalisation resolved
+  2026-07-13): the Streamlit app's player pool now spans `config.SIMILARITY_SETS` — PL/La
+  Liga/Serie A/Ligue 1 2015/16 + Frauen Bundesliga/FA WSL 2023/24 — clustered together per
+  position group (`src/app_data.py`), not per league. `config.SIMILARITY_SET` (PL 2015/16 alone)
+  is untouched and still what `metrics.json`/notebook 03/`pipeline.py` describe — the teaching
+  example stays single-competition on purpose. **Cross-league normalisation (2026-07-13):**
+  `similarity.normalize_within_competition` z-scores each per-90 stat within its own competition
+  before clustering/`find_similar_players` ever compare across leagues — a relative, data-only
+  fix (no external league-strength index exists in this project's data), not a true
+  competitiveness rating, but a real improvement over comparing raw rates directly. Same-day
+  follow-up also gave goalkeepers their first real K-means clustering (K=4, silhouette-informed
+  like the outfield groups — see MODULES.md/ML_LEARNING_LOG.md). Real ceiling, not a to-do:
+  StatsBomb's free data has no recent men's top-flight season at all, so "wider" (6 competitions)
+  rather than "newer" is what Phase 4b actually delivers for the men's leagues; the women's
+  leagues (2023/24) are the newest full-season data anywhere in this project.
 - **4c — Module A generalisation** (3/4 wired 2026-07-09, Women's EURO 2025 still pending): the
   three cached-but-unscored Phase 4
   tournaments (Copa América 2024, FIFA World Cup 2022, Africa Cup of Nations 2023) are now scored

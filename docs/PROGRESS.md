@@ -6,87 +6,88 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
-## 2026-07-13 (cont. 5) — Doc-interdependency review + a real feature/visual pass: Style archetype panel, percentile charts, Leaderboard colour
+## 2026-07-13 (cont. 6) — Goalkeeper clustering, cross-league similarity normalisation, and the Leaderboard "None" bug fixed
 
-Opened the "bigger visual + docs pass" flagged at the end of the previous session with the doc
-review first, as asked, then carried straight into app work rather than stopping to check back in
-— per the open-ended framing ("scope isn't decided yet... open with that discussion"), reading all
-docs surfaced concrete findings worth just fixing, and the app work followed the same "more than
-visual — add real sections" brief.
+Three explicitly-scoped items from the top of this session, all shipped: goalkeeper style-archetype
+clustering, cross-league normalisation for similarity (Phase 4b's original open item), and the
+Leaderboard's long-standing blank-cell-shows-"None" cosmetic bug. Scoped before writing any code —
+computed the real silhouette/elbow numbers on the actual production pools first (via scratch
+scripts), rather than picking K or a normalisation design by assumption.
 
-**Doc review, all 16 `.md` files read end-to-end.** The cross-reference discipline holds up well
-overall (the `metrics.json` doc-lint, `INITIATIVE.md` as the sole phase-table source, the
-theory/tooling/decisions three-way split are all still clean) — four concrete things weren't:
-(1) **`README.md` contradicted itself** — the live-demo link at the top implies a deployed, widened
-app, but the body still said "not yet deployed" / "Premier League 2015/16 for v1" (both true before
-2026-07-05/07-09, stale since). Rewritten with the real numbers (6 competitions, 1,635 players incl.
-124 goalkeepers, live URL) and the repo-structure/Tech Stack sections updated (added `streamlit`,
-pointed the `docs/` subtree at CLAUDE.md's index instead of hand-duplicating 3 of 12 files).
-(2) **`CLAUDE.md`'s own Repository Layout omitted `docs/PRODUCT_SPEC.md`** despite it being actively
-maintained and linked from three other docs — added. (3) **`ARCHITECTURE.md`'s Four Layers/Import
-Graph never mentioned `app_data.py`** — the whole Phase 8 product-layer build step was invisible in
-the one doc whose job is "how the pieces fit together"; added it as a third orchestration entry
-point alongside `pipeline.py`/`manifest.py`/`metrics.py`, verified its actual imports via grep rather
-than assumed. Also fixed a stale "future Streamlit app" phrase in the same file — it's deployed.
-(4) **Two cross-doc line-number anchors (`MODULES.md#L57`, `MODULES.md#L53`) had already drifted to
-the wrong section** (both pointed at Module B content instead of Module C — a real, demonstrable
-consequence of using line anchors across files that get edited) — replaced all four markdown-to-
-markdown line anchors repo-wide with heading anchors, which don't drift and (unlike `#Lxx`) actually
-resolve in GitHub's normal rendered-markdown view, not just its blob/source view.
+**Goalkeeper clustering.** No K-means/silhouette decision had ever been made for goalkeepers (wired
+into the app 2026-07-05/07-13 with their own feature set, but "players like X" only ever ranked by
+raw distance, no cluster label). Computed the elbow/silhouette curve on the actual 124-keeper
+6-competition pool the app clusters (there's no single-league goalkeeper table to match the
+outfield notebook's narrower scope against — goalkeepers only ever existed in the wide pool):
+silhouette peaks at K=2 (~0.217, the same soft-continuum shape every outfield group shows). Kept
+K=4 anyway, the same "archetype granularity over the metric's own preference" call already made for
+outfield players, at a comparable silhouette value to theirs (0.155 vs. 0.133–0.153). Wired via a
+new `src/app_data.py::_cluster_position_groups`, generalising the old outfield-only
+`_add_cluster_labels` to take a group list and a feature-column list — goalkeepers and outfield
+players now share one clustering code path and the app's Style archetype panel.
 
-**App: two new features (not just visual), reusing existing computed data — no new modelling.**
-Consulted the dataviz skill before writing chart code, per this project's own established habit;
-manually verified the resulting orange/blue diverging pair against the dark panel surface (WCAG
-contrast 4.89/3.23 respectively — Python computed, since `node` isn't installed here to run the
-skill's own validator script) and confirmed against the skill's own anti-patterns doc that blue↔
-orange is an explicitly endorsed diverging pair (blue↔aqua is the one it rejects, both cool).
+**Cross-league normalisation.** The similarity pool spans 6 competitions of very different
+competitiveness (PL 2015/16 down to FA WSL 2023/24), and per-90 rates were being compared raw
+across them. No external league-strength rating exists in this project's data (checked DATA.md's
+SofaScore/FlashScore candidate-source note again — that's a standings-table source, not a
+competitiveness index), so the honest, data-only fix is relative: `similarity.
+normalize_within_competition` (new, `src/similarity.py`) expresses each per-90 stat as standard
+deviations above/below the player's own competition's average before clustering or
+`find_similar_players` ever compare across leagues. Checked whether this also changed the *K*
+decision for the three existing outfield groups before shipping it — it didn't (silhouette still
+peaks at K=2 for all three; K=4's value moves by ±0.02, not a material shift), which is the right
+outcome: the fix should correct *which* players look similar, not accidentally retune how tightly
+they cluster. Wired into `_cluster_position_groups` for both outfield and goalkeeper clustering, and
+into `app.py`'s `find_similar_players`/cluster-profile calls via new `_lz`-suffixed feature-column
+lists (`PER90_LEAGUE_Z_COLUMNS`/`GK_PER90_LEAGUE_Z_COLUMNS`). Radar axes, percentiles, and signature
+stats deliberately stay on the raw per-90 rates — those are "how good is this player in real units"
+displays, not a similarity computation, so a fan still reads an actual rate, not a z-score they'd
+need to be taught to interpret. Copy updated throughout the app (Player explorer's "players like X"
+caption, the Style archetype panel's explanatory text, "About & Roadmap"'s "How each model works"
+and "What's already shipped, and what's next" sections, the Methodology expander's "Known
+limitations" paragraph) to describe the real mechanism rather than the old "not yet designed"
+language.
 
-- **New `plot_diverging_bar`** (`src/visualisation.py`) — one shared horizontal-bar function for
-  "how does this compare to a baseline, direction and magnitude both matter" reads, parameterised by
-  a reference value (50 for a percentile read, 0 for a z-score read) rather than two near-duplicate
-  functions.
-- **Style archetype panel** (Player explorer, outfield players only): `app_data.py` has computed a
-  K=4 style-archetype `cluster` label per player since Phase 4, and `profile_clusters`
-  (`src/similarity.py`) has existed since the notebooks needed it to name clusters ("ball-winning
-  destroyer," etc.) — neither was ever surfaced in the live app. Now every outfield player's page
-  shows *why* their cluster is what it is (top over/under-indexed stats as z-scores, plotted), plus
-  a "Browse this archetype" expander listing other same-cluster players, clickable via the same
-  jump-to-player mechanism the "players like X" table already uses. Goalkeepers skip this section —
-  they aren't clustered yet (unchanged, known backlog item).
-- **Percentile chart**: the "All per-90 stats" expander's plain sortable dataframe is now a
-  percentile bar chart first (same diverging-bar function, reference=50), with the original
-  dataframe kept as a nested "Table view" — matching the "every chart needs a table-view twin"
-  convention `plot_similar_players_bar` already established.
-- **Leaderboard**: G-xG now has a diverging background colour (orange over-performers, blue
-  under-performers) via a pandas Styler + a small custom `LinearSegmentedColormap` blended through
-  the dark panel colour, guarded on `notna().any()` so an all-blank filter (e.g. La Liga alone,
-  outside Module A's flagship set) doesn't crash `background_gradient`'s vmin/vmax.
+**Leaderboard "None" bug.** Three independent fixes were tried and verified live in the previous
+session, none worked (full account in ML_TOOLING.md) — used `WebSearch` this time before attempting
+a fourth blind fix, and found the real cause: a still-open Streamlit GitHub issue (#7360, "Allow
+configuration of missing value placeholder in `st.dataframe`") confirms this Streamlit version
+hardcodes a missing *numeric* cell to the literal text "None" with no config-level override —
+consistent with why Styler `na_rep` and `column_config.NumberColumn`'s own `format=` both failed
+regardless of how they were combined. The real fix has to happen at the data layer: `xG`/`G-xG` are
+now hand-formatted `TextColumn`s (`f"{v:.1f}"`/`f"{v:+.1f}"`, `""` for missing) instead of
+`NumberColumn`s, so there is no null numeric cell for the grid to special-case. The one
+complication: G-xG's diverging background colour needs numeric input
+(`Styler.background_gradient`), which can't run on the now-text column — worked around with a small
+manual `_diverging_css` helper that samples the same colormap directly from the still-numeric
+`xg_diff` values before they're overwritten by the display strings, applied via `Styler.apply`.
+**Known, accepted trade-off, stated in a code comment:** these two columns now sort lexically when
+a user clicks the header ("+10.5" sorts before "+4.2"), not numerically — there is no
+`column_config` option in this Streamlit version to declare "sort by column A, display column B,"
+so a perfectly numeric click-sort and a blank-for-missing cell aren't simultaneously achievable
+here. The default row order (sorted by Goals) is unaffected.
 
-**A real, now-thoroughly-investigated open cosmetic bug, not fixed:** blank xG/G-xG cells render as
-the literal text "None" (flagged as "candidate polish" back on 2026-07-08). Tried three independent
-fixes this session (nullable `Float64` dtype, `Styler.format(na_rep=...)`, dropping
-`column_config`'s own `format=`), each verified live against a freshly-restarted server — none
-changed the "None" text, though the second attempt did confirm the Styler's format spec drives
-*real*-value display. Conclusion: this Streamlit version's grid hardcodes missing numeric cells to
-"None" regardless of Styler/column_config settings. Logged in full in
-[ML_TOOLING.md](ML_TOOLING.md), including a false-start note (a plain browser reload doesn't
-guarantee a dev server picked up an on-disk change — a full process restart does).
+**Verification.** Full `pytest` suite green (**75** — 72 unchanged + 3 new `test_similarity.py`
+cases for `normalize_within_competition`: relative z-scoring across very different league
+baselines, the zero-std/singleton-group guard, and grouping by an extra column). `python -m
+src.metrics` regenerates `metrics.json` byte-identical (`git diff` empty) — this session's scope is
+the app's wider multi-competition pool, not the notebook/pipeline's narrow single-competition one,
+so the headline numbers every doc quotes are untouched by design. A scripted `AppTest` pass covered
+all four position groups (including Goalkeeper, checking for the "Style archetype" subheader) and
+all three views, plus the Leaderboard's all-blank-G-xG guard path (La Liga-only filter) — zero
+exceptions. Playwright-over-Edge screenshots (system Edge, per the established recipe, at a wider
+2000px viewport to fit every Leaderboard column) confirmed: zero literal "None" occurrences on the
+Leaderboard with a La Liga-only filter (previously every blank cell in that view showed it); real
+xG/G-xG values still render correctly with their diverging background colour intact; the goalkeeper
+Style archetype panel renders a real 4-cluster readout ("skews high on Sweeper Actions... a style
+shared with 33 other players") and a cross-league "players like X" match (an Italian Serie A
+goalkeeper matched to a Premier League one).
 
-**Verification:** full `pytest` suite green throughout (**72**, unchanged — no `src/` logic
-changed beyond the additive `plot_diverging_bar`, which isn't unit-tested, matching this codebase's
-existing precedent of not testing plotting functions). A scripted `AppTest` pass covered all four
-position groups plus all three views, zero exceptions. Playwright-over-Edge screenshots (system
-Edge, per the established recipe) confirmed the new archetype panel, percentile chart, and Leaderboard
-colour all render correctly across a defender, a goalkeeper (correctly skips the archetype section),
-and the Leaderboard view.
-
-**Backlog, deliberately not built this session (needs new model/code work first — logged, not
-built):** goalkeeper clustering (style-archetype panel above is outfield-only until that lands),
-cross-league similarity normalisation, a side-by-side two-player comparison view, market-value
-integration (blocked on entity resolution, not data), a multi-season "player career" view (needs
-new lineups pulls for the Barcelona seasons or similar). All pre-existing Phase 9/backlog items,
-unchanged in scope by this session — no new backlog items were identified beyond what INITIATIVE.md/
-ROADMAP.md/PITCH.md already tracked.
+**Docs updated:** MODULES.md (Module B's app-pool/goalkeeper/planned-upgrades paragraphs),
+DATA.md (Phase 4 section), ML_LEARNING_LOG.md (two new dated Module B entries with the real
+silhouette numbers behind both K decisions), ML_TOOLING.md (closed out the "None" bug entry with
+the real fix and the GitHub issue reference), INITIATIVE.md (Log), ROADMAP.md (Phase 4b entry),
+PITCH.md (open-backlog and "why isn't X done" sections), PRODUCT_SPEC.md (new dated section).
 
 ---
 
@@ -94,8 +95,8 @@ ROADMAP.md/PITCH.md already tracked.
 
 Verified against `git log`/`git status` 2026-07-13. Git CLI is used directly (see CLAUDE.md's
 Session Workflow) — this section is a lightweight pointer, not a substitute for `git log`/`git
-status`. Latest commit: `5abd590` ("Doc-interdependency review + style archetype panel, percentile
-charts, Leaderboard colour" — covers the "cont. 5" entry above, plus a small PITCH.md refresh to
-mention the new Style archetype demo beat), pushed to `origin/main`. Working tree clean as of this
-write-up. Entries through 2026-07-13 (cont. 4) moved to [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md)
-to keep this file under 150 lines.
+status`. Latest commit on `origin/main`: `5abd590`. The "cont. 6" entry above (goalkeeper
+clustering, cross-league normalisation, Leaderboard "None" fix) is **complete but not yet
+committed** — working tree has uncommitted changes as of this write-up (per CLAUDE.md's Session
+Workflow, only commit when explicitly asked). Entries through 2026-07-13 (cont. 5) moved to
+[PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md) to keep this file under 150 lines.

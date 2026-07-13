@@ -11,6 +11,7 @@ from src.similarity import (
     extract_goalkeeper_match_actions,
     extract_player_match_actions,
     find_similar_players,
+    normalize_within_competition,
     resolve_season_positions,
 )
 
@@ -199,6 +200,64 @@ def test_extract_player_match_actions_goals_include_penalties_but_np_goals_do_no
     result = extract_player_match_actions(events).set_index(["player", "team"])
     assert result.loc[("Striker A", "T"), "goals"] == 2  # open-play + penalty
     assert result.loc[("Striker A", "T"), "non_penalty_goals"] == 1  # penalty excluded
+
+
+def test_normalize_within_competition_z_scores_relative_to_own_league():
+    # Two leagues with very different baselines: League A's players cluster around a rate of
+    # 10, League B's around 100 — a raw comparison would say every League B player "presses
+    # more" than every League A player, purely from the league-level baseline, not style. After
+    # league normalisation, a player's z-score should reflect standing *within their own
+    # league* only, so the "high" League A player and the "high" League B player land at the
+    # same relative position.
+    features = pd.DataFrame({
+        "competition": ["A", "A", "A", "B", "B", "B"],
+        "pressures_p90": [8.0, 10.0, 12.0, 80.0, 100.0, 120.0],
+    })
+    z = normalize_within_competition(features, ["pressures_p90"])
+
+    assert list(z.columns) == ["pressures_p90_lz"]
+    # Same relative position (highest in a 3-player group, symmetric spacing) -> identical
+    # z-score regardless of the two leagues' very different raw baselines (10 vs 100).
+    assert z.loc[2, "pressures_p90_lz"] == pytest.approx(z.loc[5, "pressures_p90_lz"])
+    assert z.loc[0, "pressures_p90_lz"] == pytest.approx(z.loc[3, "pressures_p90_lz"])
+    # Each league's own z-scores are mean 0 (a raw pooled z-score would not be, since League B's
+    # mean is ~10x League A's).
+    assert z.loc[[0, 1, 2], "pressures_p90_lz"].mean() == pytest.approx(0.0, abs=1e-9)
+    assert z.loc[[3, 4, 5], "pressures_p90_lz"].mean() == pytest.approx(0.0, abs=1e-9)
+
+
+def test_normalize_within_competition_fills_zero_for_degenerate_groups():
+    # A competition with a single player (std is undefined, 0/0) and one with zero variance
+    # (every player identical on this stat) both produce a NaN z-score before the guard - "no
+    # relative signal available" is filled with 0.0 (neutral) rather than propagating NaN into
+    # clustering/distance, which would silently corrupt every downstream computation touching
+    # that player.
+    features = pd.DataFrame({
+        "competition": ["Solo", "Tied", "Tied"],
+        "tackles_p90": [5.0, 3.0, 3.0],
+    })
+    z = normalize_within_competition(features, ["tackles_p90"])
+
+    assert (z["tackles_p90_lz"] == 0.0).all()
+    assert z["tackles_p90_lz"].notna().all()
+
+
+def test_normalize_within_competition_groups_by_position_group_too_when_asked():
+    # Called with an extra group column (e.g. position_group), normalisation happens within
+    # each (competition, position_group) pair independently - a defender's rate is never
+    # compared to a forward's when computing the league baseline.
+    features = pd.DataFrame({
+        "competition": ["A", "A", "A", "A"],
+        "position_group": ["Defender", "Defender", "Forward", "Forward"],
+        "shots_p90": [1.0, 3.0, 10.0, 30.0],
+    })
+    z = normalize_within_competition(features, ["shots_p90"], group_columns=("competition", "position_group"))
+
+    # Defenders (1.0, 3.0) and forwards (10.0, 30.0) are each their own 2-player group -> the
+    # lower player in each group gets the same (negative) z-score, unaffected by the other
+    # group's much larger raw values.
+    assert z.loc[0, "shots_p90_lz"] == pytest.approx(z.loc[2, "shots_p90_lz"])
+    assert z.loc[1, "shots_p90_lz"] == pytest.approx(z.loc[3, "shots_p90_lz"])
 
 
 def test_compute_silhouette_scores_prefers_true_cluster_count():

@@ -14,9 +14,17 @@ will hit that panel's "no logged shots" fallback, which is expected, not a bug.
 Goalkeepers (2026-07-13) are wired in with their own feature set (saves, shots faced, goals
 conceded, claims, punches, sweeper actions, save %) — none of the outfield `PER90_FEATURE_COLUMNS`
 apply to them, so several spots below branch on `position_group == "Goalkeeper"` rather than
-assuming exactly the three outfield groups. Goalkeepers aren't K-means clustered yet (no
-silhouette-informed K decided for them) — "players like X" still works for them (raw distance
-doesn't need a cluster label), it's just the cluster-archetype layer that's outfield-only so far.
+assuming exactly the three outfield groups. As of a same-day follow-up pass, goalkeepers are
+K-means clustered (K=4, same silhouette-informed-but-archetype-driven call as the outfield
+groups) and share the Style archetype panel with them — see `src/app_data.py`'s
+`_cluster_position_groups`.
+
+Cross-league similarity normalisation (also this pass): clustering and "players like X" both run
+on `similarity.normalize_within_competition`'s league-adjusted (`_lz`-suffixed) features, not the
+raw per-90 rates — a player's standing is compared to their *own competition's* peers before ever
+being compared across leagues. Radar axes, percentiles, and signature stats stay on the raw,
+literal per-90 rates on purpose — those are "how good is this player, in real units" displays,
+not a similarity computation, so a fan reads an actual rate, not a z-score.
 
 Run locally: streamlit run app.py
 """
@@ -34,11 +42,12 @@ from src.similarity import (
     ACTION_COLUMNS,
     GK_ACTION_COLUMNS,
     GK_PER90_FEATURE_COLUMNS,
+    GK_PER90_LEAGUE_Z_COLUMNS,
     PER90_FEATURE_COLUMNS,
+    PER90_LEAGUE_Z_COLUMNS,
     compute_silhouette_scores,
     find_similar_players,
     profile_clusters,
-    scale_features,
 )
 from src.visualisation import (
     plot_diverging_bar,
@@ -70,6 +79,16 @@ ACCENT_BLUE = "#1a78cf"
 DIVERGING_CMAP = LinearSegmentedColormap.from_list(
     "app_diverging", [ACCENT_BLUE, DARK_PANEL, ACCENT_ORANGE]
 )
+
+
+def _diverging_css(value, span):
+    """CSS `background-color` for one G-xG cell, replicating `Styler.background_gradient`
+    manually (see `render_leaderboard`'s None-cell fix for why it can't use that helper
+    directly): `DIVERGING_CMAP` sampled at `value`'s position between `-span` and `+span`.
+    """
+    normalized = 0.5 if span == 0 else (value + span) / (2 * span)
+    r, g, b, a = DIVERGING_CMAP(min(max(normalized, 0.0), 1.0))
+    return f"background-color: rgba({int(r * 255)}, {int(g * 255)}, {int(b * 255)}, {a:.2f})"
 
 # Brand identity (2026-07-13 visual pass) — one icon/slogan pair reused everywhere (browser tab,
 # sidebar, every page header) so the app reads as one product rather than a stack of bare
@@ -117,6 +136,10 @@ STAT_LABELS = {
     for col in PER90_FEATURE_COLUMNS + GK_PER90_FEATURE_COLUMNS
 }
 STAT_LABELS["save_pct"] = "Save %"
+# Cluster profiling (Style archetype panel) reads the league-normalised `_lz` columns, not the
+# raw `_p90` ones (see the module docstring) — same clean label either way, so a reader sees
+# "Tackles" whether the underlying number is a per-90 rate or a league z-score.
+STAT_LABELS.update({f"{col}_lz": label for col, label in list(STAT_LABELS.items())})
 
 st.set_page_config(page_title="Player Evaluation Framework", page_icon=BRAND_ICON, layout="wide")
 
@@ -137,25 +160,33 @@ def load_artifacts():
 
 
 @st.cache_data
-def cached_silhouette_scores(position_group_df):
+def cached_silhouette_scores(position_group_df, feature_columns):
     """Silhouette score per K for one position group — cheap enough (<=300 rows) to compute
     live rather than shipping a fourth precomputed artifact just for the methodology expander.
+
+    `feature_columns` should be the same league-normalised (`_lz`) columns
+    `src/app_data.py`'s `_cluster_position_groups` actually clustered on, so this curve matches
+    the real K decision rather than a different (raw, pooled-across-leagues) feature space —
+    those columns are already standardised (mean ~0, std ~1 within each competition), so this
+    skips `scale_features`'s own global rescale rather than re-scaling an already-scaled matrix.
     """
-    X_scaled, _ = scale_features(position_group_df)
-    return compute_silhouette_scores(X_scaled)
+    return compute_silhouette_scores(position_group_df[feature_columns])
 
 
 @st.cache_data
 def cached_cluster_profile(position_group_df, feature_columns):
     """Per-cluster feature z-scores for one position group (2026-07-13 style-archetype panel).
 
-    `_add_cluster_labels` (src/app_data.py) already computes a K=4 style-archetype `cluster`
-    label per outfield player when app_data/ is built, but nothing in the app surfaced it before
-    this pass — a player's own archetype was computed and shipped, then never shown. This wraps
-    the existing `profile_clusters` (no new modelling, just a z-score readout the notebook already
-    uses to name clusters like "ball-winning destroyer") so a player's page can show *why* their
-    cluster is what it is, not just a bare cluster number. Cached per position group, same
-    reasoning as `cached_silhouette_scores` above — cheap, but no reason to recompute per rerun.
+    `_cluster_position_groups` (src/app_data.py) computes a K=4 style-archetype `cluster` label
+    per player — outfield and, as of a same-day follow-up pass, goalkeepers too — when app_data/
+    is built. This wraps the existing `profile_clusters` (no new modelling, just a z-score
+    readout the notebook already uses to name clusters like "ball-winning destroyer") so a
+    player's page can show *why* their cluster is what it is, not just a bare cluster number.
+    `feature_columns` is the league-normalised `_lz` set (the actual clustering space, see the
+    module docstring), so a cluster's "high Tackles" reading is standard deviations above this
+    cluster's peers' *own leagues'* average, not the raw multi-league pool's. Cached per position
+    group, same reasoning as `cached_silhouette_scores` above — cheap, but no reason to recompute
+    per rerun.
     """
     return profile_clusters(position_group_df, feature_columns, position_group_df["cluster"].values)
 
@@ -248,30 +279,38 @@ def render_leaderboard(pool, xg_table):
         "total_xg": "xG", "xg_diff": "G-xG",
     }).sort_values("Goals", ascending=False)
 
-    # Diverging background on G-xG (2026-07-13 visual pass): the same orange-above/blue-below
-    # convention as the new percentile/archetype bar charts (see plot_diverging_bar), applied to
-    # a table cell instead of a bar — orange for over-performers (a likely finishing spike, per
-    # the column's own help text), blue for under-performers (a possible buy-low). Guarded on
-    # `notna().any()` since a competition-only filter (e.g. La Liga) can leave G-xG entirely
-    # blank — Module A's flagship xG set is Premier League + Leverkusen only (see the module
-    # docstring) — and `Styler.background_gradient` errors on an all-NaN vmin/vmax range.
+    # Blank xG/G-xG cells (2026-07-13, fixed this pass): `column_config.NumberColumn` renders a
+    # missing *numeric* cell as the literal text "None" no matter what a Styler's `na_rep` or its
+    # own `format=` says — confirmed as a real, still-open Streamlit limitation (GitHub issue
+    # #7360: "Allow configuration of missing value placeholder in st.dataframe"), not something
+    # three previous fix attempts (nullable Float64, Styler na_rep, dropping column_config's
+    # `format=`) got wrong — see docs/ML_TOOLING.md for that full account. The only real fix is
+    # at the data layer: xG/G-xG become hand-formatted **text** columns (blank string for
+    # missing, not NaN) instead of numeric ones, so there is no null numeric cell for the grid to
+    # special-case. The diverging background colour is computed manually (`_diverging_css`) from
+    # the still-numeric `xg_diff` values *before* they're overwritten by the display strings, so
+    # the colour survives the dtype change even though `Styler.background_gradient` itself needs
+    # numeric input and can no longer be used directly on the (now text) G-xG column.
     #
-    # `.format(..., na_rep="–")` below formats real values (confirmed live: this is why "+4.2"
-    # shows, not a raw float) but does NOT change how a missing value renders — this Streamlit
-    # version's dataframe grid hardcodes missing numeric cells to the literal text "None" ahead
-    # of whatever the Styler's na_rep says, confirmed by screenshotting three independent fixes
-    # (a pandas nullable Float64 dtype, this na_rep, and dropping column_config's own `format=`
-    # entirely) that each left "None" unchanged. Kept anyway since it's harmless and correctly
-    # formats every real value; the "None" text itself is a known, verified, open cosmetic gap
-    # (see docs/ML_TOOLING.md), not something this pass fixes.
-    board_style = board.style.format("{:.1f}", subset=["xG"], na_rep="–").format(
-        "{:+.1f}", subset=["G-xG"], na_rep="–"
-    )
-    if board["G-xG"].notna().any():
-        gxg_span = board["G-xG"].abs().max() or 1.0
-        board_style = board_style.background_gradient(
-            cmap=DIVERGING_CMAP, subset=["G-xG"], vmin=-gxg_span, vmax=gxg_span,
-        )
+    # Known trade-off, stated plainly: Streamlit's interactive "click a header to sort" now sorts
+    # these two columns lexically (text), not numerically — e.g. "+10.5" sorts before "+4.2".
+    # There is no column_config option to declare "sort column A, display column B" in this
+    # Streamlit version, so a perfectly numeric click-sort and a blank-for-missing cell are not
+    # simultaneously achievable here; the default row order (sorted by Goals, below) is
+    # unaffected, and this is a materially smaller issue than every blank cell reading "None".
+    gxg_raw = board["G-xG"]
+    if gxg_raw.notna().any():
+        gxg_span = gxg_raw.abs().max() or 1.0
+        gxg_colors = gxg_raw.map(lambda v: "" if pd.isna(v) else _diverging_css(v, gxg_span))
+    else:
+        gxg_colors = None
+
+    board["xG"] = board["xG"].map(lambda v: "" if pd.isna(v) else f"{v:.1f}")
+    board["G-xG"] = gxg_raw.map(lambda v: "" if pd.isna(v) else f"{v:+.1f}")
+
+    board_style = board.style
+    if gxg_colors is not None:
+        board_style = board_style.apply(lambda _: gxg_colors, subset=["G-xG"])
 
     st.dataframe(
         board_style,
@@ -282,8 +321,8 @@ def render_leaderboard(pool, xg_table):
             "Goals": st.column_config.NumberColumn(format="%d"),
             "Non-pen goals": st.column_config.NumberColumn(format="%d"),
             "Assists": st.column_config.NumberColumn(format="%d"),
-            "xG": st.column_config.NumberColumn(help="Flagship xG set only"),
-            "G-xG": st.column_config.NumberColumn(
+            "xG": st.column_config.TextColumn(help="Flagship xG set only"),
+            "G-xG": st.column_config.TextColumn(
                 help="Goals minus xG. Positive = outscoring chance quality (expect regression); "
                 "negative = under-converting good chances (possible buy-low). Flagship set only.",
             ),
@@ -413,12 +452,14 @@ def render_about_and_roadmap(per90, metrics):
     st.markdown(
         "**Similarity (scouting lens).** Every player's per-90 stats — shots, key passes, "
         "tackles, progressive passes, and more (a different set for goalkeepers: saves, shots "
-        "faced, claims) — are standardised and split by position group, then grouped with "
-        "**K-means clustering**. \"Players like X\" doesn't actually use the cluster label: it "
-        "ranks every other player in the same group by raw **Euclidean distance** in that "
-        "standardised space, a continuous measure rather than a same-cluster/different-cluster "
-        "cutoff. **PCA** compresses the same features to 2D for the cluster scatterplot in the "
-        "project notebooks.\n\n"
+        "faced, claims) — are first **league-normalised** (each stat expressed as standard "
+        "deviations above/below that player's own competition's average, so a Bundesliga rate "
+        "isn't compared raw to a WSL one), then split by position group and grouped with "
+        "**K-means clustering** — outfield players and goalkeepers alike. \"Players like X\" "
+        "doesn't actually use the cluster label: it ranks every other player in the same group by "
+        "raw **Euclidean distance** in that same league-normalised space, a continuous measure "
+        "rather than a same-cluster/different-cluster cutoff. **PCA** compresses the same features "
+        "to 2D for the cluster scatterplot in the project notebooks.\n\n"
         "**Valuation (luck-vs-skill lens).** A **logistic regression** scores every shot from its "
         "geometry (distance and angle to goal), how it was struck (header vs. foot, first-time, "
         "under pressure), how it was created (cross, through-ball, cut-back, or unassisted), and "
@@ -432,12 +473,13 @@ def render_about_and_roadmap(per90, metrics):
         "**Done:** the full similarity + xG pipeline across 6 competitions, a leaderboard view "
         "with name/position filters, clickable similar-player drill-down, penalty-aware goal "
         "totals, goalkeepers wired in with their own feature set (saves, shots faced, goals "
-        "conceded, claims, save %), and this app deployed live.\n\n"
-        "**Open, small:** goalkeepers don't have a chosen K / silhouette check yet, so they aren't "
-        "formally clustered into style archetypes the way outfield players are (\"players like X\" "
-        "still works for them — it ranks by raw distance, which doesn't need a cluster label); the "
-        "similarity match doesn't yet adjust for different leagues' competitiveness (a cross-league "
-        "match today is a coarser signal than a same-league one).\n\n"
+        "conceded, claims, save %) *and* now K-means clustered into style archetypes like the "
+        "outfield groups, league-normalised similarity (each stat compared to the player's own "
+        "competition before it's compared across leagues), and this app deployed live.\n\n"
+        "**Open, small:** the league normalisation is a relative (z-score) adjustment, not a true "
+        "competitiveness rating — there's no external league-strength data behind it, so it "
+        "assumes each league's stat distribution is roughly comparable in shape, not that the "
+        "leagues are equally strong.\n\n"
         "**Bigger modelling upgrades:** uncertainty ranges on the xG number instead of one point "
         "estimate; a smarter distance metric for similarity (today's treats correlated stats — "
         "e.g. tackles and interceptions — as independent, which double-counts overlapping skill); "
@@ -506,18 +548,21 @@ the full model (adds body part, assist type, game state) reaches
             f"""
 **Similarity model.** K-means, K={metrics['similarity']['kmeans_k_used']} clusters per position
 group, minimum {metrics['similarity']['min_minutes']} minutes played to qualify — for the three
-outfield groups (Defender/Midfielder/Forward). Silhouette score (cluster tightness, −1 to 1) peaks
-low at K=2 for every one of them (~0.22–0.26) — reported honestly rather than hidden: play styles
-within a position are a soft continuum, not sharply separated blobs. K=4 is used anyway, for
-archetype granularity, against the metric's own preference. Goalkeepers aren't clustered yet (no K
-chosen for them) — their "players like X" ranking still works, since that ranks by raw distance in
-their own feature space (saves, shots faced, goals conceded, claims, punches, sweeper actions),
-which doesn't need a cluster label.
+outfield groups (Defender/Midfielder/Forward), on the notebook/pipeline's single-competition (PL
+2015/16) scope. Silhouette score (cluster tightness, −1 to 1) peaks low at K=2 for every one of
+them (~0.22–0.26) — reported honestly rather than hidden: play styles within a position are a
+soft continuum, not sharply separated blobs. K=4 is used anyway, for archetype granularity,
+against the metric's own preference. Goalkeepers now get the same treatment on the app's wider
+6-competition pool (124 keepers): silhouette also peaks at K=2 (~0.22) and K=4 is kept for the
+same archetype-granularity reason.
 
-**Known limitations, stated plainly:** no cross-league normalisation yet (per-90 rates are
-compared raw across leagues of different competitiveness); StatsBomb's free data has no recent
-men's top-flight season (2015/16 is the newest full men's league available; 2023/24 women's
-leagues are the newest full-season data anywhere in this project).
+**Known limitations, stated plainly:** cross-league normalisation is a *relative*, data-only fix
+(each stat expressed as standard deviations above/below the player's own competition's average),
+not an external competitiveness rating — there is no scraped league-strength index in this
+project's data, so it assumes each league's stat distribution has a broadly similar shape, not
+that the leagues are equally strong. StatsBomb's free data also has no recent men's top-flight
+season (2015/16 is the newest full men's league available; 2023/24 women's leagues are the newest
+full-season data anywhere in this project).
             """
         )
 
@@ -660,9 +705,11 @@ group_df = per90[per90["position_group"] == position_group].reset_index(drop=Tru
 if position_group == "Goalkeeper":
     position_action_columns = GK_ACTION_COLUMNS
     position_feature_columns = GK_PER90_FEATURE_COLUMNS
+    position_feature_columns_lz = GK_PER90_LEAGUE_Z_COLUMNS
 else:
     position_action_columns = ACTION_COLUMNS
     position_feature_columns = PER90_FEATURE_COLUMNS
+    position_feature_columns_lz = PER90_LEAGUE_Z_COLUMNS
 
 # Radar axes (moved here 2026-07-13, was a fixed-options sidebar widget declared before the
 # player was even picked — worked only because all three outfield groups shared one feature
@@ -718,74 +765,73 @@ elif pd.notna(player_row_full.get("goals")):
         penalty_note = f" ({penalty_goals} from penalties)" if penalty_goals > 0 else ""
         st.caption(f"**Goals (incl. penalties): {total_goals}**{penalty_note}")
 
-# Style archetype (2026-07-13 visual/feature pass): app_data.py's build step already computes a
-# K=4 style-archetype `cluster` label per outfield player (src/app_data.py::_add_cluster_labels)
-# but nothing in the app surfaced it before this pass — the notebooks' "ball-winning destroyer" /
-# "creative playmaker" style narrative had no live-app equivalent, and "players like X" alone
-# doesn't say *why* a group of players share a style. No new model here: `profile_clusters`
-# (src/similarity.py, already used to name clusters in the notebooks) is a pure z-score readout
-# of stats the clustering already ran on. Goalkeepers are skipped — they aren't clustered yet
-# (no K/silhouette decision made for them, see the "Under the hood" expander below).
-if position_group != "Goalkeeper":
-    st.subheader("Style archetype")
-    cluster_id = int(player_row_full["cluster"])
-    cluster_profile = cached_cluster_profile(group_df, position_feature_columns)
-    cluster_z = cluster_profile.loc[cluster_id]
-    cluster_peers = group_df[
-        (group_df["cluster"] == cluster_id)
-        & ~((group_df["player"] == player_name) & (group_df["team"] == team_name))
-    ]
-    high_traits = cluster_z.sort_values(ascending=False).head(2)
-    low_col = cluster_z.sort_values().index[0]
-    low_z = cluster_z.sort_values().iloc[0]
-    high_text = " and ".join(f"**{STAT_LABELS[c]}** ({z:+.1f}σ)" for c, z in high_traits.items())
-    st.markdown(
-        f"One of **{cluster_profile.shape[0]}** style clusters found among {position_group.lower()}s "
-        "in this pool (K-means on standardised per-90 stats — the grouping came from the numbers "
-        f"alone, no role label was given to the model). This cluster skews high on {high_text} "
-        f"and low on **{STAT_LABELS[low_col]}** ({low_z:+.1f}σ), vs. other "
-        f"{position_group.lower()}s — a style shared with **{len(cluster_peers)}** other players "
-        "in the current pool."
-    )
-    fig, ax = plt.subplots(figsize=(7, 0.5 * len(cluster_z) + 1))
-    plot_diverging_bar(
-        labels=[STAT_LABELS[c] for c in cluster_z.index], values=cluster_z.values, reference=0,
-        label_format=lambda v: f"{v:+.1f}σ",
-        above_color=ACCENT_ORANGE, below_color=ACCENT_BLUE, grid_color=GRID_LINE,
-        xlabel="Cluster average vs. position-group average (standard deviations)", ax=ax,
-    )
-    st.pyplot(fig)
-    plt.close(fig)
-    st.caption(
-        "Standard deviations (σ) of this cluster's average stats vs. the whole position "
-        "group's average — the same z-score reading the project notebooks use to name clusters "
-        "(e.g. high Tackles/Interceptions + low Clearances reads as a ball-winning full-back). Not "
-        "a ranking — a low value here is a different style, not a worse one."
-    )
-    if len(cluster_peers):
-        with st.expander(f"Browse this archetype ({len(cluster_peers)} other players)"):
-            archetype_board = cluster_peers.sort_values("minutes_played", ascending=False).head(8)
-            st.caption(
-                f"Top {len(archetype_board)} by minutes played, of {len(cluster_peers)} total "
-                "sharing this cluster. Click a row to jump to that player."
-            )
-            # Same click-to-jump mechanism as the "Players like X" table below (see its comment
-            # for why the key must be scoped to the current player/team, not fixed).
-            archetype_selection = st.dataframe(
-                archetype_board[["player", "team", "competition", "minutes_played"]].rename(
-                    columns={
-                        "player": "Player", "team": "Team",
-                        "competition": "Competition", "minutes_played": "Minutes",
-                    }
-                ),
-                hide_index=True, width="stretch", on_select="rerun", selection_mode="single-row",
-                key=f"archetype_table_{player_name}_{team_name}",
-            )
-            archetype_rows = archetype_selection.selection["rows"] if archetype_selection else []
-            if archetype_rows:
-                picked = archetype_board.iloc[archetype_rows[0]]
-                st.session_state["jump_to_player"] = (picked["player"], picked["team"])
-                st.rerun()
+# Style archetype (2026-07-13 visual/feature pass, extended to goalkeepers + league-normalised
+# in a same-day follow-up): app_data.py's build step computes a K=4 style-archetype `cluster`
+# label per player — outfield and goalkeeper alike, on league-normalised features (see the module
+# docstring) — but nothing in the app surfaced it until this pass. No new model here:
+# `profile_clusters` (src/similarity.py, already used to name clusters in the notebooks) is a
+# pure z-score readout of stats the clustering already ran on.
+st.subheader("Style archetype")
+cluster_id = int(player_row_full["cluster"])
+cluster_profile = cached_cluster_profile(group_df, position_feature_columns_lz)
+cluster_z = cluster_profile.loc[cluster_id]
+cluster_peers = group_df[
+    (group_df["cluster"] == cluster_id)
+    & ~((group_df["player"] == player_name) & (group_df["team"] == team_name))
+]
+high_traits = cluster_z.sort_values(ascending=False).head(2)
+low_col = cluster_z.sort_values().index[0]
+low_z = cluster_z.sort_values().iloc[0]
+high_text = " and ".join(f"**{STAT_LABELS[c]}** ({z:+.1f}σ)" for c, z in high_traits.items())
+st.markdown(
+    f"One of **{cluster_profile.shape[0]}** style clusters found among {position_group.lower()}s "
+    "in this pool (K-means on league-normalised per-90 stats — the grouping came from the "
+    f"numbers alone, no role label was given to the model). This cluster skews high on "
+    f"{high_text} and low on **{STAT_LABELS[low_col]}** ({low_z:+.1f}σ), vs. other "
+    f"{position_group.lower()}s — a style shared with **{len(cluster_peers)}** other players "
+    "in the current pool."
+)
+fig, ax = plt.subplots(figsize=(7, 0.5 * len(cluster_z) + 1))
+plot_diverging_bar(
+    labels=[STAT_LABELS[c] for c in cluster_z.index], values=cluster_z.values, reference=0,
+    label_format=lambda v: f"{v:+.1f}σ",
+    above_color=ACCENT_ORANGE, below_color=ACCENT_BLUE, grid_color=GRID_LINE,
+    xlabel="Cluster average vs. position-group average (standard deviations)", ax=ax,
+)
+st.pyplot(fig)
+plt.close(fig)
+st.caption(
+    "Standard deviations (σ) of this cluster's average stats vs. the whole position group's "
+    "average, each stat first expressed relative to its own competition's peers (so a Bundesliga "
+    "cluster isn't just describing 'more actions than a WSL team') — the same z-score reading the "
+    "project notebooks use to name clusters (e.g. high Tackles/Interceptions + low Clearances "
+    "reads as a ball-winning full-back). Not a ranking — a low value here is a different style, "
+    "not a worse one."
+)
+if len(cluster_peers):
+    with st.expander(f"Browse this archetype ({len(cluster_peers)} other players)"):
+        archetype_board = cluster_peers.sort_values("minutes_played", ascending=False).head(8)
+        st.caption(
+            f"Top {len(archetype_board)} by minutes played, of {len(cluster_peers)} total "
+            "sharing this cluster. Click a row to jump to that player."
+        )
+        # Same click-to-jump mechanism as the "Players like X" table below (see its comment
+        # for why the key must be scoped to the current player/team, not fixed).
+        archetype_selection = st.dataframe(
+            archetype_board[["player", "team", "competition", "minutes_played"]].rename(
+                columns={
+                    "player": "Player", "team": "Team",
+                    "competition": "Competition", "minutes_played": "Minutes",
+                }
+            ),
+            hide_index=True, width="stretch", on_select="rerun", selection_mode="single-row",
+            key=f"archetype_table_{player_name}_{team_name}",
+        )
+        archetype_rows = archetype_selection.selection["rows"] if archetype_selection else []
+        if archetype_rows:
+            picked = archetype_board.iloc[archetype_rows[0]]
+            st.session_state["jump_to_player"] = (picked["player"], picked["team"])
+            st.rerun()
 
 with st.expander(
     f"All per-90 stats ({len(position_feature_columns)} metrics, vs. {position_group.lower()} peers)"
@@ -844,17 +890,18 @@ with col_radar:
 with col_similar:
     st.subheader(f"Players like {player_name}")
     similar = find_similar_players(
-        per90, position_feature_columns, player=player_name, team=team_name, n=5
+        per90, position_feature_columns_lz, player=player_name, team=team_name, n=5
     ).reset_index(drop=True)
     fig, ax = plt.subplots(figsize=(7, 0.7 * len(similar) + 1))
     plot_similar_players_bar(similar, accent_color=ACCENT_ORANGE, grid_color=GRID_LINE, ax=ax)
     st.pyplot(fig)
     plt.close(fig)
     st.caption(
-        "Distance = Euclidean, standardised per-90 features, same position group only — now "
-        "searched across the whole multi-competition pool, so a match can come from a different "
-        "league. No cross-league normalisation yet (see \"About & Roadmap\" in the sidebar), so "
-        "treat a cross-league match as a coarser signal than a same-league one."
+        "Distance = Euclidean, standardised per-90 features — league-normalised (each stat "
+        "expressed as standard deviations above/below this player's own competition's average) "
+        "before comparing, so a cross-league match is judged on relative standing, not a raw "
+        "rate compared across leagues of different competitiveness. Still an approximation, not "
+        "a true competitiveness adjustment — see \"About & Roadmap\" in the sidebar."
     )
     with st.expander("Table view — click a row to jump to that player", expanded=False):
         # `similar` was reset_index(drop=True) above so its positions line up 1:1 with the
@@ -932,21 +979,14 @@ with st.expander("Under the hood (methodology)"):
         "Full methodology, credibility numbers and roadmap: see **About & Roadmap** in the "
         "sidebar. Below: how tightly this specific position group's players cluster."
     )
-    if position_group == "Goalkeeper":
-        st.caption(
-            "No silhouette check for goalkeepers yet — they aren't K-means clustered (no K has "
-            "been chosen for them), unlike the three outfield groups. \"Players like X\" still "
-            "works above: it ranks by raw distance, which doesn't need a cluster label. Backlog "
-            "item, see About & Roadmap."
-        )
-    else:
-        st.caption(
-            f"Silhouette score by K — {position_group} (peaks low, ~0.25: play-styles within a "
-            "position are a soft continuum, not crisp blobs; K=4 is kept deliberately above the "
-            "metric's preferred K=2 for archetype granularity)."
-        )
-        silhouettes = cached_silhouette_scores(group_df)
-        fig, ax = plt.subplots(figsize=(6, 4))
-        plot_silhouette_curve(silhouettes, ax=ax)
-        st.pyplot(fig)
-        plt.close(fig)
+    st.caption(
+        f"Silhouette score by K — {position_group} (league-normalised features; peaks low, "
+        "~0.2-0.25 for every group including goalkeepers: play-styles within a position are a "
+        "soft continuum, not crisp blobs; K=4 is kept deliberately above the metric's preferred "
+        "K=2 for archetype granularity)."
+    )
+    silhouettes = cached_silhouette_scores(group_df, position_feature_columns_lz)
+    fig, ax = plt.subplots(figsize=(6, 4))
+    plot_silhouette_curve(silhouettes, ax=ax)
+    st.pyplot(fig)
+    plt.close(fig)

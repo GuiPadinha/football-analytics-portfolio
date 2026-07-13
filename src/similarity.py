@@ -592,6 +592,12 @@ def build_physical_per90_features(match_id, min_observed_minutes=30.0):
 PER90_FEATURE_COLUMNS = [f"{col}_p90" for col in ACTION_COLUMNS]
 GK_PER90_FEATURE_COLUMNS = [f"{col}_p90" for col in GK_ACTION_COLUMNS]
 
+# Cross-league-normalised counterparts (see `normalize_within_competition` below) — the feature
+# space clustering/`find_similar_players` actually use for the app's multi-competition pool.
+LEAGUE_Z_SUFFIX = "_lz"
+PER90_LEAGUE_Z_COLUMNS = [f"{col}{LEAGUE_Z_SUFFIX}" for col in PER90_FEATURE_COLUMNS]
+GK_PER90_LEAGUE_Z_COLUMNS = [f"{col}{LEAGUE_Z_SUFFIX}" for col in GK_PER90_FEATURE_COLUMNS]
+
 
 def scale_features(features, feature_columns=PER90_FEATURE_COLUMNS):
     """Standardise features to mean 0, std 1 before clustering.
@@ -617,6 +623,47 @@ def scale_features(features, feature_columns=PER90_FEATURE_COLUMNS):
     scaler = StandardScaler()
     scaled = scaler.fit_transform(features[feature_columns])
     return pd.DataFrame(scaled, columns=feature_columns, index=features.index), scaler
+
+
+def normalize_within_competition(features, feature_columns, group_columns=("competition",)):
+    """League-adjust per-90 features by z-scoring each one within its own competition.
+
+    The app's similarity pool spans six competitions of very different competitiveness (PL
+    2015/16 down to FA WSL 2023/24) — `scale_features` alone standardises against the *pooled*
+    mean/std across all of them, so a per-90 rate is compared raw across leagues (Phase 4b's
+    original open item, see MODULES.md/DATA.md). There is no external league-strength rating in
+    this project's data (no scraped competitiveness index, see DATA.md's SofaScore/FlashScore
+    note) to weight leagues by, so the honest, data-only fix is a **relative** one: express each
+    player's rate as "how many standard deviations above/below this competition's own average,"
+    not the pooled multi-league average. A player's standing *within their own league* is now
+    what clustering/distance compares across leagues, instead of the raw rate itself — this
+    corrects for a league being systematically higher- or lower-tempo than another, but it is
+    still an approximation (it assumes each league's *distribution shape* is comparable, not
+    that the leagues are equally competitive) — stated plainly, not oversold as a full fix.
+
+    Args:
+        features (pandas.DataFrame): per-player feature table, must contain every column in
+            `group_columns` (typically just `competition`) plus `feature_columns`. Usually
+            already filtered to one `position_group`, since z-scoring is only meaningful
+            within a group where the raw features mean the same thing.
+        feature_columns (list[str]): raw per-90 columns to normalise.
+        group_columns (tuple[str]): columns defining the league-normalisation group. Just
+            `competition` by default — callers typically already filter by `position_group`
+            first (see `app_data.py`'s `_cluster_position_groups`), so grouping only by
+            competition normalises within "this league's players in this position group."
+
+    Returns:
+        pandas.DataFrame: one `<col>_lz` column per entry in `feature_columns`, same index as
+            `features`. A competition group with a single player (or zero variance on a
+            feature) has an undefined z-score (0/0) — filled with 0.0, i.e. "no relative signal
+            available," rather than propagating NaN into clustering/distance.
+    """
+    group_columns = list(group_columns)
+    grouped = features.groupby(group_columns)[feature_columns]
+    means = grouped.transform("mean")
+    stds = grouped.transform("std").replace(0.0, np.nan)
+    z = (features[feature_columns] - means) / stds
+    return z.fillna(0.0).add_suffix(LEAGUE_Z_SUFFIX)
 
 
 def compute_elbow_scores(X_scaled, k_range=range(2, 11)):

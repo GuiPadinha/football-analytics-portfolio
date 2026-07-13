@@ -56,8 +56,11 @@ one-off script that reuses `build_training_dataset`/`build_player_per90_features
 ingestion code, per Phase 4a's "config line, not code edit" goal. Module B's app pool (2026-07-05):
 La Liga/Serie A/Ligue 1 2015/16 + Frauen Bundesliga/FA WSL 2023/24 now in `config.SIMILARITY_SETS`
 (their lineups pulled 2026-07-05 to enable minutes-played; La Liga/Serie A/Ligue 1 had only events
-before that). Cross-league normalisation is still not designed — per-90 rates are compared raw
-today, flagged as an open item in the app itself. `TRAIN_SETS`/`TEST_SETS` (Module A) remain
+before that). **Cross-league normalisation designed and implemented 2026-07-13** —
+`similarity.normalize_within_competition` z-scores each per-90 stat within its own competition
+before clustering/`find_similar_players` compare across leagues (see MODULES.md); a relative,
+data-only adjustment, not a true competitiveness rating, since no external league-strength index
+exists in this project's data. `TRAIN_SETS`/`TEST_SETS` (Module A) remain
 untouched by design (see ML_LEARNING_LOG.md); the three tournament pulls (Copa América 2024, FIFA
 World Cup 2022, Africa Cup of Nations 2023) sat cached-but-unscored until Phase 4c (2026-07-09)
 wired them into `config.GENERALISATION_TEST_SETS` instead — see [MODULES.md](MODULES.md)'s Module A

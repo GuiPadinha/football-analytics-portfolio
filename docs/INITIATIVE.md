@@ -82,6 +82,17 @@ by hand.
 - **2026-07-13 (cont. 4)** — Visual/brand pass: Leaderboard name/position filters, a proper Player
   explorer intro, a reusable page-header brand badge + richer sidebar, About & Roadmap expanded
   with "Data used"/"How each model works" sections and a Module C roadmap mention.
+- **2026-07-13 (cont. 5)** — Doc-interdependency review (4 real drift fixes) + a Style archetype
+  panel, percentile bar charts, and Leaderboard diverging colour (outfield-only at this point).
+- **2026-07-13 (cont. 6)** — **Phase 4b's cross-league normalisation open item resolved** —
+  `similarity.normalize_within_competition` league-adjusts per-90 features before
+  clustering/`find_similar_players` compare across leagues; goalkeepers K-means clustered for
+  the first time (K=4, same archetype-granularity call as the outfield groups) and now share the
+  Style archetype panel; the Leaderboard's long-standing "None" cell-text cosmetic bug fixed
+  (confirmed as a real, still-open upstream Streamlit limitation, GitHub issue #7360 — fixed at
+  the data layer, not the config layer). 75 tests green (72 + 3 new for the normalisation
+  function), `metrics.json` unchanged (byte-identical — this pass's scope is the app's wider
+  pool, not the notebook's narrow one).
 
 ---
 
