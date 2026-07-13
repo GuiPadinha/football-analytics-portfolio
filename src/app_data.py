@@ -13,6 +13,10 @@ close the tournament generalisation gap), so a player from one of the newly-adde
 competitions simply has no xG data in the app; that's an expected gap, not a bug, and the app
 already handles it (see app.py's "no logged shots" fallback).
 
+Goalkeepers (2026-07-13) are built via their own feature set (`build_goalkeeper_per90_features`)
+across the same `config.SIMILARITY_SETS` pool, then concatenated onto the outfield table — see
+`_build_combined_gk_table`.
+
 Usage:
     python -m src.app_data
 """
@@ -24,7 +28,12 @@ import pandas as pd
 from src import config
 from src.models import build_feature_matrix, build_player_xg_table, train_logistic_regression
 from src.pipeline import CLUSTER_K, POSITION_GROUPS, build_shot_tables
-from src.similarity import build_player_per90_features, fit_kmeans, scale_features
+from src.similarity import (
+    build_goalkeeper_per90_features,
+    build_player_per90_features,
+    fit_kmeans,
+    scale_features,
+)
 
 APP_DATA_DIR = Path(__file__).resolve().parent.parent / "app_data"
 
@@ -47,6 +56,34 @@ def _build_combined_similarity_table(datasets=config.SIMILARITY_SETS):
     frames = []
     for dataset in datasets:
         features = build_player_per90_features(dataset.comp_id, dataset.season_id)
+        features["competition"] = dataset.label
+        frames.append(features)
+    return pd.concat(frames, ignore_index=True)
+
+
+def _build_combined_gk_table(datasets=config.SIMILARITY_SETS):
+    """Build and concatenate goalkeeper per-90 features across the app's similarity pool.
+
+    Mirrors `_build_combined_similarity_table`, but via `build_goalkeeper_per90_features` (own
+    feature set — saves, shots faced, goals conceded, claims, punches, sweeper actions, save % —
+    since a keeper's outfield-action rates are meaninglessly near zero, see that function's
+    docstring). No clustering/K-means pass for goalkeepers (2026-07-13, app wiring): unlike the
+    three outfield groups, there's no silhouette-informed K decided for goalkeepers yet, and
+    `find_similar_players` doesn't need cluster labels anyway (it ranks by raw distance within a
+    position group) — the resulting `cluster` column is simply absent/NaN for these rows once
+    concatenated with the outfield table, which nothing in `app.py` reads.
+
+    Args:
+        datasets (list[config.Dataset]): competitions/seasons to include — same pool as the
+            outfield table, so a keeper's "similar goalkeeper" match can also cross leagues.
+
+    Returns:
+        pandas.DataFrame: concatenated output of `build_goalkeeper_per90_features`, with the
+            same `competition` provenance column the outfield table carries.
+    """
+    frames = []
+    for dataset in datasets:
+        features = build_goalkeeper_per90_features(dataset.comp_id, dataset.season_id)
         features["competition"] = dataset.label
         frames.append(features)
     return pd.concat(frames, ignore_index=True)
@@ -87,7 +124,15 @@ def build_app_artifacts(app_data_dir=APP_DATA_DIR):
     app_data_dir.mkdir(parents=True, exist_ok=True)
 
     shots_train, _ = build_shot_tables()
-    per90_features = _add_cluster_labels(_build_combined_similarity_table())
+    outfield_per90 = _add_cluster_labels(_build_combined_similarity_table())
+    gk_per90 = _build_combined_gk_table()
+    # Concatenated, not two separate artifacts: lets goalkeepers show up for free in every
+    # position-group-driven UI element already keyed off `per90["position_group"].unique()`
+    # (the sidebar filter, the leaderboard) without a parallel code path. `pd.concat` aligns
+    # columns automatically — outfield-only columns (goals, tackles_p90, ...) are NaN on
+    # goalkeeper rows and vice versa, which app.py already handles by always scoping stat
+    # lookups to the current position group's own rows, never a global column.
+    per90_features = pd.concat([outfield_per90, gk_per90], ignore_index=True)
 
     X_train, y_train = build_feature_matrix(shots_train)
     model = train_logistic_regression(X_train, y_train)

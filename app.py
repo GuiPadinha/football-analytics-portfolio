@@ -11,6 +11,13 @@ The xG "Finishing" panel still only has data for Premier League 2015/16 + Bayer 
 2023/24 (Module A's own training set, unchanged) — most players in the wider similarity pool
 will hit that panel's "no logged shots" fallback, which is expected, not a bug.
 
+Goalkeepers (2026-07-13) are wired in with their own feature set (saves, shots faced, goals
+conceded, claims, punches, sweeper actions, save %) — none of the outfield `PER90_FEATURE_COLUMNS`
+apply to them, so several spots below branch on `position_group == "Goalkeeper"` rather than
+assuming exactly the three outfield groups. Goalkeepers aren't K-means clustered yet (no
+silhouette-informed K decided for them) — "players like X" still works for them (raw distance
+doesn't need a cluster label), it's just the cluster-archetype layer that's outfield-only so far.
+
 Run locally: streamlit run app.py
 """
 
@@ -24,6 +31,8 @@ from cycler import cycler
 
 from src.similarity import (
     ACTION_COLUMNS,
+    GK_ACTION_COLUMNS,
+    GK_PER90_FEATURE_COLUMNS,
     PER90_FEATURE_COLUMNS,
     compute_silhouette_scores,
     find_similar_players,
@@ -73,13 +82,23 @@ plt.rcParams.update({
 # per group, not a ranking of "the best 3 stats" in some absolute sense. Updated 2026-07-05 to
 # surface assists (Midfielder/Forward) and clearances (Defender) — previously only visible
 # buried in the "All per-90 stats" expander below.
+# Goalkeeper (2026-07-13) draws from GK_ACTION_COLUMNS instead — a keeper's outfield rates
+# (tackles, key passes, ...) are meaninglessly near zero, see src/similarity.py's
+# build_goalkeeper_per90_features docstring. save_pct is shown separately (a ratio, not a
+# per-90 rate with its own raw-total counterpart the way these three are), same pattern as the
+# penalty breakdown below the outfield signature stats.
 SIGNATURE_STATS_BY_POSITION = {
     "Defender": ["tackles_p90", "interceptions_p90", "clearances_p90"],
     "Midfielder": ["key_passes_p90", "assists_p90", "progressive_passes_p90"],
     "Forward": ["non_penalty_goals_p90", "assists_p90", "shots_p90"],
+    "Goalkeeper": ["saves_p90", "goals_conceded_p90", "claims_p90"],
 }
 
-STAT_LABELS = {col: col.replace("_p90", "").replace("_", " ").title() for col in PER90_FEATURE_COLUMNS}
+STAT_LABELS = {
+    col: col.replace("_p90", "").replace("_", " ").title()
+    for col in PER90_FEATURE_COLUMNS + GK_PER90_FEATURE_COLUMNS
+}
+STAT_LABELS["save_pct"] = "Save %"
 
 st.set_page_config(page_title="Player Evaluation Framework", layout="wide")
 
@@ -126,11 +145,24 @@ def render_leaderboard(pool, xg_table):
         xg_table (pandas.DataFrame): flagship player xG table (`total_xg`, `xg_diff` per player).
     """
     st.title("Player leaderboard")
-    st.caption(
-        f"{len(pool):,} players across {pool['competition'].nunique()} competitions "
-        "(narrow with the sidebar position/competition filters). Click any column header to "
-        "sort — Goals *includes* penalties, so penalty-takers rise; the modelling stats use "
-        "non-penalty goals instead."
+    st.markdown(
+        "Every player in the current filters, one sortable table — the **\"browse and spot "
+        "outliers\"** view, as opposed to the Player explorer's one-player-at-a-time deep dive. "
+        f"**{len(pool):,} players** across **{pool['competition'].nunique()} competitions** right "
+        "now; narrow with the sidebar's position/competition filters, or click any column header "
+        "to sort (click again to reverse)."
+    )
+    st.markdown(
+        "**What to look for:**\n"
+        "- **Goals vs. Non-pen goals** — Goals *includes* penalties, Non-pen goals is what the "
+        "models actually use. Sort by Goals to find the outliers where the gap is biggest (a "
+        "penalty-taking defender, a striker whose real output is lower than the headline number).\n"
+        "- **xG / G-xG** — only populated for the xG model's own training set (Premier League "
+        "2015/16 + Bayer Leverkusen 2023/24); blank elsewhere, not faked. Sort G-xG ascending for "
+        "the biggest \"creating chances, not converting\" candidates; descending for the biggest "
+        "likely finishing spikes.\n"
+        "- **Position** — includes Goalkeeper now; their Goals/Assists columns are blank here "
+        "(different feature set, see their own Player explorer page for saves/save %)."
     )
 
     board = pool[[
@@ -167,7 +199,9 @@ def render_leaderboard(pool, xg_table):
     st.caption(
         "xG and G-xG are blank for players outside the xG training set (Premier League 2015/16 + "
         "Bayer Leverkusen 2023/24) — the similarity pool is wider than the xG model's, so most "
-        "rows have no xG, shown blank rather than faked."
+        "rows have no xG, shown blank rather than faked. Goalkeepers show blank Goals/Assists too "
+        "— those columns come from the outfield feature set, which doesn't cover them; see a "
+        "goalkeeper's own page (Player explorer) for their saves/goals-conceded/save % instead."
     )
 
 
@@ -264,11 +298,14 @@ def render_about_and_roadmap(per90, metrics):
     st.subheader("What's already shipped, and what's next")
     st.markdown(
         "**Done:** the full similarity + xG pipeline across 6 competitions, a leaderboard view, "
-        "clickable similar-player drill-down, penalty-aware goal totals, and this app deployed "
-        "live.\n\n"
-        "**Open, small:** goalkeepers aren't wired into the app yet; the similarity match doesn't "
-        "yet adjust for different leagues' competitiveness (a cross-league match today is a "
-        "coarser signal than a same-league one).\n\n"
+        "clickable similar-player drill-down, penalty-aware goal totals, goalkeepers wired in "
+        "with their own feature set (saves, shots faced, goals conceded, claims, save %), and "
+        "this app deployed live.\n\n"
+        "**Open, small:** goalkeepers don't have a chosen K / silhouette check yet, so they aren't "
+        "formally clustered into style archetypes the way outfield players are (\"players like X\" "
+        "still works for them — it ranks by raw distance, which doesn't need a cluster label); the "
+        "similarity match doesn't yet adjust for different leagues' competitiveness (a cross-league "
+        "match today is a coarser signal than a same-league one).\n\n"
         "**Bigger, not started:** uncertainty ranges on the xG number; a smarter distance metric "
         "for similarity (today's treats correlated stats as independent); shot context from "
         "player-tracking freeze-frames (360°-context xG); a side-by-side player comparison view; "
@@ -326,11 +363,14 @@ the full model (adds body part, assist type, game state) reaches
         st.markdown(
             f"""
 **Similarity model.** K-means, K={metrics['similarity']['kmeans_k_used']} clusters per position
-group, minimum {metrics['similarity']['min_minutes']} minutes played to qualify. Silhouette score
-(cluster tightness, −1 to 1) peaks low at K=2 for every position group (~0.22–0.26) — reported
-honestly rather than hidden: play styles within a position are a soft continuum, not sharply
-separated blobs. K=4 is used anyway, for archetype granularity, against the metric's own
-preference.
+group, minimum {metrics['similarity']['min_minutes']} minutes played to qualify — for the three
+outfield groups (Defender/Midfielder/Forward). Silhouette score (cluster tightness, −1 to 1) peaks
+low at K=2 for every one of them (~0.22–0.26) — reported honestly rather than hidden: play styles
+within a position are a soft continuum, not sharply separated blobs. K=4 is used anyway, for
+archetype granularity, against the metric's own preference. Goalkeepers aren't clustered yet (no K
+chosen for them) — their "players like X" ranking still works, since that ranks by raw distance in
+their own feature space (saves, shots faced, goals conceded, claims, punches, sweeper actions),
+which doesn't need a cluster label.
 
 **Known limitations, stated plainly:** no cross-league normalisation yet (per-90 rates are
 compared raw across leagues of different competitiveness); StatsBomb's free data has no recent
@@ -411,10 +451,6 @@ if view == "Leaderboard":
     render_leaderboard(searchable, xg_table)
     st.stop()
 
-radar_axes = st.sidebar.multiselect(
-    "Radar axes", PER90_FEATURE_COLUMNS, default=list(PER90_FEATURE_COLUMNS)
-)
-
 # Typing search: a free-text query narrows the match list once committed (Enter, or clicking
 # away — st.text_input shows its own "Press Enter to apply" hint while a keystroke is pending;
 # it does NOT rerun on every character the way an earlier version of this comment claimed,
@@ -456,13 +492,35 @@ picked_label = st.selectbox(
 player_name, team_name, position_group, competition_name = player_by_label[picked_label]
 group_df = per90[per90["position_group"] == position_group].reset_index(drop=True)
 
+# Goalkeepers use a completely disjoint feature set from the three outfield groups (see the
+# module docstring) — everything below that used to hardcode PER90_FEATURE_COLUMNS/ACTION_COLUMNS
+# now branches on position_group instead.
+if position_group == "Goalkeeper":
+    position_action_columns = GK_ACTION_COLUMNS
+    position_feature_columns = GK_PER90_FEATURE_COLUMNS
+else:
+    position_action_columns = ACTION_COLUMNS
+    position_feature_columns = PER90_FEATURE_COLUMNS
+
+# Radar axes (moved here 2026-07-13, was a fixed-options sidebar widget declared before the
+# player was even picked — worked only because all three outfield groups shared one feature
+# set). Options now depend on position_group, so this has to render after it's known; `key`
+# scoped to position_group so switching between an outfield player and a goalkeeper resets the
+# widget to a fresh default instead of Streamlit trying to carry over a selection that may not
+# exist in the new options list (same crash class as the player-picker's own key, see
+# ML_TOOLING.md).
+radar_axes = st.sidebar.multiselect(
+    "Radar axes", position_feature_columns, default=list(position_feature_columns),
+    key=f"radar_axes_{position_group}",
+)
+
 st.title(f"{player_name} · {team_name} · {position_group}")
 st.caption(competition_name)
 
 st.subheader(f"Signature stats for a {position_group.lower()}")
 signature_cols = SIGNATURE_STATS_BY_POSITION[position_group]
 player_row_full = group_df[(group_df["player"] == player_name) & (group_df["team"] == team_name)].iloc[0]
-percentiles = group_df[PER90_FEATURE_COLUMNS].rank(pct=True).loc[player_row_full.name]
+percentiles = group_df[position_feature_columns].rank(pct=True).loc[player_row_full.name]
 
 metric_cols = st.columns(len(signature_cols))
 for col, stat in zip(metric_cols, signature_cols):
@@ -484,33 +542,49 @@ st.caption(
 # penalty-taker's card understates their real total. `goals` (incl. penalties) already ships in
 # app_data/player_per90.parquet — display-only, computed by src/similarity.py, never fed to
 # clustering/xG (see DISPLAY_COUNT_COLUMNS). Skipped for zero-goal players to avoid a "0 goals, 0
-# from penalties" line cluttering every non-scorer's page.
-total_goals = int(round(player_row_full["goals"]))
-non_penalty_goals = int(round(player_row_full["non_penalty_goals"]))
-penalty_goals = total_goals - non_penalty_goals
-if total_goals > 0:
-    penalty_note = f" ({penalty_goals} from penalties)" if penalty_goals > 0 else ""
-    st.caption(f"**Goals (incl. penalties): {total_goals}**{penalty_note}")
+# from penalties" line cluttering every non-scorer's page. Goalkeepers have no "goals" column at
+# all (NaN post-concat, see app_data.py) — `save_pct` is their equivalent extra headline number.
+if position_group == "Goalkeeper":
+    shots_faced = int(round(player_row_full["shots_faced"]))
+    saves = int(round(player_row_full["saves"]))
+    st.caption(f"**Save %: {player_row_full['save_pct']:.0%}** ({saves}/{shots_faced} shots faced)")
+elif pd.notna(player_row_full.get("goals")):
+    total_goals = int(round(player_row_full["goals"]))
+    non_penalty_goals = int(round(player_row_full["non_penalty_goals"]))
+    penalty_goals = total_goals - non_penalty_goals
+    if total_goals > 0:
+        penalty_note = f" ({penalty_goals} from penalties)" if penalty_goals > 0 else ""
+        st.caption(f"**Goals (incl. penalties): {total_goals}**{penalty_note}")
 
-with st.expander(f"All per-90 stats ({len(PER90_FEATURE_COLUMNS)} metrics, vs. {position_group.lower()} peers)"):
+with st.expander(
+    f"All per-90 stats ({len(position_feature_columns)} metrics, vs. {position_group.lower()} peers)"
+):
     stat_table = pd.DataFrame({
-        "Stat": [STAT_LABELS[c] for c in PER90_FEATURE_COLUMNS],
-        "Total": [int(round(player_row_full[c])) for c in ACTION_COLUMNS],
-        "Per 90": [player_row_full[c] for c in PER90_FEATURE_COLUMNS],
-        "Percentile (numeric)": [percentiles[c] * 100 for c in PER90_FEATURE_COLUMNS],
+        "Stat": [STAT_LABELS[c] for c in position_feature_columns],
+        "Total": [int(round(player_row_full[c])) for c in position_action_columns],
+        "Per 90": [player_row_full[c] for c in position_feature_columns],
+        "Percentile (numeric)": [percentiles[c] * 100 for c in position_feature_columns],
     }).sort_values("Percentile (numeric)", ascending=False)
     stat_table["Percentile"] = stat_table["Percentile (numeric)"].map(lambda p: f"{p:.0f}th")
     st.dataframe(
         stat_table.drop(columns="Percentile (numeric)"), hide_index=True, width="stretch"
     )
-    st.caption(
-        "Percentile within this player's position group (n="
-        f"{len(group_df)}). No pass-completion % yet, since that needs a new feature (passes "
-        "attempted, not just completed) from raw events, not just a different chart. Flagged as "
-        "a follow-up, not faked here. Clearances are StatsBomb's general Clearance event count, "
-        "not a 'last-ditch/goal-line' sub-type — StatsBomb's schema doesn't distinguish those, "
-        "so this is the closest available proxy."
-    )
+    if position_group == "Goalkeeper":
+        st.caption(
+            f"Percentile within this player's position group (n={len(group_df)}). Counts are "
+            "from StatsBomb's `Goal Keeper` event sub-types (Shot Faced, Shot Saved, Goal "
+            "Conceded, Collected, Punch, Keeper Sweeper) — save % isn't shown here since it's "
+            "already above, as a ratio rather than a per-90 rate."
+        )
+    else:
+        st.caption(
+            "Percentile within this player's position group (n="
+            f"{len(group_df)}). No pass-completion % yet, since that needs a new feature (passes "
+            "attempted, not just completed) from raw events, not just a different chart. Flagged as "
+            "a follow-up, not faked here. Clearances are StatsBomb's general Clearance event count, "
+            "not a 'last-ditch/goal-line' sub-type — StatsBomb's schema doesn't distinguish those, "
+            "so this is the closest available proxy."
+        )
 
 col_radar, col_similar = st.columns(2)
 
@@ -530,7 +604,7 @@ with col_radar:
 with col_similar:
     st.subheader(f"Players like {player_name}")
     similar = find_similar_players(
-        per90, PER90_FEATURE_COLUMNS, player=player_name, team=team_name, n=5
+        per90, position_feature_columns, player=player_name, team=team_name, n=5
     ).reset_index(drop=True)
     fig, ax = plt.subplots(figsize=(7, 0.7 * len(similar) + 1))
     plot_similar_players_bar(similar, accent_color=ACCENT_ORANGE, grid_color=GRID_LINE, ax=ax)
@@ -579,12 +653,15 @@ st.subheader("Finishing — is the output real?")
 xg_row = xg_table[(xg_table["player"] == player_name) & (xg_table["team"] == team_name)]
 
 if xg_row.empty:
-    st.info(
-        f"{player_name} ({competition_name}) has no logged shots in the xG training set "
-        "(Premier League 2015/16 + Bayer Leverkusen 2023/24). The similarity pool is wider than "
-        "the xG training set (see \"About & Roadmap\" in the sidebar), so this is expected for "
-        "most players outside those two competitions, not a bug."
-    )
+    if position_group == "Goalkeeper":
+        st.info(f"{player_name} has no logged shots — goalkeepers don't take them.")
+    else:
+        st.info(
+            f"{player_name} ({competition_name}) has no logged shots in the xG training set "
+            "(Premier League 2015/16 + Bayer Leverkusen 2023/24). The similarity pool is wider "
+            "than the xG training set (see \"About & Roadmap\" in the sidebar), so this is "
+            "expected for most players outside those two competitions, not a bug."
+        )
 else:
     row = xg_row.iloc[0]
     xg_metric_cols = st.columns(3)
@@ -615,13 +692,21 @@ with st.expander("Under the hood (methodology)"):
         "Full methodology, credibility numbers and roadmap: see **About & Roadmap** in the "
         "sidebar. Below: how tightly this specific position group's players cluster."
     )
-    st.caption(
-        f"Silhouette score by K — {position_group} (peaks low, ~0.25: play-styles within a "
-        "position are a soft continuum, not crisp blobs; K=4 is kept deliberately above the "
-        "metric's preferred K=2 for archetype granularity)."
-    )
-    silhouettes = cached_silhouette_scores(group_df)
-    fig, ax = plt.subplots(figsize=(6, 4))
-    plot_silhouette_curve(silhouettes, ax=ax)
-    st.pyplot(fig)
-    plt.close(fig)
+    if position_group == "Goalkeeper":
+        st.caption(
+            "No silhouette check for goalkeepers yet — they aren't K-means clustered (no K has "
+            "been chosen for them), unlike the three outfield groups. \"Players like X\" still "
+            "works above: it ranks by raw distance, which doesn't need a cluster label. Backlog "
+            "item, see About & Roadmap."
+        )
+    else:
+        st.caption(
+            f"Silhouette score by K — {position_group} (peaks low, ~0.25: play-styles within a "
+            "position are a soft continuum, not crisp blobs; K=4 is kept deliberately above the "
+            "metric's preferred K=2 for archetype granularity)."
+        )
+        silhouettes = cached_silhouette_scores(group_df)
+        fig, ax = plt.subplots(figsize=(6, 4))
+        plot_silhouette_curve(silhouettes, ax=ax)
+        st.pyplot(fig)
+        plt.close(fig)

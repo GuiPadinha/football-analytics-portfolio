@@ -464,7 +464,10 @@ def build_goalkeeper_per90_features(competition_id, season_id, min_minutes=900):
         pandas.DataFrame: one row per goalkeeper, with `minutes_played`, `save_pct`
             (saves / shots faced, computed from raw season totals rather than the per-90
             rates so it reads as a plain ratio; 0 for a keeper who faced no shots, not NaN),
-            and one `<action>_p90` column per entry in `GK_ACTION_COLUMNS`.
+            one raw season-total `<action>` column and one `<action>_p90` rate column per
+            entry in `GK_ACTION_COLUMNS` — same "keep both" reasoning as
+            `build_player_per90_features`: a whole-number season total (e.g. "112 saves") is
+            the human headline number, the per-90 rate is what comparisons actually use.
     """
     season_minutes, actions_df = _build_season_minutes_and_actions(
         competition_id, season_id, extract_goalkeeper_match_actions
@@ -486,7 +489,7 @@ def build_goalkeeper_per90_features(competition_id, season_id, min_minutes=900):
         features[f"{col}_p90"] = features[col] / features["minutes_played"] * 90
 
     keep_columns = ["player", "team", "position_group", "minutes_played", "save_pct"] + \
-        [f"{col}_p90" for col in GK_ACTION_COLUMNS]
+        GK_ACTION_COLUMNS + [f"{col}_p90" for col in GK_ACTION_COLUMNS]
     return features[keep_columns].reset_index(drop=True)
 
 

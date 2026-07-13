@@ -21,25 +21,28 @@ cascade bug it exposed — see PROGRESS.md); a 2026-07-13 pitch-prep pass promot
 explanation into its own **"About & Roadmap"** sidebar view (what it is, how to use it, what's
 built, what's next, and a "Methodology" expander), rewrote the headline stat tiles to whole-number
 counts instead of decimal model scores, and wired the Phase 4c generalisation chart into the app for
-the first time —
+the first time; a same-day (cont. 3) pass **wired goalkeepers into the app** (own feature set, a 4th
+position filter, 124 keepers — not yet clustered, so no style-archetype layer for them — see
+MODULES.md) and expanded the Leaderboard view's own explanatory copy —
 **[live demo](https://gpfootball-analytics-portfolio.streamlit.app)** (Python 3.10 pinned in the
 deploy settings to match `requirements.txt`, not Cloud's newer default — see ROADMAP.md's Phase 9
 backlog note on why that version bump is deliberately deferred).
 See [docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renumbered 0–9 program on
 2026-07-02.
-**Next (open backlog): wire goalkeepers into the app (needs a K/silhouette call); design cross-league
-normalisation for similarity (Phase 4b's original open item, still unresolved). A side-by-side
+**Next (open backlog): design cross-league normalisation for similarity (Phase 4b's original open
+item, still unresolved); decide a K/silhouette check for goalkeepers so they get a style-archetype
+layer like outfield players (they're wired into the app now, just not clustered yet). A side-by-side
 two-player comparison view and a market-value integration alongside "players like X" (a usable open
 dataset was found — `dcaribou/transfermarkt-datasets` — but it's blocked on player-identity matching
 between data sources, not on data availability; see [DATA.md](docs/DATA.md)) are both scoped in the
-backlog, not started. The "Under the hood" methodology rework is now ✅ done (2026-07-13, see above)
-— it is no longer an open item. Exact code entry points for what's still open are in
-[PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s "Backlog from 2026-07-06 feedback" section and
-[ROADMAP.md](docs/ROADMAP.md)'s Phase 9 list — the PRODUCT_SPEC section also has one minor open
-cosmetic follow-up from the drill-down work (an expander's open/closed state not always carrying
-over consistently across a jump). A "player career" page/view is also under discussion (multi-season
-drill-down, international tournament data — trophies/awards/MOTM data does not exist in any current
-source and would need new scraping infra).**
+backlog, not started. The "Under the hood" methodology rework and goalkeeper wiring are now both ✅
+done (2026-07-13, see above) — neither is an open item any more. Exact code entry points for what's
+still open are in [PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s "Backlog from 2026-07-06 feedback"
+section and [ROADMAP.md](docs/ROADMAP.md)'s Phase 9 list — the PRODUCT_SPEC section also has one
+minor open cosmetic follow-up from the drill-down work (an expander's open/closed state not always
+carrying over consistently across a jump). A "player career" page/view is also under discussion
+(multi-season drill-down, international tournament data — trophies/awards/MOTM data does not exist
+in any current source and would need new scraping infra).**
 (360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
 Run the app locally: `python -m src.app_data` (once, to build `app_data/`) then `streamlit run app.py`
 — or just use the [live demo](https://gpfootball-analytics-portfolio.streamlit.app).

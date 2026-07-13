@@ -74,8 +74,10 @@ expander rather than surfaced.
 
 Guilherme reviewed the round-2 build (actual screenshots, then live via Playwright — see
 ML_TOOLING.md) and asked for the following; agreed to save it for a later session rather than
-rush it in that night. **Items #1 and #2 shipped 2026-07-06 (cont. 2)** — see PROGRESS.md; the
-rest are still open.
+rush it in that night. **All five items below are now done** (last one, goalkeepers, shipped
+2026-07-13) — the only thing still open from this whole list is the minor cosmetic follow-up
+noted inside the drill-down item below (an expander's open/closed state not always carrying over
+across a jump).
 
 - **[DONE 2026-07-06] Full player leaderboard, sortable, goals *including* penalties + xG where
   available.** Built as a sidebar `View` toggle → sortable `st.dataframe` (`render_leaderboard` in
@@ -99,15 +101,21 @@ rest are still open.
   hood (methodology)")` at the bottom of the Player explorer page is slimmed to a one-line pointer
   at the new tab plus the one thing genuinely specific to that page: the current position group's
   live silhouette curve.
-- **Goalkeepers still not wired into the app** — `build_goalkeeper_per90_features` exists
-  (`src/similarity.py:445`, verified still present 2026-07-09) but isn't in `config.py`/clustering/
-  the app's position filter. Still an open integration decision (own K? own silhouette check? a 4th
-  position-filter option alongside Defender/Midfielder/Forward?), now with an explicit ask to
-  actually do it next session rather than leave it deferred indefinitely. Would touch: `config.py`
-  (a GK dataset grouping), `src/app_data.py` (a 4th precomputed table or an extra column), `app.py`'s
-  `SIGNATURE_STATS_BY_POSITION` + position filter + radar-axis choices (GK features are shots
-  faced/saves/goals conceded/claims/punches/save_pct — none of the outfield `PER90_FEATURE_COLUMNS`
-  apply, so several places assume exactly 3 groups and would need a look, not just a 4th dict key).
+- **[DONE 2026-07-13] Goalkeepers wired into the app.** `src/app_data.py`'s new
+  `_build_combined_gk_table` runs `build_goalkeeper_per90_features` across the same
+  `config.SIMILARITY_SETS` pool and concatenates onto the outfield table (no `config.py` change
+  needed — the existing dataset registry was reusable as-is). `app.py` gained a 4th position-filter
+  option (Goalkeeper, 124 players), its own `SIGNATURE_STATS_BY_POSITION` entry, GK-specific radar
+  axes (moved the radar-axes widget to render after the player is picked, since its options now
+  depend on position group), a `save_pct` caption in place of the outfield penalty breakdown, and a
+  branch in the "All per-90 stats" expander and "players like X" call. **Deliberately not
+  clustered** — no K/silhouette decision made for goalkeepers yet, so there's no style-archetype
+  layer for them (only outfield players have one); "players like X" still works since
+  `find_similar_players` ranks by raw distance, not cluster membership. A real bug, caught by
+  Streamlit's `AppTest` harness rather than by reading the diff: `build_goalkeeper_per90_features`
+  only returned `_p90` rate columns, not the raw season totals the signature-stat cards need
+  (unlike the outfield builder) — fixed in `src/similarity.py`. See PROGRESS.md and
+  ML_LEARNING_LOG.md for the full account.
 - **[DONE 2026-07-09] Clickable "similar player" names** — jump from the "players like X" list
   into that player's own page (and see *their* similar players — a recursive drill-down). Shipped
   via the "Table view" `st.dataframe`'s `on_select="rerun", selection_mode="single-row"` (the

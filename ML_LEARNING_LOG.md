@@ -81,6 +81,22 @@ Key gotchas and lessons — most recent first:
 
 Key gotchas and lessons — most recent first:
 
+- **A function built ahead of its consumer can be quietly incomplete in a way nothing catches
+  until something actually calls it** (2026-07-13, wiring goalkeepers into the app).
+  `build_goalkeeper_per90_features` (written 2026-07-05, `src/similarity.py`) only kept the
+  `_p90` rate columns in its output — unlike `build_player_per90_features`, which deliberately
+  keeps both the raw season-total column *and* the `_p90` rate (see the 2026-07-06 entry below:
+  "0.80" reads as noise, "29" reads as a season). The gap was invisible for over a week because
+  nothing consumed the function's output; the moment `app.py`'s signature-stat cards tried to
+  show a goalkeeper's raw save count, it crashed with `KeyError: 'saves'`, caught by actually
+  running Streamlit's `AppTest` harness against a real goalkeeper pick, not by reading the diff
+  (the function's own docstring didn't claim to return raw totals, so a code review wouldn't have
+  flagged it as missing something — only exercising it did). Fixed by adding `GK_ACTION_COLUMNS`
+  to its `keep_columns`, mirroring the outfield builder exactly. General lesson: a function that
+  mirrors an existing one's *shape* (same docstring pattern, same per-90 conversion) still needs
+  its *output contract* checked against actual callers, not assumed identical just because the
+  pattern looks the same — an untested integration point can carry a real gap for a long time
+  with zero symptoms.
 - **A library can silently override rcParams theming — verified by rendering and reading actual
   pixels, not by re-reading the code** (2026-07-06). Guilherme screenshotted the running app: the
   dark theme worked everywhere except the radar chart, which stayed white. Root cause:
