@@ -94,10 +94,8 @@ ROADMAP.md/PITCH.md already tracked.
 
 Verified against `git log`/`git status` 2026-07-13. Git CLI is used directly (see CLAUDE.md's
 Session Workflow) — this section is a lightweight pointer, not a substitute for `git log`/`git
-status`. Latest commit: `078caaf` ("Visual/brand pass: Leaderboard filters, Player explorer intro,
-branding, About & Roadmap expansion"), pushed to `origin/main`. **Not yet committed as of this
-write-up:** the doc-interdependency fixes and the Style archetype/percentile-chart/Leaderboard-
-colour work in the "cont. 5" entry above — all verified (72 green, AppTest, Playwright screenshots)
-but left uncommitted pending Guilherme's own review, per this project's "only commit when asked"
-rule. Entries through 2026-07-13 (cont. 4) moved to [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md) to
-keep this file under 150 lines.
+status`. Latest commit: `5abd590` ("Doc-interdependency review + style archetype panel, percentile
+charts, Leaderboard colour" — covers the "cont. 5" entry above, plus a small PITCH.md refresh to
+mention the new Style archetype demo beat), pushed to `origin/main`. Working tree clean as of this
+write-up. Entries through 2026-07-13 (cont. 4) moved to [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md)
+to keep this file under 150 lines.

@@ -43,13 +43,13 @@ deploy settings to match `requirements.txt`, not Cloud's newer default — see R
 backlog note on why that version bump is deliberately deferred).
 See [docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renumbered 0–9 program on
 2026-07-02.
-**Next session, start here: the cont. 5 pass above is verified (72 tests, AppTest, Playwright
-screenshots) but deliberately left uncommitted — review it, then decide whether to commit as-is or
-keep iterating on the visual/docs pass further (it was scoped as an open-ended "go bigger" ask, not
-a fixed task list, so more rounds are plausible). One known, now-thoroughly-investigated but
-unfixed cosmetic gap surfaced again this pass: blank Leaderboard xG/G-xG cells render as the
-literal text "None" — three independent fixes tried and verified live, none worked; see
-[ML_TOOLING.md](docs/ML_TOOLING.md) for the full account before attempting a fourth.**
+**Next session, start here: the cont. 5 pass above is committed and pushed (`5abd590`) — decide
+whether to keep iterating on the visual/docs pass further (it was scoped as an open-ended "go
+bigger" ask, not a fixed task list, so more rounds are plausible) or move on to a different backlog
+item. One known, now-thoroughly-investigated but unfixed cosmetic gap surfaced again this pass:
+blank Leaderboard xG/G-xG cells render as the literal text "None" — three independent fixes tried
+and verified live, none worked; see [ML_TOOLING.md](docs/ML_TOOLING.md) for the full account before
+attempting a fourth.**
 **Next (open backlog): design cross-league normalisation for similarity (Phase 4b's original open
 item, still unresolved); decide a K/silhouette check for goalkeepers so they get a style-archetype
 layer like outfield players do now (they're wired into the app, just not clustered yet — the new
