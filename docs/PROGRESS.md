@@ -6,103 +6,87 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
-## 2026-07-13 (cont. 4) — Visual/brand pass: Leaderboard filters, Player explorer intro, brand identity, About & Roadmap expansion
+## 2026-07-13 (cont. 5) — Doc-interdependency review + a real feature/visual pass: Style archetype panel, percentile charts, Leaderboard colour
 
-Same-day follow-up after the goalkeeper wiring below. Guilherme asked for four things: filter the
-Leaderboard by name/position, improve the Player explorer page's intro, make the sidebar/page
-headers more visually developed with an appealing icon/brand/slogan, and expand About & Roadmap
-with the data used, the methods, and where the models are headed next.
+Opened the "bigger visual + docs pass" flagged at the end of the previous session with the doc
+review first, as asked, then carried straight into app work rather than stopping to check back in
+— per the open-ended framing ("scope isn't decided yet... open with that discussion"), reading all
+docs surfaced concrete findings worth just fixing, and the app work followed the same "more than
+visual — add real sections" brief.
 
-**Leaderboard filters.** `render_leaderboard` (`app.py`) gained an in-page name search
-(`st.text_input`) and a position `st.multiselect` (defaulting to all options) above the table —
-additive to the sidebar's shared position/competition filters, not a replacement, since the
-sidebar narrows the whole pool (shared with Player explorer) while these two are scoped to
-Leaderboard browsing itself. Empty-selection and no-match states both handled (a warning, not a
-crash).
+**Doc review, all 16 `.md` files read end-to-end.** The cross-reference discipline holds up well
+overall (the `metrics.json` doc-lint, `INITIATIVE.md` as the sole phase-table source, the
+theory/tooling/decisions three-way split are all still clean) — four concrete things weren't:
+(1) **`README.md` contradicted itself** — the live-demo link at the top implies a deployed, widened
+app, but the body still said "not yet deployed" / "Premier League 2015/16 for v1" (both true before
+2026-07-05/07-09, stale since). Rewritten with the real numbers (6 competitions, 1,635 players incl.
+124 goalkeepers, live URL) and the repo-structure/Tech Stack sections updated (added `streamlit`,
+pointed the `docs/` subtree at CLAUDE.md's index instead of hand-duplicating 3 of 12 files).
+(2) **`CLAUDE.md`'s own Repository Layout omitted `docs/PRODUCT_SPEC.md`** despite it being actively
+maintained and linked from three other docs — added. (3) **`ARCHITECTURE.md`'s Four Layers/Import
+Graph never mentioned `app_data.py`** — the whole Phase 8 product-layer build step was invisible in
+the one doc whose job is "how the pieces fit together"; added it as a third orchestration entry
+point alongside `pipeline.py`/`manifest.py`/`metrics.py`, verified its actual imports via grep rather
+than assumed. Also fixed a stale "future Streamlit app" phrase in the same file — it's deployed.
+(4) **Two cross-doc line-number anchors (`MODULES.md#L57`, `MODULES.md#L53`) had already drifted to
+the wrong section** (both pointed at Module B content instead of Module C — a real, demonstrable
+consequence of using line anchors across files that get edited) — replaced all four markdown-to-
+markdown line anchors repo-wide with heading anchors, which don't drift and (unlike `#Lxx`) actually
+resolve in GitHub's normal rendered-markdown view, not just its blob/source view.
 
-**Player explorer intro.** The page previously opened straight into a bare search box with no
-title or explanation at all. Now opens with a proper header + a short markdown paragraph naming
-every panel on the page (signature stats, radar, "players like X," Finishing).
+**App: two new features (not just visual), reusing existing computed data — no new modelling.**
+Consulted the dataviz skill before writing chart code, per this project's own established habit;
+manually verified the resulting orange/blue diverging pair against the dark panel surface (WCAG
+contrast 4.89/3.23 respectively — Python computed, since `node` isn't installed here to run the
+skill's own validator script) and confirmed against the skill's own anti-patterns doc that blue↔
+orange is an explicitly endorsed diverging pair (blue↔aqua is the one it rejects, both cool).
 
-**Brand identity.** New `BRAND_ICON = "⚽"` / `SLOGAN = "Scout by data, not by reputation."`
-constants, threaded through: the browser tab (`st.set_page_config(page_icon=...)`), a new
-`render_page_header()` helper (title on the left, a small icon+slogan badge in the top-right —
-used by the Leaderboard, Player explorer, and every per-player page), and a rebuilt sidebar (brand
-header, two live `st.metric` quick-facts — Players, Competitions — computed from `per90`, not
-hardcoded, a "New here? Start with About & Roadmap" pointer, and a GitHub source link).
+- **New `plot_diverging_bar`** (`src/visualisation.py`) — one shared horizontal-bar function for
+  "how does this compare to a baseline, direction and magnitude both matter" reads, parameterised by
+  a reference value (50 for a percentile read, 0 for a z-score read) rather than two near-duplicate
+  functions.
+- **Style archetype panel** (Player explorer, outfield players only): `app_data.py` has computed a
+  K=4 style-archetype `cluster` label per player since Phase 4, and `profile_clusters`
+  (`src/similarity.py`) has existed since the notebooks needed it to name clusters ("ball-winning
+  destroyer," etc.) — neither was ever surfaced in the live app. Now every outfield player's page
+  shows *why* their cluster is what it is (top over/under-indexed stats as z-scores, plotted), plus
+  a "Browse this archetype" expander listing other same-cluster players, clickable via the same
+  jump-to-player mechanism the "players like X" table already uses. Goalkeepers skip this section —
+  they aren't clustered yet (unchanged, known backlog item).
+- **Percentile chart**: the "All per-90 stats" expander's plain sortable dataframe is now a
+  percentile bar chart first (same diverging-bar function, reference=50), with the original
+  dataframe kept as a nested "Table view" — matching the "every chart needs a table-view twin"
+  convention `plot_similar_players_bar` already established.
+- **Leaderboard**: G-xG now has a diverging background colour (orange over-performers, blue
+  under-performers) via a pandas Styler + a small custom `LinearSegmentedColormap` blended through
+  the dark panel colour, guarded on `notna().any()` so an all-blank filter (e.g. La Liga alone,
+  outside Module A's flagship set) doesn't crash `background_gradient`'s vmin/vmax.
 
-**About & Roadmap expansion.** Two new always-visible sections: "Data used" (the actual
-competitions/seasons feeding each model — similarity pool, xG training set, the 4 generalisation
-tournaments, SkillCorner) and "How each model works" (plain-language K-means/Euclidean-distance/PCA
-for similarity, logistic regression for xG). Both are prose/dataset-name content with no bare
-decimals, so they don't collide with the whole-number-headline rule the "Methodology" expander
-already follows (see the 2026-07-13 cont. 2 entry in PROGRESS_ARCHIVE.md for that rule's origin).
-The "what's next" roadmap paragraph also grew a third tier, "**A third lens, not started**,"
-naming Module C (Performance Under Pressure) explicitly — it hadn't appeared anywhere in the app
-before this pass, only in MODULES.md/ROADMAP.md.
+**A real, now-thoroughly-investigated open cosmetic bug, not fixed:** blank xG/G-xG cells render as
+the literal text "None" (flagged as "candidate polish" back on 2026-07-08). Tried three independent
+fixes this session (nullable `Float64` dtype, `Styler.format(na_rep=...)`, dropping
+`column_config`'s own `format=`), each verified live against a freshly-restarted server — none
+changed the "None" text, though the second attempt did confirm the Styler's format spec drives
+*real*-value display. Conclusion: this Streamlit version's grid hardcodes missing numeric cells to
+"None" regardless of Styler/column_config settings. Logged in full in
+[ML_TOOLING.md](ML_TOOLING.md), including a false-start note (a plain browser reload doesn't
+guarantee a dev server picked up an on-disk change — a full process restart does).
 
-**Verification:** a scripted `AppTest` pass over all three views plus both new Leaderboard filters
-and a goalkeeper pick came back with no exceptions; Playwright-over-Edge screenshots of all three
-pages confirmed the visual result matches intent (brand badge top-right of every header, sidebar
-quick-facts, filters both populated and functional). Full `pytest` suite re-run, still **72
-green** (no `src/` changes this pass, `app.py`-only).
+**Verification:** full `pytest` suite green throughout (**72**, unchanged — no `src/` logic
+changed beyond the additive `plot_diverging_bar`, which isn't unit-tested, matching this codebase's
+existing precedent of not testing plotting functions). A scripted `AppTest` pass covered all four
+position groups plus all three views, zero exceptions. Playwright-over-Edge screenshots (system
+Edge, per the established recipe) confirmed the new archetype panel, percentile chart, and Leaderboard
+colour all render correctly across a defender, a goalkeeper (correctly skips the archetype section),
+and the Leaderboard view.
 
----
-
-## 2026-07-13 (cont. 3) — Goalkeepers wired into the app; Leaderboard copy expanded
-
-Guilherme had a few hours left before the pitch and asked to attack the near-term backlog —
-specifically anything that could visibly show up on screen, naming goalkeepers first — plus a
-fuller Leaderboard description (it had 2-4 lines of small text) and a visual pass over every page,
-backlog anything too big.
-
-**Goalkeepers wired in, both layers.** `src/app_data.py` gained `_build_combined_gk_table`
-(mirrors `_build_combined_similarity_table` but via `build_goalkeeper_per90_features`, same
-`config.SIMILARITY_SETS` pool — no `config.py` change needed) and `build_app_artifacts` now
-concatenates it onto the outfield table (`pd.concat` aligns columns automatically; outfield-only
-columns are NaN on goalkeeper rows and vice versa). **124 goalkeepers** now in the pool (1,511 →
-1,635 players total). `app.py` gained a 4th position-filter option, a `Goalkeeper` entry in
-`SIGNATURE_STATS_BY_POSITION`, a `save_pct` caption where outfield players get the penalty
-breakdown, and — the real restructuring — moved the `radar_axes` sidebar widget to render *after*
-the player is picked (its options now depend on position group, which wasn't knowable at the old
-call site) and introduced `position_feature_columns`/`position_action_columns` so the percentile
-table, "All per-90 stats" expander, and `find_similar_players` call all branch correctly instead of
-hardcoding the outfield columns. **Deliberately not clustered** — no K/silhouette decision made for
-goalkeepers, so no style-archetype layer for them yet; "players like X" still works since
-`find_similar_players` ranks by raw distance, not cluster membership.
-
-**A real bug, caught by Streamlit's `AppTest` harness, not by reading the diff:**
-`build_goalkeeper_per90_features` (written 2026-07-05) only returned `_p90` rate columns — unlike
-the outfield builder, which always kept the raw season total *and* the rate. Invisible for over a
-week because nothing had ever called it; the first goalkeeper pick in the app crashed with
-`KeyError: 'saves'` in the signature-stats loop. Scripted `AppTest` against a real goalkeeper
-selection (`position_filter=Goalkeeper` → pick the first match → check `.exception`) caught it in
-seconds, far faster than a manual browser click-through would have. Fixed by adding
-`GK_ACTION_COLUMNS` to the function's `keep_columns`, same pattern as the outfield builder — logged
-in ML_LEARNING_LOG.md, since it's a data/feature-engineering gap, not a tooling one.
-
-**Leaderboard page got a real description**, not just a caption: what the view is for (vs. the
-Player explorer), a "what to look for" list per column (Goals vs. Non-pen goals, xG/G-xG, the new
-Goalkeeper row's blank columns), replacing the previous 1-line caption.
-
-**Full visual review, not just the goalkeeper path:** re-verified the Player explorer (a normal
-outfield player, Harry Kane — zero regression from the radar-axes move), the Leaderboard (with the
-Goalkeeper filter on), and the About & Roadmap tab (whole-number tiles auto-updated to 1,635
-players) via Playwright-over-Edge. Nothing else needed fixing or backlogging this pass — the
-Player explorer/Leaderboard/About & Roadmap trio already got a thorough pass earlier the same day.
-
-**Self-inflicted hiccup, logged so it isn't repeated:** launched two overlapping
-`python -m src.app_data` rebuilds without waiting for the first one to finish, which then
-contended with each other for ~15 minutes before either produced output; killed both and ran one
-clean invocation, which succeeded immediately after. Not an environment gotcha worth a
-ML_TOOLING.md entry (self-inflicted by not waiting on the background task), but worth remembering:
-wait for one rebuild to finish before starting another.
-
-`config.py` untouched (reused `SIMILARITY_SETS` as-is); no new pytest tests added for the
-`app_data.py`/`app.py` wiring itself, consistent with existing precedent (neither file has any test
-coverage — `build_player_per90_features` itself is only exercised via monkeypatching in
-`test_pipeline.py`, not a direct schema test). Full `pytest` suite re-run after the `similarity.py`
-fix, still **72 green**.
+**Backlog, deliberately not built this session (needs new model/code work first — logged, not
+built):** goalkeeper clustering (style-archetype panel above is outfield-only until that lands),
+cross-league similarity normalisation, a side-by-side two-player comparison view, market-value
+integration (blocked on entity resolution, not data), a multi-season "player career" view (needs
+new lineups pulls for the Barcelona seasons or similar). All pre-existing Phase 9/backlog items,
+unchanged in scope by this session — no new backlog items were identified beyond what INITIATIVE.md/
+ROADMAP.md/PITCH.md already tracked.
 
 ---
 
@@ -111,7 +95,9 @@ fix, still **72 green**.
 Verified against `git log`/`git status` 2026-07-13. Git CLI is used directly (see CLAUDE.md's
 Session Workflow) — this section is a lightweight pointer, not a substitute for `git log`/`git
 status`. Latest commit: `078caaf` ("Visual/brand pass: Leaderboard filters, Player explorer intro,
-branding, About & Roadmap expansion" — covers the "cont. 4" entry above), pushed to `origin/main`.
-Working tree clean as of this write-up — no uncommitted changes pending review. Entries through
-2026-07-13 (cont. 2) moved to [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md) to keep this file under
-150 lines.
+branding, About & Roadmap expansion"), pushed to `origin/main`. **Not yet committed as of this
+write-up:** the doc-interdependency fixes and the Style archetype/percentile-chart/Leaderboard-
+colour work in the "cont. 5" entry above — all verified (72 green, AppTest, Playwright screenshots)
+but left uncommitted pending Guilherme's own review, per this project's "only commit when asked"
+rule. Entries through 2026-07-13 (cont. 4) moved to [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md) to
+keep this file under 150 lines.

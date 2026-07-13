@@ -331,6 +331,71 @@ def plot_xg_generalisation_bar(generalisation, accent_color="darkorange", grid_c
     return ax
 
 
+def plot_diverging_bar(
+    labels, values, reference, label_format,
+    above_color="darkorange", below_color="steelblue", grid_color="#dddddd",
+    xlabel="", ax=None,
+):
+    """Horizontal bar chart of values relative to a reference point, coloured by side.
+
+    Shared by two app panels that are the same underlying question — "how does this
+    compare to a baseline, where direction and magnitude both matter" — just on
+    different scales: a player's per-90 percentile profile (reference=50, the
+    position group's median) and a cluster's feature z-score profile (reference=0,
+    the population mean). One diverging-bar implementation covers both rather than
+    two near-identical copies. Follows `plot_similar_players_bar`'s single-hue-for-
+    magnitude convention one step further: a magnitude-only comparison gets one hue
+    with an opacity ramp, but a comparison with a real "which side of a baseline"
+    question gets two warm/cool hues (never two cool hues — the pole colours must
+    read as opposite) either side of a neutral reference line, per the project's
+    dataviz-skill colour formula.
+
+    Args:
+        labels (list[str]): one per bar, in display order (order is re-sorted
+            internally by value, ascending, so the chart reads top-to-bottom).
+        values (list[float]): one per bar, same order as `labels`.
+        reference (float): the "neutral" value bars are compared against — drawn as
+            a dashed vertical line (matching this file's other reference-line
+            charts, e.g. `plot_xg_generalisation_bar`'s no-skill line), and used to
+            pick each bar's colour.
+        label_format (callable): value -> display string drawn at each bar's tip.
+        above_color (str): bar colour for values >= `reference`.
+        below_color (str): bar colour for values < `reference`.
+        grid_color (str): vertical gridline colour, one step off the surface.
+        xlabel (str): x-axis label.
+        ax (matplotlib.axes.Axes, optional): existing axes to draw on.
+
+    Returns:
+        matplotlib.axes.Axes: the axes the bars were drawn on.
+    """
+    order = pd.Series(list(values), index=list(labels)).sort_values()
+    if ax is None:
+        _, ax = plt.subplots(figsize=(7, 0.5 * len(order) + 1))
+
+    colors = [above_color if v >= reference else below_color for v in order]
+    bars = ax.barh(order.index, order.values, color=colors)
+    ax.axvline(reference, color="grey", linestyle="--", linewidth=1)
+
+    span = (order.max() - order.min()) or 1.0
+    offset = span * 0.03
+    for bar, value in zip(bars, order.values):
+        if value >= reference:
+            ax.text(bar.get_width() + offset, bar.get_y() + bar.get_height() / 2,
+                     label_format(value), va="center", ha="left", fontsize=9)
+        else:
+            ax.text(bar.get_width() - offset, bar.get_y() + bar.get_height() / 2,
+                     label_format(value), va="center", ha="right", fontsize=9)
+
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    ax.grid(axis="x", color=grid_color, linewidth=0.8)
+    ax.set_axisbelow(True)
+    for spine in ("top", "right"):
+        ax.spines[spine].set_visible(False)
+    ax.margins(x=0.18)
+    return ax
+
+
 def plot_calibration_curve(mean_predicted, observed_freq, ax=None, label=None):
     """Plot a model's calibration curve against the perfect-calibration diagonal.
 

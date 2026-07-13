@@ -28,6 +28,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 import pandas as pd
 from cycler import cycler
+from matplotlib.colors import LinearSegmentedColormap
 
 from src.similarity import (
     ACTION_COLUMNS,
@@ -36,9 +37,11 @@ from src.similarity import (
     PER90_FEATURE_COLUMNS,
     compute_silhouette_scores,
     find_similar_players,
+    profile_clusters,
     scale_features,
 )
 from src.visualisation import (
+    plot_diverging_bar,
     plot_player_radar,
     plot_shot_map,
     plot_silhouette_curve,
@@ -58,6 +61,15 @@ GRID_LINE = "#33454a"
 TEXT_LIGHT = "#e6e6e6"
 ACCENT_ORANGE = "#e8752f"
 ACCENT_BLUE = "#1a78cf"
+
+# Diverging colormap for table cell backgrounds (Leaderboard's G-xG column) — same blue/orange
+# poles + a neutral (dark panel) midpoint as plot_diverging_bar's bar colours, so "which side of
+# a baseline" reads the same way whether it's a bar chart or a table cell (2026-07-13 pass; see
+# the dataviz skill's colour-formula doc: two hues that read as opposite + a neutral midpoint,
+# never a hue *at* the midpoint).
+DIVERGING_CMAP = LinearSegmentedColormap.from_list(
+    "app_diverging", [ACCENT_BLUE, DARK_PANEL, ACCENT_ORANGE]
+)
 
 # Brand identity (2026-07-13 visual pass) — one icon/slogan pair reused everywhere (browser tab,
 # sidebar, every page header) so the app reads as one product rather than a stack of bare
@@ -131,6 +143,21 @@ def cached_silhouette_scores(position_group_df):
     """
     X_scaled, _ = scale_features(position_group_df)
     return compute_silhouette_scores(X_scaled)
+
+
+@st.cache_data
+def cached_cluster_profile(position_group_df, feature_columns):
+    """Per-cluster feature z-scores for one position group (2026-07-13 style-archetype panel).
+
+    `_add_cluster_labels` (src/app_data.py) already computes a K=4 style-archetype `cluster`
+    label per outfield player when app_data/ is built, but nothing in the app surfaced it before
+    this pass — a player's own archetype was computed and shipped, then never shown. This wraps
+    the existing `profile_clusters` (no new modelling, just a z-score readout the notebook already
+    uses to name clusters like "ball-winning destroyer") so a player's page can show *why* their
+    cluster is what it is, not just a bare cluster number. Cached per position group, same
+    reasoning as `cached_silhouette_scores` above — cheap, but no reason to recompute per rerun.
+    """
+    return profile_clusters(position_group_df, feature_columns, position_group_df["cluster"].values)
 
 
 def render_page_header(title):
@@ -221,8 +248,33 @@ def render_leaderboard(pool, xg_table):
         "total_xg": "xG", "xg_diff": "G-xG",
     }).sort_values("Goals", ascending=False)
 
+    # Diverging background on G-xG (2026-07-13 visual pass): the same orange-above/blue-below
+    # convention as the new percentile/archetype bar charts (see plot_diverging_bar), applied to
+    # a table cell instead of a bar — orange for over-performers (a likely finishing spike, per
+    # the column's own help text), blue for under-performers (a possible buy-low). Guarded on
+    # `notna().any()` since a competition-only filter (e.g. La Liga) can leave G-xG entirely
+    # blank — Module A's flagship xG set is Premier League + Leverkusen only (see the module
+    # docstring) — and `Styler.background_gradient` errors on an all-NaN vmin/vmax range.
+    #
+    # `.format(..., na_rep="–")` below formats real values (confirmed live: this is why "+4.2"
+    # shows, not a raw float) but does NOT change how a missing value renders — this Streamlit
+    # version's dataframe grid hardcodes missing numeric cells to the literal text "None" ahead
+    # of whatever the Styler's na_rep says, confirmed by screenshotting three independent fixes
+    # (a pandas nullable Float64 dtype, this na_rep, and dropping column_config's own `format=`
+    # entirely) that each left "None" unchanged. Kept anyway since it's harmless and correctly
+    # formats every real value; the "None" text itself is a known, verified, open cosmetic gap
+    # (see docs/ML_TOOLING.md), not something this pass fixes.
+    board_style = board.style.format("{:.1f}", subset=["xG"], na_rep="–").format(
+        "{:+.1f}", subset=["G-xG"], na_rep="–"
+    )
+    if board["G-xG"].notna().any():
+        gxg_span = board["G-xG"].abs().max() or 1.0
+        board_style = board_style.background_gradient(
+            cmap=DIVERGING_CMAP, subset=["G-xG"], vmin=-gxg_span, vmax=gxg_span,
+        )
+
     st.dataframe(
-        board,
+        board_style,
         hide_index=True,
         width="stretch",
         column_config={
@@ -230,9 +282,8 @@ def render_leaderboard(pool, xg_table):
             "Goals": st.column_config.NumberColumn(format="%d"),
             "Non-pen goals": st.column_config.NumberColumn(format="%d"),
             "Assists": st.column_config.NumberColumn(format="%d"),
-            "xG": st.column_config.NumberColumn(format="%.1f", help="Flagship xG set only"),
+            "xG": st.column_config.NumberColumn(help="Flagship xG set only"),
             "G-xG": st.column_config.NumberColumn(
-                format="%+.1f",
                 help="Goals minus xG. Positive = outscoring chance quality (expect regression); "
                 "negative = under-converting good chances (possible buy-low). Flagship set only.",
             ),
@@ -667,34 +718,112 @@ elif pd.notna(player_row_full.get("goals")):
         penalty_note = f" ({penalty_goals} from penalties)" if penalty_goals > 0 else ""
         st.caption(f"**Goals (incl. penalties): {total_goals}**{penalty_note}")
 
+# Style archetype (2026-07-13 visual/feature pass): app_data.py's build step already computes a
+# K=4 style-archetype `cluster` label per outfield player (src/app_data.py::_add_cluster_labels)
+# but nothing in the app surfaced it before this pass — the notebooks' "ball-winning destroyer" /
+# "creative playmaker" style narrative had no live-app equivalent, and "players like X" alone
+# doesn't say *why* a group of players share a style. No new model here: `profile_clusters`
+# (src/similarity.py, already used to name clusters in the notebooks) is a pure z-score readout
+# of stats the clustering already ran on. Goalkeepers are skipped — they aren't clustered yet
+# (no K/silhouette decision made for them, see the "Under the hood" expander below).
+if position_group != "Goalkeeper":
+    st.subheader("Style archetype")
+    cluster_id = int(player_row_full["cluster"])
+    cluster_profile = cached_cluster_profile(group_df, position_feature_columns)
+    cluster_z = cluster_profile.loc[cluster_id]
+    cluster_peers = group_df[
+        (group_df["cluster"] == cluster_id)
+        & ~((group_df["player"] == player_name) & (group_df["team"] == team_name))
+    ]
+    high_traits = cluster_z.sort_values(ascending=False).head(2)
+    low_col = cluster_z.sort_values().index[0]
+    low_z = cluster_z.sort_values().iloc[0]
+    high_text = " and ".join(f"**{STAT_LABELS[c]}** ({z:+.1f}σ)" for c, z in high_traits.items())
+    st.markdown(
+        f"One of **{cluster_profile.shape[0]}** style clusters found among {position_group.lower()}s "
+        "in this pool (K-means on standardised per-90 stats — the grouping came from the numbers "
+        f"alone, no role label was given to the model). This cluster skews high on {high_text} "
+        f"and low on **{STAT_LABELS[low_col]}** ({low_z:+.1f}σ), vs. other "
+        f"{position_group.lower()}s — a style shared with **{len(cluster_peers)}** other players "
+        "in the current pool."
+    )
+    fig, ax = plt.subplots(figsize=(7, 0.5 * len(cluster_z) + 1))
+    plot_diverging_bar(
+        labels=[STAT_LABELS[c] for c in cluster_z.index], values=cluster_z.values, reference=0,
+        label_format=lambda v: f"{v:+.1f}σ",
+        above_color=ACCENT_ORANGE, below_color=ACCENT_BLUE, grid_color=GRID_LINE,
+        xlabel="Cluster average vs. position-group average (standard deviations)", ax=ax,
+    )
+    st.pyplot(fig)
+    plt.close(fig)
+    st.caption(
+        "Standard deviations (σ) of this cluster's average stats vs. the whole position "
+        "group's average — the same z-score reading the project notebooks use to name clusters "
+        "(e.g. high Tackles/Interceptions + low Clearances reads as a ball-winning full-back). Not "
+        "a ranking — a low value here is a different style, not a worse one."
+    )
+    if len(cluster_peers):
+        with st.expander(f"Browse this archetype ({len(cluster_peers)} other players)"):
+            archetype_board = cluster_peers.sort_values("minutes_played", ascending=False).head(8)
+            st.caption(
+                f"Top {len(archetype_board)} by minutes played, of {len(cluster_peers)} total "
+                "sharing this cluster. Click a row to jump to that player."
+            )
+            # Same click-to-jump mechanism as the "Players like X" table below (see its comment
+            # for why the key must be scoped to the current player/team, not fixed).
+            archetype_selection = st.dataframe(
+                archetype_board[["player", "team", "competition", "minutes_played"]].rename(
+                    columns={
+                        "player": "Player", "team": "Team",
+                        "competition": "Competition", "minutes_played": "Minutes",
+                    }
+                ),
+                hide_index=True, width="stretch", on_select="rerun", selection_mode="single-row",
+                key=f"archetype_table_{player_name}_{team_name}",
+            )
+            archetype_rows = archetype_selection.selection["rows"] if archetype_selection else []
+            if archetype_rows:
+                picked = archetype_board.iloc[archetype_rows[0]]
+                st.session_state["jump_to_player"] = (picked["player"], picked["team"])
+                st.rerun()
+
 with st.expander(
     f"All per-90 stats ({len(position_feature_columns)} metrics, vs. {position_group.lower()} peers)"
 ):
-    stat_table = pd.DataFrame({
-        "Stat": [STAT_LABELS[c] for c in position_feature_columns],
-        "Total": [int(round(player_row_full[c])) for c in position_action_columns],
-        "Per 90": [player_row_full[c] for c in position_feature_columns],
-        "Percentile (numeric)": [percentiles[c] * 100 for c in position_feature_columns],
-    }).sort_values("Percentile (numeric)", ascending=False)
-    stat_table["Percentile"] = stat_table["Percentile (numeric)"].map(lambda p: f"{p:.0f}th")
-    st.dataframe(
-        stat_table.drop(columns="Percentile (numeric)"), hide_index=True, width="stretch"
+    fig, ax = plt.subplots(figsize=(7, 0.5 * len(position_feature_columns) + 1))
+    plot_diverging_bar(
+        labels=[STAT_LABELS[c] for c in position_feature_columns],
+        values=[percentiles[c] * 100 for c in position_feature_columns],
+        reference=50, label_format=lambda v: f"{v:.0f}th",
+        above_color=ACCENT_ORANGE, below_color=ACCENT_BLUE, grid_color=GRID_LINE,
+        xlabel=f"Percentile within position group (n={len(group_df)})", ax=ax,
     )
+    st.pyplot(fig)
+    plt.close(fig)
     if position_group == "Goalkeeper":
         st.caption(
-            f"Percentile within this player's position group (n={len(group_df)}). Counts are "
-            "from StatsBomb's `Goal Keeper` event sub-types (Shot Faced, Shot Saved, Goal "
-            "Conceded, Collected, Punch, Keeper Sweeper) — save % isn't shown here since it's "
-            "already above, as a ratio rather than a per-90 rate."
+            "Counts are from StatsBomb's `Goal Keeper` event sub-types (Shot Faced, Shot Saved, "
+            "Goal Conceded, Collected, Punch, Keeper Sweeper) — save % isn't shown here since "
+            "it's already above, as a ratio rather than a per-90 rate."
         )
     else:
         st.caption(
-            "Percentile within this player's position group (n="
-            f"{len(group_df)}). No pass-completion % yet, since that needs a new feature (passes "
-            "attempted, not just completed) from raw events, not just a different chart. Flagged as "
-            "a follow-up, not faked here. Clearances are StatsBomb's general Clearance event count, "
-            "not a 'last-ditch/goal-line' sub-type — StatsBomb's schema doesn't distinguish those, "
-            "so this is the closest available proxy."
+            "No pass-completion % yet, since that needs a new feature (passes attempted, not "
+            "just completed) from raw events, not just a different chart. Flagged as a "
+            "follow-up, not faked here. Clearances are StatsBomb's general Clearance event "
+            "count, not a 'last-ditch/goal-line' sub-type — StatsBomb's schema doesn't "
+            "distinguish those, so this is the closest available proxy."
+        )
+    with st.expander("Table view", expanded=False):
+        stat_table = pd.DataFrame({
+            "Stat": [STAT_LABELS[c] for c in position_feature_columns],
+            "Total": [int(round(player_row_full[c])) for c in position_action_columns],
+            "Per 90": [player_row_full[c] for c in position_feature_columns],
+            "Percentile (numeric)": [percentiles[c] * 100 for c in position_feature_columns],
+        }).sort_values("Percentile (numeric)", ascending=False)
+        stat_table["Percentile"] = stat_table["Percentile (numeric)"].map(lambda p: f"{p:.0f}th")
+        st.dataframe(
+            stat_table.drop(columns="Percentile (numeric)"), hide_index=True, width="stretch"
         )
 
 col_radar, col_similar = st.columns(2)

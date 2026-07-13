@@ -171,7 +171,8 @@ Honest assessment before reaching for this:
   brittleness (page-structure changes break the scraper with no changelog to warn you).
 - **Where it's genuinely useful:** league standings / rivalry context is exactly the
   "external match-importance label" Module C (PUP) has been blocked on since it was scoped —
-  StatsBomb has no league-table or derby metadata (see [MODULES.md](MODULES.md#L57)). A scraped
+  StatsBomb has no league-table or derby metadata (see
+  [MODULES.md](MODULES.md#module-c--pup-performance-under-pressure)). A scraped
   standings table at the date of each match would unblock that without needing per-shot detail.
 - **Verdict:** worth a small spike (one competition, one season) if/when Phase 4's data-availability
   friction or Module C gets picked up — not a default assumption that it will work cleanly.

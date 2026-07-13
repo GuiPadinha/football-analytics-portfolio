@@ -33,7 +33,7 @@ here while the project is already well past Phase 4 below — they're not sequen
 Kicked off post-S8 (2026-06-29). On 2026-07-02 the full code-review backlog was folded into one
 execution-ordered program and renumbered to Phases 0–9.
 
-**The phase table + status lives only in [INITIATIVE.md](INITIATIVE.md#L18) — do not duplicate it
+**The phase table + status lives only in [INITIATIVE.md](INITIATIVE.md#phases) — do not duplicate it
 here.** This doc holds the *detailed task lists* per phase. Execution order: 0→1→2→3→4→5→6→7→8,
 with 9 opportunistic. Phases 0–3 are done.
 
@@ -191,7 +191,8 @@ the cloud by Guilherme directly.
   for the full assessment.
 - **xA / chance-creation model** — sibling to xG on the same pipeline; also upgrades 6d.
 - **Module C (PUP)** — only if desired; carries a selection-bias confound + label-acquisition cost,
-  and Phase 5 already delivers most of its payoff. Spec: [MODULES.md](MODULES.md#L53).
+  and Phase 5 already delivers most of its payoff. Spec:
+  [MODULES.md](MODULES.md#module-c--pup-performance-under-pressure).
 - **Remaining alt-models** — hierarchical clustering, cosine, monotonic GBM.
 - ~~**Architecture / dependency doc**~~ — flagged 2026-07-04, done same day:
   [ARCHITECTURE.md](ARCHITECTURE.md) (import graph, data flow for both modules, the pure/IO-split

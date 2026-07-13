@@ -198,7 +198,7 @@ Neither reads Python, so the screen has to explain itself.
 
 ## Screen Layout
 
-Expanded from the [FRAMEWORK.md](FRAMEWORK.md#L103-L113) sketch. A left **sidebar** drives
+Expanded from the [FRAMEWORK.md](FRAMEWORK.md#product-layer-planned) sketch. A left **sidebar** drives
 selection; the **main pane** reacts live. Two lenses share the screen:
 
 - **Similarity / scouting lens** (user input) — pick a player → radar vs. position peers +

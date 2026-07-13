@@ -27,30 +27,43 @@ MODULES.md) and expanded the Leaderboard view's own explanatory copy; a same-day
 brand pass added Leaderboard name/position filters, a proper Player explorer intro, a reusable
 `render_page_header` (icon + slogan badge on every page), a live-stat-carrying sidebar, and
 expanded "About & Roadmap" with visible (non-decimal) "Data used" and "How each model works"
-sections plus a third "Module C / Performance-Under-Pressure" roadmap paragraph —
+sections plus a third "Module C / Performance-Under-Pressure" roadmap paragraph; a same-day
+(cont. 5) pass opened the "bigger visual + docs" ask flagged at the end of cont. 4 — read all 16
+`.md` files end-to-end and fixed four real doc-drift findings (a self-contradicting README, a
+missing `docs/PRODUCT_SPEC.md` entry in this file's own Repository Layout, `ARCHITECTURE.md` never
+mentioning `app_data.py`, two markdown-to-markdown line-anchors that had already drifted to the
+wrong section), then shipped two new app features reusing already-computed data with no new
+modelling: a **Style archetype panel** (Player explorer, outfield players — surfaces the K=4
+cluster label `app_data.py` has computed since Phase 4 but the app never showed, via
+`similarity.profile_clusters`'s z-score readout) and a **percentile bar chart** replacing the plain
+per-90 stats table, both via a new shared `visualisation.plot_diverging_bar`; plus a diverging
+background colour on the Leaderboard's G-xG column —
 **[live demo](https://gpfootball-analytics-portfolio.streamlit.app)** (Python 3.10 pinned in the
 deploy settings to match `requirements.txt`, not Cloud's newer default — see ROADMAP.md's Phase 9
 backlog note on why that version bump is deliberately deferred).
 See [docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renumbered 0–9 program on
 2026-07-02.
-**Next session, start here: Guilherme flagged 2026-07-13 (after the visual/brand pass above) that
-he wants a *bigger* pass on both the app's visuals and the documentation — not just incremental
-tweaks like this session's. Scope isn't decided yet (which pages/docs, how deep) — open with that
-discussion rather than assuming a specific task list.**
+**Next session, start here: the cont. 5 pass above is verified (72 tests, AppTest, Playwright
+screenshots) but deliberately left uncommitted — review it, then decide whether to commit as-is or
+keep iterating on the visual/docs pass further (it was scoped as an open-ended "go bigger" ask, not
+a fixed task list, so more rounds are plausible). One known, now-thoroughly-investigated but
+unfixed cosmetic gap surfaced again this pass: blank Leaderboard xG/G-xG cells render as the
+literal text "None" — three independent fixes tried and verified live, none worked; see
+[ML_TOOLING.md](docs/ML_TOOLING.md) for the full account before attempting a fourth.**
 **Next (open backlog): design cross-league normalisation for similarity (Phase 4b's original open
 item, still unresolved); decide a K/silhouette check for goalkeepers so they get a style-archetype
-layer like outfield players (they're wired into the app now, just not clustered yet). A side-by-side
-two-player comparison view and a market-value integration alongside "players like X" (a usable open
-dataset was found — `dcaribou/transfermarkt-datasets` — but it's blocked on player-identity matching
-between data sources, not on data availability; see [DATA.md](docs/DATA.md)) are both scoped in the
-backlog, not started. The "Under the hood" methodology rework and goalkeeper wiring are now both ✅
-done (2026-07-13, see above) — neither is an open item any more. Exact code entry points for what's
-still open are in [PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s "Backlog from 2026-07-06 feedback"
-section and [ROADMAP.md](docs/ROADMAP.md)'s Phase 9 list — the PRODUCT_SPEC section also has one
-minor open cosmetic follow-up from the drill-down work (an expander's open/closed state not always
-carrying over consistently across a jump). A "player career" page/view is also under discussion
-(multi-season drill-down, international tournament data — trophies/awards/MOTM data does not exist
-in any current source and would need new scraping infra).**
+layer like outfield players do now (they're wired into the app, just not clustered yet — the new
+Style archetype panel is outfield-only until that lands). A side-by-side two-player comparison view
+and a market-value integration alongside "players like X" (a usable open dataset was found —
+`dcaribou/transfermarkt-datasets` — but it's blocked on player-identity matching between data
+sources, not on data availability; see [DATA.md](docs/DATA.md)) are both scoped in the backlog, not
+started. Exact code entry points for what's still open are in
+[PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s "Backlog from 2026-07-06 feedback" section and
+[ROADMAP.md](docs/ROADMAP.md)'s Phase 9 list — the PRODUCT_SPEC section also has one minor open
+cosmetic follow-up from the drill-down work (an expander's open/closed state not always carrying
+over consistently across a jump). A "player career" page/view is also under discussion (multi-season
+drill-down, international tournament data — trophies/awards/MOTM data does not exist in any current
+source and would need new scraping infra).**
 (360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
 Run the app locally: `python -m src.app_data` (once, to build `app_data/`) then `streamlit run app.py`
 — or just use the [live demo](https://gpfootball-analytics-portfolio.streamlit.app).
@@ -98,6 +111,7 @@ notebooks/
 docs/
   FRAMEWORK.md           ← what the tool is for (purpose, user story, scope)
   ARCHITECTURE.md        ← module dependency graph, data flow, pure/IO-split pattern
+  PRODUCT_SPEC.md        ← Streamlit app interface spec, component→backend map, build/feedback log
   INITIATIVE.md          ← phase tracker (Phases 0–9)
   MODULES.md             ← Module A/B/C specs and current state
   DATA.md                ← data sources, datasets table, cache file index

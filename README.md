@@ -197,10 +197,8 @@ football-analytics-portfolio/
 ├── app_data/                   ← precomputed Parquet artifacts for the app (small, committed)
 ├── .streamlit/config.toml      ← Streamlit theme
 ├── requirements.txt
-├── docs/
-│   ├── FRAMEWORK.md            ← what the tool is for (purpose, user story, scope)
-│   ├── PRODUCT_SPEC.md         ← Streamlit app spec + build checklist
-│   └── INITIATIVE.md           ← hardening & expansion initiative tracker
+├── docs/                        ← full doc set (framework, architecture, modules, data, roadmap,
+│                                  product spec, progress log — see CLAUDE.md for the complete index)
 ├── notebooks/
 │   ├── 01_data_exploration.ipynb
 │   ├── 02_xg_model.ipynb
@@ -222,7 +220,8 @@ football-analytics-portfolio/
 
 ## Tech Stack
 
-Python · `statsbombpy` · `kloppy` · pandas · numpy · scikit-learn · `mplsoccer` · matplotlib
+Python · `statsbombpy` · `kloppy` · pandas · numpy · scikit-learn · `mplsoccer` · matplotlib ·
+`streamlit`
 
 ## Running it
 
@@ -249,12 +248,17 @@ Notebooks stay the teaching surface (narrated decisions, S1–S8 + Phase 2 rigor
 **Interactive app** (pick a player, see the model output live — see `docs/PRODUCT_SPEC.md`):
 
 ```bash
-python -m src.app_data    # one-time: builds app_data/*.parquet from the cached PL 2015/16 data
+python -m src.app_data    # one-time: builds app_data/*.parquet for the app's player pool
 streamlit run app.py
 ```
 
-Scoped to Premier League 2015/16 for v1. Not yet deployed — running locally for now; a hosted URL
-will land here once it is.
+**Live and deployed** at
+[gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app)
+(Streamlit Community Cloud, since 2026-07-09). The player pool spans **6 competitions** — Premier
+League, La Liga, Serie A, Ligue 1 (all 2015/16), plus Frauen Bundesliga and FA Women's Super League
+(both 2023/24) — **1,635 players total, including 124 goalkeepers** with their own feature set. The
+app also has a full player **leaderboard** (sortable, goals incl. penalties + xG where available)
+and an **About & Roadmap** tab explaining the framework, the data, and what's next.
 
 ---
 
@@ -263,6 +267,8 @@ will land here once it is.
 - **Module C — Performance Under Pressure (PUP):** a per-player KPI comparing performance in
   high-stakes league moments (title race, relegation, derby) against tournament performance, for
   the 51 players who appear in both this project's league and tournament datasets. Fully scoped in
-  `ML_LEARNING_LOG.md`, not started.
-- **Deploy the Streamlit app** to a public URL (Streamlit Community Cloud) and widen it past the
-  single Premier League 2015/16 dataset once more competitions are wired into the models.
+  `docs/MODULES.md`, not started — deprioritised behind Phase 5's hierarchical finishing model,
+  which delivers most of the same "real or luck" payoff more cleanly.
+- **Cross-league similarity normalisation**, goalkeeper clustering, a side-by-side player
+  comparison view, and further modelling upgrades (xG uncertainty, 360°-context xG) — see
+  `docs/INITIATIVE.md` for the full phase-by-phase roadmap.

@@ -220,6 +220,37 @@ that worked last session can break. Prefer scoping to a `get_by_test_id(...)` co
 `stRadio`, `stSidebar`) over a bare page-wide `get_by_text` once an app has more than a couple of
 short labels.**
 
+## A missing value in `st.dataframe`'s `NumberColumn` renders as the literal text "None" — three independent fixes tried, none worked
+
+Symptom (2026-07-13, Leaderboard's xG/G-xG columns — blank for ~2/3 of the pool outside Module A's
+training set, by design, see PRODUCT_SPEC.md): every missing cell displays the literal text
+`None`, not a blank cell, confirmed via a real screenshot rather than assumed from the code. Three
+independent, real attempts to fix it, each verified live (fresh server restart + a new screenshot,
+not just re-reading the diff — a stale-code false negative bit this same investigation once, see
+below):
+
+1. Cast the column to pandas' nullable `Float64` dtype (`pd.NA` instead of `np.nan`) — no change.
+2. `Styler.format(..., na_rep="–")` — no change for missing values, **but this did confirm the
+   Styler's format spec drives the display of *real* values** (`"{:+.1f}"` produced the `+4.2`-style
+   strings seen in the screenshot) — so Styler formatting is read for populated cells, just
+   overridden by a hardcoded "None" for missing ones.
+3. Dropping `column_config.NumberColumn`'s own `format=` entirely (in case it, not the Styler, was
+   forcing the literal) — no change.
+
+**Conclusion: this Streamlit version's dataframe grid hardcodes missing numeric cells to "None"
+ahead of any Styler-level `na_rep`, and no column_config option overrides it.** Left as a known,
+now-thoroughly-investigated cosmetic gap rather than faked as fixed — `board.style.format(...,
+na_rep="–")` is kept in `app.py` anyway since it correctly formats every real value, it just does
+nothing for the missing ones.
+
+**Self-inflicted false start along the way, worth flagging on its own:** the very first
+verification (the `Float64` dtype attempt) looked unchanged after a plain browser `page.reload()`
+against an already-running `streamlit run` dev server — but a *page* reload doesn't guarantee the
+server picked up an on-disk code change; the fix might have silently still been running stale code.
+Confirmed by fully killing and restarting the `streamlit run` process before each subsequent
+screenshot, which is the only way to be certain a Playwright verification is exercising the current
+file, not a cached script run from before the edit.
+
 ## How to use this file
 
 - Hit a real environment/tooling obstacle this session (network, encoding, kernel, caching, a silent tool failure)? Add it here **before** the session ends, dated only if the fix might later change — most of these don't need a date, just the symptom and the fix. Don't wait for a retrospective "were there any obstacles?" question to write them down.

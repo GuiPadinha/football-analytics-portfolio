@@ -18,12 +18,17 @@ Layer 1 — feature build:   features.py (Module A), similarity.py (Module B)
 Layer 2 — model/analysis:  models.py                (Module A only — Module B's clustering
                                                        already lives inside similarity.py)
 Layer 3 — presentation:    visualisation.py
-Layer 4 — orchestration:   manifest.py, metrics.py, pipeline.py
+Layer 4 — orchestration:   manifest.py, metrics.py, pipeline.py, app_data.py
 ```
 
 Consumers sit outside `src/`: **notebooks/** (the narrated teaching surface — S1–S8 + Phase 2
 rigor sections) and **pipeline.py** (the headless, non-notebook twin — see Phase 3d) both call
-into the same Layer 1–3 functions. **tests/** exercises the pure functions directly.
+into the same Layer 1–3 functions. **tests/** exercises the pure functions directly. **`app_data.py`**
+(Phase 8) is a third orchestration entry point alongside `pipeline.py` — same cache-or-rebuild
+instinct (skip a build step when its `data/`/`app_data/` output already exists), but its job is
+narrower: call `build_player_per90_features`/`build_goalkeeper_per90_features`/
+`build_player_xg_table` across `config.SIMILARITY_SETS` and write the small `app_data/*.parquet`
+artifacts `app.py` reads at runtime, rather than rebuilding every output PNG/manifest/metric.
 
 ---
 
@@ -40,6 +45,7 @@ into the same Layer 1–3 functions. **tests/** exercises the pure functions dir
 | `manifest.py` | `config`, `data_loader` | `pipeline.py` |
 | `metrics.py` | `config`, `models`, `similarity` | `pipeline.py` |
 | `pipeline.py` | `config`, `features`, `manifest`, `metrics`, `models`, `similarity`, `visualisation` | — (top-level entry point, `python -m src.pipeline`) |
+| `app_data.py` | `config`, `models`, `pipeline`, `similarity` | — (top-level entry point, `python -m src.app_data`) |
 
 Two things worth noticing, because they're deliberate design choices, not accidents:
 
@@ -47,8 +53,8 @@ Two things worth noticing, because they're deliberate design choices, not accide
 `models.py` trains/evaluates on whatever `X`/`y` a caller hands it, `visualisation.py` plots
 whatever arrays/DataFrames a caller hands it. Neither knows StatsBomb, `config.py`, or the other's
 existence. This is why the same `plot_calibration_curve`/`plot_shot_map` functions work unchanged
-whether the caller is notebook 02, `pipeline.py`, or (per [PRODUCT_SPEC.md](PRODUCT_SPEC.md)) a
-future Streamlit app.
+whether the caller is notebook 02, `pipeline.py`, or (per [PRODUCT_SPEC.md](PRODUCT_SPEC.md)) the
+deployed Streamlit app.
 
 **`features.py` and `similarity.py` don't import `config.py` either**, even though the whole
 project is "about" specific StatsBomb competitions. `build_training_dataset(datasets)` and
