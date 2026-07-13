@@ -34,6 +34,7 @@ from src.visualisation import (
     plot_shot_map,
     plot_silhouette_curve,
     plot_similar_players_bar,
+    plot_xg_generalisation_bar,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -170,6 +171,175 @@ def render_leaderboard(pool, xg_table):
     )
 
 
+def render_about_and_roadmap(per90, metrics):
+    """Render the "About & Roadmap" view: framework explanation, how to use, what's built, what's
+    next, and — behind a collapsed expander — the full methodology justification for the model
+    numbers.
+
+    Headline stats here are deliberately whole-number counts (shots, players, tournaments) rather
+    than decimal model-evaluation scores (ROC-AUC, Brier, silhouette) — 2026-07-13 pitch-prep ask:
+    the at-a-glance numbers should be things Guilherme can say confidently without notes, while the
+    decimal statistics (which need methodology context to defend under questioning) live only in
+    the "Methodology" expander below, explained alongside how they were computed, not bare.
+    """
+    n_generalisation_shots = sum(v["n_shots"] for v in metrics["xg_generalisation"].values())
+    n_tournaments = len(metrics["xg_generalisation"])
+
+    st.title("⚽ Player Evaluation Framework")
+    st.markdown(
+        "A recruitment-led player evaluation tool over StatsBomb open data — two independent ML "
+        "models, nothing scraped live, everything reproducible via `python -m src.pipeline`. "
+        "**Two questions, one screen:**"
+    )
+    col_scouting, col_valuation = st.columns(2)
+    with col_scouting:
+        st.markdown("**🔍 Who plays like this player?** *(scouting lens)*")
+        st.caption(
+            "K-means clustering on standardised per-90 stats, per position group. Ranks every "
+            "other player by how close their statistical profile is — click a match to jump "
+            "straight into their own page."
+        )
+    with col_valuation:
+        st.markdown("**📊 Is their output real, or luck?** *(valuation lens)*")
+        st.caption(
+            "Logistic regression scores every shot's quality from its geometry and context. "
+            "Goals minus expected goals (xG) separates a genuine step up from a hot streak likely "
+            "to regress — or a player creating good chances but unlucky not to convert them."
+        )
+
+    st.subheader("What's been built")
+    built_cols = st.columns(4)
+    built_cols[0].metric("Competitions", f"{per90['competition'].nunique()}")
+    built_cols[1].metric("Players in the pool", f"{len(per90):,}")
+    built_cols[2].metric(
+        "Shots evaluated", f"{metrics['xg']['n_train_shots'] + n_generalisation_shots:,}",
+        help=f"{metrics['xg']['n_train_shots']:,} used to train the xG model, plus "
+        f"{n_generalisation_shots:,} more held out for testing — never trained on — across "
+        f"{n_tournaments} different tournaments. See Methodology below for how each one scored.",
+    )
+    built_cols[3].metric(
+        "Tournaments tested on", f"{n_tournaments}",
+        help="The trained xG model is checked against 4 held-out tournaments it never saw during "
+        "training, not just one — see Methodology below for the per-tournament breakdown.",
+    )
+    st.caption(
+        "Also: a live deployed app (no local setup needed), a reproducible one-command pipeline, "
+        "continuous integration on every change, and a data-provenance manifest. Full numeric "
+        "justification for every claim on this page is in **Methodology** below."
+    )
+
+    st.subheader("How the two lenses combine")
+    st.markdown(
+        "> A club's striker is leaving and the analyst needs a replacement on a smaller budget.\n"
+        ">\n"
+        "> 1. **Similarity:** input the departing striker → get a shortlist of statistically "
+        "similar forwards.\n"
+        "> 2. **Valuation:** for each name on that shortlist, check goals minus xG. One scored a "
+        "lot last season but is well over his xG — a likely finishing spike, due to regress. "
+        "Another scored less but is under his xG — creating good chances, unlucky not to convert.\n"
+        "> 3. **Shortlist:** the second player is the better-value target — similar playing style, "
+        "output suppressed by variance rather than inflated by it.\n"
+        ">\n"
+        "> Similarity narrows the field by *style*; xG corrects for *luck*. Neither answers the "
+        "question alone."
+    )
+
+    with st.expander("How to use this app", expanded=True):
+        st.markdown(
+            "1. **Pick a view** in the sidebar — *Player explorer* (one player, deep dive) or "
+            "*Leaderboard* (browse/sort everyone in the current filters).\n"
+            "2. **Narrow with the sidebar filters** — position group and competition are both "
+            "optional.\n"
+            "3. **Search for a player** by name (press Enter), or just pick from the dropdown of "
+            "current matches.\n"
+            "4. On a player's page: their **radar** (pick which stats form the spokes), "
+            "**signature stats** for their position, and the ranked **\"Players like X\"** list.\n"
+            "5. **Click a row** in the \"players like X\" table to jump straight to that player — "
+            "a recursive drill-down, not a static list.\n"
+            "6. If the player has logged shots in the xG training set (Premier League 2015/16 + "
+            "Bayer Leverkusen 2023/24), see their **Finishing** panel: goals vs. expected goals, "
+            "plus a shot map."
+        )
+
+    st.subheader("What's already shipped, and what's next")
+    st.markdown(
+        "**Done:** the full similarity + xG pipeline across 6 competitions, a leaderboard view, "
+        "clickable similar-player drill-down, penalty-aware goal totals, and this app deployed "
+        "live.\n\n"
+        "**Open, small:** goalkeepers aren't wired into the app yet; the similarity match doesn't "
+        "yet adjust for different leagues' competitiveness (a cross-league match today is a "
+        "coarser signal than a same-league one).\n\n"
+        "**Bigger, not started:** uncertainty ranges on the xG number; a smarter distance metric "
+        "for similarity (today's treats correlated stats as independent); shot context from "
+        "player-tracking freeze-frames (360°-context xG); a side-by-side player comparison view; "
+        "market-value data alongside a similarity match (a usable data source has been found, but "
+        "it needs player-identity matching work first — no shared ID between data sources)."
+    )
+    st.caption(
+        "Full phase-by-phase detail: "
+        "[INITIATIVE.md](https://github.com/GuiPadinha/football-analytics-portfolio/blob/main/docs/INITIATIVE.md) · "
+        "[ROADMAP.md](https://github.com/GuiPadinha/football-analytics-portfolio/blob/main/docs/ROADMAP.md)"
+    )
+
+    with st.expander("Methodology — the numbers, and how we got them"):
+        st.markdown(
+            f"""
+**xG model.** Logistic regression, trained on **{metrics['xg']['n_train_shots']:,} shots**
+(Bayer Leverkusen 2023/24 + Premier League 2015/16), a {metrics['xg']['train_goal_rate']:.0%} goal
+rate in training. Tested on **UEFA EURO 2024** — a tournament the model never trained on, a
+deliberate league-to-tournament distribution shift.
+
+**ROC-AUC** measures how often the model correctly ranks a more dangerous shot above a less
+dangerous one (1.0 = always correct, 0.5 = a coin flip). On the held-out EURO 2024 shots:
+**{metrics['xg']['logistic']['test_roc_auc']}** — and a baseline ladder shows the model earns that
+number rather than getting there for free: guessing the training goal rate for every shot scores
+{metrics['xg']['baseline_ladder_test_roc_auc']['no_skill']} (no skill); shot geometry alone
+(distance + angle to goal) already reaches {metrics['xg']['baseline_ladder_test_roc_auc']['geometry_only']};
+the full model (adds body part, assist type, game state) reaches
+{metrics['xg']['baseline_ladder_test_roc_auc']['full']}.
+
+**Generalisation check (Phase 4c):** the same trained model, never retrained, scored against
+{n_tournaments} held-out tournaments totalling **{n_generalisation_shots:,} shots** it never saw:
+            """
+        )
+        gen_table = pd.DataFrame(metrics["xg_generalisation"].values()).sort_values(
+            "roc_auc", ascending=False
+        )
+        st.dataframe(
+            gen_table[["label", "n_shots", "roc_auc", "brier_score"]].rename(columns={
+                "label": "Tournament", "n_shots": "Shots", "roc_auc": "ROC-AUC",
+                "brier_score": "Brier score",
+            }),
+            hide_index=True, width="stretch",
+        )
+        fig, ax = plt.subplots(figsize=(7, 0.6 * len(gen_table) + 1.5))
+        plot_xg_generalisation_bar(
+            gen_table, accent_color=ACCENT_ORANGE, grid_color=GRID_LINE, ax=ax
+        )
+        st.pyplot(fig)
+        plt.close(fig)
+        st.caption(
+            "EURO 2024 is the *floor* of the four, not a fluke — the model holds up as well or "
+            "better on every other tournament it's been checked against."
+        )
+
+        st.markdown(
+            f"""
+**Similarity model.** K-means, K={metrics['similarity']['kmeans_k_used']} clusters per position
+group, minimum {metrics['similarity']['min_minutes']} minutes played to qualify. Silhouette score
+(cluster tightness, −1 to 1) peaks low at K=2 for every position group (~0.22–0.26) — reported
+honestly rather than hidden: play styles within a position are a soft continuum, not sharply
+separated blobs. K=4 is used anyway, for archetype granularity, against the metric's own
+preference.
+
+**Known limitations, stated plainly:** no cross-league normalisation yet (per-90 rates are
+compared raw across leagues of different competitiveness); StatsBomb's free data has no recent
+men's top-flight season (2015/16 is the newest full men's league available; 2023/24 women's
+leagues are the newest full-season data anywhere in this project).
+            """
+        )
+
+
 per90, xg_table, shots, metrics = load_artifacts()
 
 # "Similar player" row-click drill-down (2026-07-09 backlog item): clicking a row in the
@@ -196,10 +366,25 @@ st.sidebar.caption(
 )
 
 view = st.sidebar.radio(
-    "View", ["Player explorer", "Leaderboard"],
+    "View", ["Player explorer", "Leaderboard", "About & Roadmap"],
     help="Player explorer: one player's radar, similar players and finishing. "
-    "Leaderboard: browse and sort every player in the current filters.",
+    "Leaderboard: browse and sort every player in the current filters. "
+    "About & Roadmap: what this is, how to use it, what's built, and what's next.",
     key="view_radio",
+)
+
+# "About & Roadmap" is a static informational page, not a player/filter view — branch and stop
+# here, before the position/competition filter widgets below, so its sidebar stays uncluttered
+# (2026-07-13, pitch-prep pass: promoted from an always-visible main-pane banner into its own
+# tab, per feedback that it deserved a dedicated place rather than repeating on every view).
+if view == "About & Roadmap":
+    render_about_and_roadmap(per90, metrics)
+    st.stop()
+
+st.caption(
+    "A recruitment-led player evaluation tool over StatsBomb open data — two independent ML "
+    "models, nothing scraped live. See **About & Roadmap** in the sidebar for the full story, "
+    "credibility numbers and what's next."
 )
 
 position_filter = st.sidebar.selectbox(
@@ -354,8 +539,8 @@ with col_similar:
     st.caption(
         "Distance = Euclidean, standardised per-90 features, same position group only — now "
         "searched across the whole multi-competition pool, so a match can come from a different "
-        "league. No cross-league normalisation yet (see \"Under the hood\" below), so treat a "
-        "cross-league match as a coarser signal than a same-league one."
+        "league. No cross-league normalisation yet (see \"About & Roadmap\" in the sidebar), so "
+        "treat a cross-league match as a coarser signal than a same-league one."
     )
     with st.expander("Table view — click a row to jump to that player", expanded=False):
         # `similar` was reset_index(drop=True) above so its positions line up 1:1 with the
@@ -397,8 +582,8 @@ if xg_row.empty:
     st.info(
         f"{player_name} ({competition_name}) has no logged shots in the xG training set "
         "(Premier League 2015/16 + Bayer Leverkusen 2023/24). The similarity pool is wider than "
-        "the xG training set (see \"Under the hood\" below), so this is expected for most "
-        "players outside those two competitions, not a bug."
+        "the xG training set (see \"About & Roadmap\" in the sidebar), so this is expected for "
+        "most players outside those two competitions, not a bug."
     )
 else:
     row = xg_row.iloc[0]
@@ -422,26 +607,13 @@ else:
         plt.close(fig)
 
 with st.expander("Under the hood (methodology)"):
-    st.markdown(
-        f"""
-- **xG model:** logistic regression, test ROC-AUC **{metrics['xg']['logistic']['test_roc_auc']}**,
-  test Brier **{metrics['xg']['logistic']['test_brier']}**
-  (train: Leverkusen 2023/24 + PL 2015/16, test: EURO 2024 — a deliberate league-to-tournament
-  distribution shift, see [docs/MODULES.md](docs/MODULES.md)).
-- **Baseline ladder (test ROC-AUC):** no-skill {metrics['xg']['baseline_ladder_test_roc_auc']['no_skill']}
-  → geometry-only {metrics['xg']['baseline_ladder_test_roc_auc']['geometry_only']}
-  → full model {metrics['xg']['baseline_ladder_test_roc_auc']['full']}.
-- **Similarity model:** K-means, K={metrics['similarity']['kmeans_k_used']} per position group,
-  min. {metrics['similarity']['min_minutes']} minutes played, pool spans
-  {per90['competition'].nunique()} competitions: {", ".join(sorted(per90["competition"].unique()))}.
-- **Data recency ceiling:** StatsBomb's *free* open data has no recent men's top-flight season —
-  2015/16 is the newest full men's league available (PL/La Liga/Serie A/Ligue 1 alike); the
-  women's leagues above (2023/24) are the newest full-season data this project has anywhere.
-  A live/current-season pool isn't possible on this data source without a paid licence.
-- **No cross-league normalisation yet** — per-90 rates are compared directly across leagues of
-  different competitiveness/style. A cross-league "similar player" match is a coarser signal
-  than a same-league one until that's designed (see ROADMAP.md Phase 4b).
-        """
+    # Slimmed 2026-07-13 (pitch-prep pass): this used to repeat the whole headline-metrics
+    # writeup on every single player's page. That's now one place — the "About & Roadmap" view's
+    # "Methodology" expander — so this stays scoped to what's genuinely specific to *this*
+    # player's page: how tightly their own position group's players cluster.
+    st.caption(
+        "Full methodology, credibility numbers and roadmap: see **About & Roadmap** in the "
+        "sidebar. Below: how tightly this specific position group's players cluster."
     )
     st.caption(
         f"Silhouette score by K — {position_group} (peaks low, ~0.25: play-styles within a "

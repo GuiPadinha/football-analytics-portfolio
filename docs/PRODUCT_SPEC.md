@@ -86,10 +86,19 @@ rest are still open.
   players outside Module A's training set. Surfaces the intended outliers — e.g. Fabinho, a defender
   with 6 goals all penalties. (Was: "browse all players to spot outliers like Sergio Ramos's
   penalty-inflated total; needs a new multi-player table.")
-- **"Under the hood (methodology)" flagged as low-value, under review.** Guilherme doesn't find it
-  useful/understandable as-is; expects more charts to be added later that may reshape or replace
-  it. Not touching it until there's a clearer idea of what replaces it — no redesign work now.
-  → entry point: `app.py`'s `st.expander("Under the hood (methodology)")` (currently ~line 367).
+- **[DONE 2026-07-13] "Under the hood (methodology)" flagged as low-value, reworked.** Guilherme
+  didn't find it useful/understandable as-is and expected it to be reshaped once there was a
+  clearer idea of what should replace it — that idea arrived during 2026-07-13's pitch-prep
+  session (a request for a fuller "about the project" page, plus whole-number headline stats over
+  decimal ML scores). Split in two: a new **"About & Roadmap"** sidebar view
+  (`render_about_and_roadmap` in `app.py`) now carries the framework explanation, a "What's been
+  built" whole-number stat row, the FRAMEWORK.md worked example, a "how to use this app" guide, a
+  plain-language shipped/next-up summary, and a collapsed **"Methodology"** expander — the only
+  place decimal stats (ROC-AUC, Brier, silhouette, the Phase 4c per-tournament generalisation
+  table/chart) still appear, each explained inline. The old per-player `st.expander("Under the
+  hood (methodology)")` at the bottom of the Player explorer page is slimmed to a one-line pointer
+  at the new tab plus the one thing genuinely specific to that page: the current position group's
+  live silhouette curve.
 - **Goalkeepers still not wired into the app** — `build_goalkeeper_per90_features` exists
   (`src/similarity.py:445`, verified still present 2026-07-09) but isn't in `config.py`/clustering/
   the app's position filter. Still an open integration decision (own K? own silhouette check? a 4th

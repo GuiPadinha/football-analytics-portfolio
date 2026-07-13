@@ -17,20 +17,29 @@ penalties + xG where available) and verified both app views in a real browser (P
 screenshots); **deployed to Streamlit Community Cloud 2026-07-09**; a 2026-07-09 (cont. 4) pass
 shipped penalty info (total goals + penalty split) on the single-player page; a 2026-07-09 (cont. 5)
 pass shipped the clickable "similar player" recursive drill-down (and fixed a real infinite-jump
-cascade bug it exposed — see PROGRESS.md) —
+cascade bug it exposed — see PROGRESS.md); a 2026-07-13 pitch-prep pass promoted the app's framework
+explanation into its own **"About & Roadmap"** sidebar view (what it is, how to use it, what's
+built, what's next, and a "Methodology" expander), rewrote the headline stat tiles to whole-number
+counts instead of decimal model scores, and wired the Phase 4c generalisation chart into the app for
+the first time —
 **[live demo](https://gpfootball-analytics-portfolio.streamlit.app)** (Python 3.10 pinned in the
 deploy settings to match `requirements.txt`, not Cloud's newer default — see ROADMAP.md's Phase 9
 backlog note on why that version bump is deliberately deferred).
 See [docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renumbered 0–9 program on
 2026-07-02.
-**Next (open backlog): wire goalkeepers into the app (needs a K/silhouette call); rework the
-low-value "Under the hood" methodology expander. Exact code entry points for both (verified current
-2026-07-09, not just described) are in [PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s "Backlog from
-2026-07-06 feedback" section — that section also has one minor open cosmetic follow-up from the
-drill-down work (an expander's open/closed state not always carrying over consistently across a
-jump). A "player career" page/view is also under discussion (multi-season drill-down, international
-tournament data — trophies/awards/MOTM data does not exist in any current source and would need new
-scraping infra).**
+**Next (open backlog): wire goalkeepers into the app (needs a K/silhouette call); design cross-league
+normalisation for similarity (Phase 4b's original open item, still unresolved). A side-by-side
+two-player comparison view and a market-value integration alongside "players like X" (a usable open
+dataset was found — `dcaribou/transfermarkt-datasets` — but it's blocked on player-identity matching
+between data sources, not on data availability; see [DATA.md](docs/DATA.md)) are both scoped in the
+backlog, not started. The "Under the hood" methodology rework is now ✅ done (2026-07-13, see above)
+— it is no longer an open item. Exact code entry points for what's still open are in
+[PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s "Backlog from 2026-07-06 feedback" section and
+[ROADMAP.md](docs/ROADMAP.md)'s Phase 9 list — the PRODUCT_SPEC section also has one minor open
+cosmetic follow-up from the drill-down work (an expander's open/closed state not always carrying
+over consistently across a jump). A "player career" page/view is also under discussion (multi-season
+drill-down, international tournament data — trophies/awards/MOTM data does not exist in any current
+source and would need new scraping infra).**
 (360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
 Run the app locally: `python -m src.app_data` (once, to build `app_data/`) then `streamlit run app.py`
 — or just use the [live demo](https://gpfootball-analytics-portfolio.streamlit.app).
@@ -82,13 +91,15 @@ docs/
   MODULES.md             ← Module A/B/C specs and current state
   DATA.md                ← data sources, datasets table, cache file index
   CONTEXT.md             ← owner, learning goals, career context, portfolio framing
-  ROADMAP.md             ← session roadmap (S1–S9) + Phase 3 scope
-  PROGRESS.md            ← recent session log (Phase 3 spine + docs pass)
-  PROGRESS_ARCHIVE.md    ← S1–S8 + Phase 0–2 history
+  ROADMAP.md             ← historical S1–S9 session log (separate scheme from the Phase 0–9
+                            table above — see the note in the file) + detailed per-phase task lists
+  PROGRESS.md            ← recent session log, auto-archived to PROGRESS_ARCHIVE.md above 150 lines
+  PROGRESS_ARCHIVE.md    ← full historical session log (S1–S8 onward)
+  PITCH.md               ← living pre-demo pitch cheat sheet, refreshed by hand before each pitch
   ML_THEORY.md           ← ML/stats theory reference (textbook-level)
   ML_TOOLING.md          ← Windows/environment gotchas
 ML_LEARNING_LOG.md       ← ML gotchas and decisions log (pointers to above docs)
-tests/                   ← 61 pytest unit tests, all green
+tests/                   ← 72 pytest unit tests, all green
 outputs/                 ← saved PNGs (gitignored)
 data/                    ← per-match cache + Parquet feature tables (gitignored)
 ```

@@ -48,149 +48,35 @@ structurally kills the doc drift — so every later phase writes into a clean, s
 
 ## Log
 
-- **2026-06-29** — Initiative kicked off. Code review (correctness/methodology/structure/scaling)
-  written up; conceptual confusion about the framework's purpose resolved in `FRAMEWORK.md`
-  (recruitment-led, two lenses: similarity = scouting/user-input, xG = valuation/no-input).
-  Confirmed via web research that StatsBomb 360 freeze-frames are free for the Leverkusen 2023/24
-  and EURO 2024 data already in use (Phase 3 fuel), and that Women's EURO 2025 (comp 53 / season
-  315) is newly released with events + 360 (Phase 4 candidate). Phase 0 started.
-- **2026-06-29** — Phases 0 and 1 completed in one session. Phase 0: `FRAMEWORK.md` charter +
-  this tracker + CLAUDE.md roadmap entry. Phase 1: `src/config.py` (named `Dataset` constants),
-  per-match pickle cache in `data_loader.py`, penalty-shootout (period 5) + null-location fixes in
-  `features.py` (cached test set needs rebuilding to apply), `plot_shot_map` ax fix, pinned
-  `requirements.txt` (+pyarrow/pytest), and `tests/` with 14 green unit tests (incl. a truthy-NaN
-  assist regression test). Notebook 02 rewired to config. **Next: Phase 2 (ML rigor).**
-- **2026-06-30** — Rebuilt the caches as Parquet through the fixed pipeline (notebook 02 executed
-  end-to-end on the 3.10 interpreter via nbconvert). Penalty-shootout fix confirmed in the numbers:
-  EURO 2024 test set 1,340 → 1,316 shots (24 shootout pens dropped), logistic test ROC-AUC
-  0.798 → **0.765** (the old figure was inflated by trivially-rankable shootout penalties),
-  calibration slightly better (Brier 0.067 → 0.065); README updated to match. Also fixed the IDE
-  Jupyter kernel — it was defaulting to conda base (Python 3.9.12); filtered that interpreter out in
-  `.vscode/settings.json` and normalized all three notebooks' kernelspec to the portable `python3`.
-  pyarrow/pytest pinned. **Next: Phase 2 (ML rigor).**
-- **2026-06-30** — Phase 2 **Module A (xG) rigor done** (notebook 02 + `src/models.py`): scaled
-  logistic (continuous features standardised via `Pipeline`/`ColumnTransformer`; test ROC-AUC
-  essentially unchanged at 0.765 — the win is convergence + comparable coefficients, e.g.
-  `distance_to_goal` −0.10 → −0.84 per-SD), 5-fold cross-validation (in-distribution 0.783 ± 0.009;
-  held-out EURO test sits at the bottom edge → a real ~1.7-pt league→tournament shift cost the single
-  number hid), a baseline ladder (no-skill 0.500 → geometry-only 0.712 → full 0.765), and a
-  calibrated GBM (isotonic barely moved Brier 0.0661 → 0.0659, still trails logistic — second honest
-  non-win, "logistic stays" holds). New `models.py` helpers: `build_logistic_pipeline`,
-  `get_coefficients`, `cross_validate_model`, `train_baseline_classifier`, `train_calibrated_gbm`.
-  +5 unit tests (19 green). Notebook 02 re-executed clean end-to-end. **Module B (silhouette,
-  minutes-weighted position) still pending — finishes Phase 2.**
-- **2026-06-30** — Phase 2 **Module B (similarity) rigor done → Phase 2 complete.** Two additions
-  to `src/similarity.py` + notebook 03. (1) **Silhouette score** (`compute_silhouette_scores`,
-  `plot_silhouette_curve`): peaks at K=2 for all three position groups but at a *low* level
-  (Defender 0.236 / Mid 0.264 / Fwd 0.262) — the low absolute value is the finding (play-styles
-  within a position are a continuum, not crisp blobs), and K=4 is kept deliberately against the
-  metric for archetype granularity, narrated honestly. (2) **Minutes-weighted position assignment**
-  (`resolve_season_positions`): assigns the position *group* by total season minutes, not modal
-  per-match position — reclassified 10 borderline winger/forward/midfield hybrids
-  (Coutinho/Lingard/Mata/Sissoko/Firmino/Berahino/Schlupp/…); counts 118/104/78 → 119/106/75. It
-  did *not* move Michail Antonio, which disproved the S6 "mostly a winger" premise (his minutes are
-  920 RB/wing-back vs 761 wing vs 452 mid — genuinely a defender by minutes); he stays a one-man
-  cluster as a true positional hybrid, which only multi-position/soft membership could resolve.
-  +3 unit tests (22 green). Cached per-90 table rebuilt; notebook 03 re-executed clean end-to-end;
-  new `outputs/similarity_silhouette_curves.png`. **Next: Phase 3 (360-context xG + xGOT).**
-- **2026-07-02** — **Reprioritisation ("do it all, structured").** Folded the entire code-review
-  backlog into one execution-ordered program and **renumbered Phases 3–6 → 3–9** (see the "Was"
-  column). New Phase 3 = engineering & reproducibility spine (CI, `pipeline.py`, `metrics.json`
-  single-source, data manifest), promoted ahead of data expansion because the manifest is a
-  prerequisite of the ingestion pipeline and `metrics.json` must exist before the data/number 10×.
-  Old Phase 3 (360 xG) → Phase 7; old Phase 5 (product build) → Phase 8; old Phase 6 + Module C →
-  Phase 9 (opportunistic). Added Phase 5 (xG uncertainty + hierarchical finishing) and Phase 6
-  (Module B upgrades: Mahalanobis, possession-adjust, GMM, creative features). **De-drift done in
-  the same pass:** single canonical phase table now lives here only; ROADMAP links to it and holds
-  the detailed task lists; the stale "all uncommitted" note in PROGRESS.md was corrected against git
-  log. Planning/docs only — no `src/`, notebook, test, or data changes; 22 tests untouched.
-  **Next: Phase 3 (engineering & reproducibility spine).**
-- **2026-07-03** — **Phase 3 complete (3d: `pipeline.py` + Makefile).** New `src/pipeline.py`
-  chains the already-tested `src/` functions into a headless, non-notebook rebuild — shot-table
-  ingestion, per-90 similarity features, xG model training + all 4 Module A output PNGs, per-group
-  clustering + all 4 Module B output PNGs, then `write_manifest`/`write_metrics` — runnable as
-  `python -m src.pipeline` (`--force` to bypass the data/ caches, `--skip-plots` for a data-only
-  run). A root `Makefile` thinly wraps it (`make pipeline`, `make pipeline-force`, `make test`);
-  `python -m src.pipeline` remains the primary entry point since `make` isn't guaranteed on
-  Windows. Ran end-to-end against the existing cached data: reproduced `metrics.json` and
-  `data/manifest.json` byte-for-byte (both are deliberately deterministic — see Phase 3b/3e), the
-  concrete proof the pipeline is a faithful twin of notebooks 02/03, not a rewrite. +5 unit tests
-  (31 → 36 green), covering the one piece of real new logic (rebuild-vs-reuse cache decisions),
-  network-free via monkeypatched builders. **Phase 3 (engineering & reproducibility spine) is now
-  fully done. Next: Phase 4 (multi-competition ingestion + data expansion).**
-- **2026-07-04** — **Phase 4 data pulled (24 datasets, ~43k new shots), not yet wired**, then
-  **Phase 8 minimal build jumped ahead of strict order.** Reasoning: a friend demo (~2026-07-11)
-  makes visible progress worth more than finishing Phase 4b/4c first, and a quick retraining
-  smoke-test showed raw league volume barely moves xG's held-out ROC-AUC (0.765→0.766→0.768,
-  smaller than the ±0.009 CV noise) — confirming the league→tournament shift is structural, not a
-  data-volume problem, so pouring days into more training volume wasn't the highest-value next
-  step anyway. New `src/app_data.py` build step (`python -m src.app_data`) precomputes three small
-  Parquet artifacts (per-90 features + cluster labels, player xG table, shots+predicted-xG) scoped
-  to Premier League 2015/16 — the one dataset with a full similarity + xG pool already built. New
-  `app.py`: sidebar (position → player → radar-axis multiselect) driving a radar chart, "players
-  like X" ranking, a finishing over/under panel with shot map, and an "under the hood" expander
-  reading `metrics.json` directly plus a live per-group silhouette curve. Verified headless via
-  Streamlit's `AppTest` harness across all 3 position groups, 8 players (incl. one with zero shots
-  and one with an accented name), and the zero-radar-axes edge case — zero exceptions; not yet
-  checked in an actual browser. Also +8 tests (41→59: schema-contract tests, domain sanity checks,
-  a determinism check, real-data sanity checks, `find_similar_players` coverage) and a genuine
-  sparse-column bug fix found by one of them. Full detail: [PROGRESS.md](PROGRESS.md).
-  **Next: deploy Phase 8 to Streamlit Community Cloud (maintainer's own step), then decide Phase
-  4b/4c scope.**
-- **2026-07-05** — **Phase 4b wired into the app; goalkeeper features; UX/theme pass.** Same-day
-  continuation. (1) Goalkeepers: `build_goalkeeper_per90_features` (own feature set: saves, shots
-  faced, goals conceded, claims, punches, sweeper actions, save %), verified on 27 real PL 2015/16
-  keepers; not wired into `config.py`/clustering/the app, a deliberate open decision. Added a 2026
-  World Cup predictive-model backlog note to Phase 9 (data-availability check first). (2) First-use
-  feedback round 2: real typing search (`st.text_input` replacing round 1's selectbox), a dark
-  teal/gray + orange/blue theme (`.streamlit/config.toml` + matplotlib rcParams in `app.py`), and
-  `assists`/`clearances`/`blocks` surfaced as defender/midfielder/forward signature stats (the
-  latter two are new `ACTION_COLUMNS`, 9→11 columns — StatsBomb has no goal-line-specific clearance
-  sub-type, checked the real schema before adding). (3) **Phase 4b real wiring:** the app's
-  similarity pool now spans `config.SIMILARITY_SETS` — PL/La Liga/Serie A/Ligue 1 2015/16 + Frauen
-  Bundesliga/FA WSL 2023/24 — **1,511 players total** (up from 300), clustered together per
-  position group. Cross-league normalisation still not designed (flagged in-app). Real ceiling
-  named explicitly: StatsBomb's free data has no recent men's top-flight season at all, so this is
-  "wider," not "newer," for the men's leagues. `metrics.json` regenerated for the new feature
-  count (per-group silhouette shifted slightly, e.g. defender 0.236 to 0.223 — same "soft
-  continuum" finding). A real bug found by the new clearances/blocks test (not by production data):
-  `extract_player_match_actions`'s zero-completed-passes fallback produced a shapeless empty
-  Series that corrupted `pd.concat`'s output shape — fixed. +4 tests (61 to 65). **Next: a "player
-  career" page is under discussion** (multi-season drill-down using the already-pulled Barcelona
-  2004/05-2020/21 data, international-tournament stats) — **trophies/individual awards/MOTM data
-  does not exist in any current source** and would need new scraping infrastructure (see DATA.md's
-  SofaScore/FlashScore candidate) — scoping this with Guilherme before building.
-- **2026-07-09** — **Phase 4c mostly done — 3 of 4 held-out tournaments wired, Women's EURO 2025
-  still open.** Scored the three Phase 4 tournament
-  pulls (Copa América 2024, FIFA World Cup 2022, Africa Cup of Nations 2023) that had sat cached-
-  but-unscored since 2026-07-04, plus EURO 2024, against the `TRAIN_SETS`-fitted logistic model —
-  **per tournament, not pooled** (a new `config.GENERALISATION_TEST_SETS`,
-  `models.evaluate_by_competition`, `metrics.py`'s `xg_generalisation` section,
-  `pipeline.build_generalisation_table`, and a new `visualisation.plot_xg_generalisation_bar` chart,
-  dataviz-skill-guided). `config.TEST_SETS` (`[EURO_2024]`) and the quoted `0.765` headline stay
-  untouched — this is an addition, not a replacement. **Finding:** EURO 2024's 0.765 is the *floor*
-  of the four, not a fluke — World Cup 2022 scores 0.808, AFCON 2023 0.807, Copa América 2024 0.763
-  (smallest sample, 751 shots) — so the honest generalisation claim strengthens from "holds up on
-  one tournament" to "holds up as well or better everywhere tested." Attempted Women's EURO 2025
-  too (never cached, unlike the other three) but hit a persistent GitHub raw-content rate limit
-  (`429`) across several retries — left genuinely unwired rather than forced; a future session's
-  retry resumes for free thanks to the per-match disk cache. +6 tests (66→72 green). Full
-  `python -m src.pipeline` run regenerated `metrics.json`/`data/manifest.json` against real (not
-  just synthetic-test) data. Notebook 02 left untouched, same precedent as Phase 4a/4b (multi-
-  dataset checks live in `src`/`metrics.json` only, notebooks stay the fixed single-tournament
-  teaching example). **Next: Phase 5 (xG uncertainty + hierarchical finishing model).**
-- **2026-07-09 (cont.)** — **Phase 8 deployed → Phase 8 fully ✅ Done.** Deployed `app.py` to
-  Streamlit Community Cloud ahead of the ~2026-07-11 friend demo: repo already had everything
-  needed (pinned `requirements.txt`, committed `app_data/*.parquet`, no secrets since the app reads
-  only static local artifacts, no live StatsBomb pulls). Explicitly set the deploy's Python version
-  to **3.10** rather than Community Cloud's newer default (3.14) — matches what every pinned
-  dependency was tested against; a newer interpreter risked missing wheels for `kloppy`/`pyarrow`/
-  `statsbombpy`, which would force an unplanned dependency-bump-and-reverify right before the demo
-  for zero functional gain. Live at
-  [gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app),
-  confirmed rendering correctly by Guilherme himself in a real browser. Bumping the project's actual
-  Python target to something newer than 3.10 is now a Phase 9 opportunistic backlog item — no
-  functional upside, real risk of breaking pinned deps, and no deadline pressure to do it now.
+**This is a one-line-per-milestone index, not a second history** — full narrative detail for every
+entry below (what changed, why, numbers, bugs found) lives dated the same in
+[PROGRESS.md](PROGRESS.md) / [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md). Kept short deliberately
+(trimmed 2026-07-13, previously ~150 lines duplicating that narrative) so this file stays the
+"where-are-we" tracker its intro promises, not a file that has to be kept in sync with PROGRESS.md
+by hand.
+
+- **2026-06-29** — Initiative kicked off; `FRAMEWORK.md` charter written; Phase 0 started.
+- **2026-06-29** — Phases 0 and 1 done (config/per-match cache/first tests foundation).
+- **2026-06-30** — Caches rebuilt on the fixed pipeline; penalty-shootout fix confirmed in the
+  numbers (test ROC-AUC 0.798 → 0.765).
+- **2026-06-30** — Phase 2 Module A (xG) rigor done: scaled logistic, 5-fold CV, baseline ladder,
+  calibrated GBM (still trails logistic).
+- **2026-06-30** — Phase 2 Module B (similarity) rigor done → **Phase 2 complete**: silhouette
+  score, minutes-weighted position assignment.
+- **2026-07-02** — Reprioritisation: whole review backlog folded into this Phase 0–9 table (old
+  Phase 3/360-xG → 7, old Phase 5/product → 8, old Phase 6 + Module C → 9).
+- **2026-07-03** — **Phase 3 complete**: `pipeline.py` + Makefile, a headless reproducible rebuild.
+- **2026-07-04** — Phase 4 data pulled (24 datasets), not yet wired; **Phase 8 minimal build
+  jumped ahead** of strict phase order (demo-driven).
+- **2026-07-05** — Phase 4b wired into the app (cross-league similarity pool, 1,511 players);
+  goalkeeper features built, not yet wired; app UX/theme pass.
+- **2026-07-09** — **Phase 4c mostly done**: Module A generalisation scored on 3 of 4 held-out
+  tournaments (Women's EURO 2025 rate-limited, resumable).
+- **2026-07-09 (cont.)** — **Phase 8 deployed** to Streamlit Community Cloud → **Phase 8 fully
+  done**.
+- **2026-07-13** — Pitch-prep app UX pass: a new "About & Roadmap" sidebar view, headline stats
+  refactored to whole-number counts, the Phase 4c generalisation chart wired into the app for the
+  first time.
 
 ---
 

@@ -6,193 +6,149 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
-## 2026-07-09 (cont. 5) — Clickable "similar player" drill-down (backlog item shipped), and a real bug caught by actually clicking it
+## 2026-07-13 — Pitch-prep pass: app "About / how to use" banner, market-value data spike
 
-Shipped the second open backlog item: clicking a row in the "Players like X" → "Table view"
-table now jumps the whole page to that player (radar, signature stats, similar-players list, xG
-all recompute for the new player) instead of being a static, unclickable table.
+Guilherme pitched the project to a colleague today; asked to review the backlog, prep pitch/
+roadmap talking points, and make the live app more self-explanatory (a description of the
+framework + how to use it, "máximo de informação possível") before the demo.
 
-**Mechanism** (`app.py`): a row click sets `st.session_state["jump_to_player"] = (player, team)`
-and calls `st.rerun()`. A new block at the very top of the script — before any widget is
-created — checks for that key and, if present, pre-seeds the sidebar position/competition
-filters, the search box, and the player-picker selectbox's session_state so the next run lands
-directly on the target player with no stale filter hiding them. This is the only point Streamlit
-allows a script to set a widget's value programmatically: session_state for a widget's `key` must
-be written *before* that widget's `st.xxx(key=...)` call in the same run.
+**Backlog reviewed, nothing shipped from it this session** (all three items are still open, on
+purpose — see `PRODUCT_SPEC.md`'s "Backlog from 2026-07-06 feedback"): goalkeepers not wired into
+the app, "Under the hood" methodology expander still flagged low-value/on hold, one cosmetic
+expander-state follow-up from the drill-down work. Talking points and a demo script (leaderboard →
+player explorer → similar-player click-through → finishing panel → credibility numbers →
+roadmap) were prepared directly in chat, not saved as a repo doc — a one-off presentation aid, not
+project documentation that needs maintaining.
 
-**A real bug, caught only by actually driving the click with Playwright, not by reading the code:**
-the first version gave the "Table view" dataframe a fixed `key="similar_table"`. Streamlit
-persists a dataframe's row-selection state in session_state by key across reruns — so after
-landing on the new player's page, the *same* key's table rendered with row 0 still marked
-selected from the previous click, which immediately re-triggered another jump to whoever *that*
-player's own most-similar match was, cascading indefinitely. Static analysis / reading the diff
-would not have caught this — it only showed up as visibly inconsistent, non-settling page state
-under a real click. Fixed by scoping the key to the current player/team
-(`key=f"similar_table_{player_name}_{team_name}"`), so each player's table is a fresh widget
-instance with no carried-over selection. Re-verified after the fix: clicked twice in a row
-(Fallou Diagne → Aïssa Mandi → back to Fallou Diagne, their mutual nearest match) and confirmed
-the page settles to one consistent state each time rather than continuing to jump.
+**`app.py` gained a main-pane "About" banner**, rendered above both views (Player explorer and
+Leaderboard) right after the sidebar title block: a one-line framework summary, a two-column
+explanation of the two lenses (similarity/scouting, xG/valuation), a 4-tile `st.metric` row (xG
+ROC-AUC, competition count, player count, test count — reusing the same metric-card idiom already
+used for signature stats, not a new pattern), an expanded-by-default "How to use this app" 7-step
+guide, and a GitHub link. Deliberately did **not** touch the existing "Under the hood" expander —
+still explicitly on hold per the 2026-07-06 feedback backlog, and this pass's ask (more *framework*
+explanation) doesn't supersede that hold, which was about *methodology plot* redesign specifically.
 
-Verified live end-to-end via `streamlit run app.py` + the Playwright-over-Edge recipe
-(`ML_TOOLING.md`) — canvas-based `st.dataframe` grids aren't clickable via normal DOM locators
-(no real `<input>`/`<summary>` elements; row selection and the expander toggle are drawn on
-`canvas`, testid `data-grid-canvas`), so verification clicked raw pixel coordinates inside the
-canvas bounding box rather than a semantic locator. Full `pytest` suite (72 tests) green
-throughout — no test coverage exists for `app.py` itself, this was live-verified only.
+Verified live via `streamlit run app.py` + the Playwright-over-Edge recipe (`ML_TOOLING.md`):
+screenshotted both views. First Leaderboard screenshot showed leaderboard content *and* stale
+Player-explorer content both on screen at once — not a real bug, confirmed by re-shooting with a
+longer post-click wait (4s vs. 2s): Streamlit doesn't prune trailing elements from the previous run
+until the new run fully finishes, so a screenshot taken mid-transition can catch old + new content
+overlapping. Worth remembering next time a click-driven verification looks inconsistent — wait
+longer before concluding it's a product bug.
 
-One open follow-up, not blocking: a fixed-key expander (`st.expander("Table view...")`, no `key=`)
-appears to inherit its previous open/closed state across the jump in some cases and not others,
-observed inconsistently during testing. Cosmetic only (worst case: expander shows collapsed after
-a jump, one extra click to reopen) — not a correctness bug, not chased further this session.
+**Mid-session ask: could the app show market value next to similarity matches?** Researched rather
+than guessed. Finding: a maintained, weekly-refreshed open dataset
+([dcaribou/transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets), also on
+Kaggle) has a dated `player_valuations` table — so the data itself isn't the blocker, contrary to
+the instinctive assumption that this would need scraping from scratch. The real cost is matching
+StatsBomb player identities to Transfermarkt's (no shared ID — a name-resolution problem: accents,
+birth-name-vs-shirt-name, same-name collisions) plus picking the right valuation snapshot per
+season and a ToS caveat (the upstream dataset is itself built by scraping, so legality is inherited
+not cleared). Real engineering, not a config line — logged as a scoped future item, not built now:
+see [DATA.md](DATA.md#market-value-transfermarkt--flagged-2026-07-13-not-started) for the full
+assessment and [ROADMAP.md](ROADMAP.md) Phase 9 for the pointer.
 
----
-
-## 2026-07-09 (cont. 4) — Penalty info on the player page (backlog item #4 shipped)
-
-Shipped the smallest of the four open items from `PRODUCT_SPEC.md`'s "Backlog from 2026-07-06
-feedback": the single-player "Player explorer" page showed only `non_penalty_goals`, so a
-penalty-taker's page looked like it had no penalty data even though the leaderboard's `goals`
-total (incl. penalties) already existed. Presentation-only, no data/rebuild work, as anticipated —
-`penalties = goals - non_penalty_goals`, both columns already on `player_row_full`.
-
-Added a `st.caption` right under the existing "Season totals..." caption (`app.py`, after the
-signature-stats metric-card loop): `"Goals (incl. penalties): {total}{penalty_note}"`, only
-rendered when `total_goals > 0` (skips the line entirely for non-scorers rather than showing a
-"0 goals, 0 from penalties" line on every defender/GK page).
-
-Verified end-to-end, not just unit-tested: ran `streamlit run app.py` locally and drove it with
-the Playwright-over-Edge recipe from `ML_TOOLING.md` (system Edge via `channel="msedge"`, since
-`playwright install chromium` still fails on this machine). Confirmed Fallou Diagne (Rennes,
-`goals=5`, `non_penalty_goals=3`) renders `"Goals (incl. penalties): 5 (2 from penalties)"`, and a
-true zero-goal player (Abdul Rahman Baba, Chelsea) shows no such line. Screenshot matched — caption
-sits directly under the signature-stat cards as the backlog entry expected. Full `pytest` suite
-(72 tests) still green — no test coverage existed for `app.py` itself (a Streamlit script, not a
-`src/` module), so this was verified live, not via the suite.
-
-Three items remain open in the backlog: clickable "similar player" drill-down, goalkeepers wired
-into the app, and the "Under the hood" methodology expander rework (still explicitly on hold).
+No `src/`/model/test changes this session — presentation and docs only. Full `pytest` suite
+untouched (still 72 green, not rerun since nothing in `src/` changed).
 
 ---
 
-## 2026-07-09 (cont. 3) — doc-freshness enforcement: a git hook + CI backstop, not just a rule
+## 2026-07-13 (cont.) — "About & Roadmap" promoted to its own tab; headline numbers refactored off decimals
 
-Guilherme caught, twice in the same session, that the "log obstacles/findings as they happen"
-convention in CLAUDE.md's Session Workflow was being followed inconsistently (a retry attempt went
-unlogged; doc edits sat uncommitted) — then asked for an actual **mechanism**, not just a
-restatement of the rule, since relying on memory had just visibly failed.
+Follow-up feedback on the same day's pitch-prep pass, three asks: (1) the S1–S9 vs. Phase 0–9
+numbering was genuinely confusing — clarified directly in `docs/ROADMAP.md` (a note right above
+the S1–S9 table) rather than just re-explained in chat, since the next person to open that file
+hits the same confusion; also wrote `docs/PITCH.md` so the pitch script has an actual file path.
+(2) Keep "Under the hood" but make it less prominent, with suggestions for new sections. (3) A
+feasibility read on doing this now vs. next session — answered "there's time, do it," plus:
+promote the suggested "roadmap teaser" into its own full tab (an "About-me"-style project page),
+and refactor every headline stat off decimal ML scores (ROC-AUC, silhouette) onto whole-number
+counts — "I need to be able to justify these numbers," decimals only where the methodology
+explaining them lives.
 
-**Built two backstops, deliberately not just more prose in CLAUDE.md:**
-- `.githooks/pre-commit` — blocks a commit touching `src/`/`app.py`/`tests/`/`notebooks/` unless
-  the commit also touches `docs/PROGRESS.md`, `docs/ML_TOOLING.md`, or `ML_LEARNING_LOG.md`.
-  Escape hatch for real trivial commits: `DOC_CHECK_ACK=1 git commit ...` (kept distinct from
-  `--no-verify`, which would skip every hook, not just this one check).
-- `.github/workflows/tests.yml`'s new "Check evolving docs were touched" step — the same check
-  against the push/PR diff, as a non-blocking `::warning::` annotation, so the mechanism still
-  fires even if the local hook was never enabled (a fresh clone doesn't auto-activate hooks).
+**`app.py` restructure:** the sidebar `view` radio gains a third option, **"About & Roadmap"**
+(`render_about_and_roadmap`), replacing the previous always-on-every-page main-pane banner (which
+repeated the same essay above both the Player explorer and Leaderboard views). That banner is now
+a one-line caption pointing at the new tab instead. The new tab holds: the two-lens framework
+explanation, a "What's been built" stat row, the FRAMEWORK.md worked example ("how the two lenses
+combine"), the "How to use this app" guide, a plain-language "what's shipped / what's next"
+summary, and a collapsed **"Methodology"** expander — the only place decimal stats live now,
+each one explained inline (what ROC-AUC means, the baseline ladder, the per-tournament
+generalisation table + `plot_xg_generalisation_bar` chart, i.e. the app's first use of that chart —
+it existed in `metrics.json`/`src/visualisation.py` since Phase 4c but was never wired into the UI
+before). The per-player "Under the hood" expander (bottom of the Player explorer page) is slimmed
+to a one-line pointer at the new tab plus the one thing genuinely specific to that page: the
+current position group's live silhouette curve.
 
-**Enabling the hook is itself a persistence decision, not a passive doc edit** — the sandbox's own
-auto-mode classifier correctly paused on `git config core.hooksPath .githooks` (a mechanism that
-runs on every future commit, not just this session) until Guilherme explicitly confirmed enabling
-both. Verified all three code paths actually work before relying on them: a code-only staged change
-correctly blocks (exit 1, printed the exact violating files); `DOC_CHECK_ACK=1` correctly overrides
-(exit 0); staging a real log-file touch alongside the code change correctly passes (exit 0) —
-tested via scratch edits to `src/config.py`, fully reverted after, not left staged or committed.
+**Headline numbers are now whole counts, not decimals:** "What's been built" shows Competitions
+(6), Players in the pool (1,511), Shots evaluated (15,528 = 10,824 trained + 4,704 held-out across
+4 tournaments), Tournaments tested on (4) — no ROC-AUC/silhouette figure appears outside the
+Methodology expander anywhere in the app. `docs/PITCH.md` refactored the same way: a "Key numbers
+to lead with" whole-number section, and the decimal ROC-AUC/generalisation-range numbers moved to
+a new "Methodology backup — only if asked to justify the model" section.
 
-Documented in `CLAUDE.md`'s Session Workflow ("This is enforced, not just requested") rather than
-just added silently — the point is that a future session (or a human contributor) can see *why*
-a blocked commit is happening, not just hit a wall.
+**Backlog-only, not built** (explicit ask): a side-by-side two-player comparison view — logged in
+`ROADMAP.md`'s Phase 9 opportunistic list, no code.
 
----
-
-## 2026-07-09 — Phase 4c mostly done: Module A generalisation across 3 of 4 held-out tournaments
-
-Picked up the model-track backlog (not the app UX one): Phase 4c was the one remaining open item
-in Phase 4 — Copa América 2024, FIFA World Cup 2022, and Africa Cup of Nations 2023 were pulled
-back on 2026-07-04 but never scored against the trained xG model, leaving EURO 2024 as the only
-held-out generalisation evidence anywhere in the docs.
-
-**Design call: report per-tournament, don't pool.** `config.TEST_SETS` (still `[EURO_2024]`) and
-the headline `0.765` test ROC-AUC every doc quotes are untouched on purpose — folding four
-structurally different tournaments (a settled European field, a smaller CONMEBOL sample, a
-different tactical culture, etc.) into one aggregate number would answer a coarser question than
-the honest one Phase 4c actually asks: does the model generalise *evenly*? New
-`config.GENERALISATION_TEST_SETS` (EURO 2024 + the three Phase 4 tournaments) is scored
-separately per competition by a new `models.evaluate_by_competition` (fits once on `TRAIN_SETS`,
-then slices the combined held-out table by `competition_id`), assembled into
-`metrics.json`'s new `xg_generalisation` section by `metrics.compute_generalisation_metrics`, and
-plotted by a new `visualisation.plot_xg_generalisation_bar` (invoked the dataviz skill first: a
-magnitude comparison across a handful of named categories is a single-hue bar chart, not a
-categorical palette — direct ROC-AUC labels at each tip, a dashed no-skill/0.5 reference line,
-sample size folded into the label itself since a small held-out sample is exactly the caveat that
-shouldn't be missable). `pipeline.py` gained a `build_generalisation_table` step (same
-cache-or-rebuild pattern as the existing shot tables) and now writes
-`outputs/xg_generalisation_by_tournament.png`; `manifest.py`'s default dataset list now includes
-the three new tournaments too (deduped against `TEST_SETS`, since `GENERALISATION_TEST_SETS`
-overlaps it on `EURO_2024`).
-
-**The actual finding is a good one, not just a wiring exercise:** EURO 2024 (0.765) turns out to be
-the *floor*, not a fluke — the same model scores 0.808 on FIFA World Cup 2022, 0.807 on Africa Cup
-of Nations 2023, and 0.763 on Copa América 2024 (751 shots, the smallest sample of the four, flagged
-as such). The honest story sharpens from "the model holds up reasonably on one tournament" to "the
-model holds up as well or better everywhere tested" — a stronger generalisation claim than the
-single EURO 2024 number alone supported, and worth surfacing over README's/CLAUDE.md's headline
-number rather than replacing it.
-
-**Women's EURO 2025 stays unwired — a real rate limit, not a data problem.** Attempted the pull
-(never previously cached, unlike the other three) and hit persistent `429 Too Many Requests` from
-`raw.githubusercontent.com` on the first or second match across several retries spaced minutes
-apart — this didn't clear the way the one-off `IncompleteRead` from the original Phase 4 pull did.
-Left genuinely unwired rather than forcing it or guessing at a fix; logged in
-[ML_TOOLING.md](ML_TOOLING.md). The resumable per-match cache means a later session's retry picks
-up wherever this one stopped, at no extra cost.
-
-Notebook 02 is deliberately untouched — same precedent as Phase 4a/4b (the notebook stays the
-fixed single-competition/single-tournament teaching example; the wider multi-dataset checks live in
-`src`/`metrics.json`/`pipeline.py` only). +6 tests (`evaluate_by_competition`,
-`compute_generalisation_metrics`, `build_metrics`'s new optional section, `build_generalisation_table`'s
-cache logic) — **72 green** (66 → 72). Full `python -m src.pipeline` run regenerated `metrics.json`
-and `data/manifest.json` against real data (not synthetic-only tests) — every dataset now shows
-`n_cached_locally == n_matches`, confirming no partial/rate-limited state leaked into what's
-actually wired in.
-
-**Status language corrected same session** (Guilherme flagged it): calling Phase 4/4c "✅ Done"
-overstated it while Women's EURO 2025 stays unwired — downgraded to 🟡 "3/4 tournaments wired"
-across CLAUDE/INITIATIVE/ROADMAP/this file. **One further retry attempt, later the same session**
-(time-boxed per an explicit "don't waste time on it" ask): still `429`, and this time even
-`sb.matches()` (metadata, not an event pull) was already rate-limited — a broader block than the
-first attempt showed. Stopped after one try; logged in [ML_TOOLING.md](ML_TOOLING.md). Status
-unchanged: still 3/4, still resumable for free whenever the limit clears.
+Verified live via `streamlit run app.py` + Playwright-over-Edge across all three views. Hit the
+same stale-trailing-content timing artifact as the earlier pass today (switching to "About &
+Roadmap" right after page load showed old Player-explorer content — shot map, old "Under the hood"
+— still rendered below the new tab's content); confirmed harmless by re-shooting with a longer wait
+(6s) both from a warm session and a fresh page load — clean either way. Full `pytest` suite still
+**72 green** (no `src/` changes, only new imports of already-tested `visualisation.plot_xg_generalisation_bar`).
 
 ---
 
-## 2026-07-09 (cont.) — Phase 8 deployed to Streamlit Community Cloud (Phase 8 now fully ✅)
+## 2026-07-13 (cont. 2) — Doc-hygiene pass: INITIATIVE.md's Log was duplicating PROGRESS_ARCHIVE.md
 
-Same-day continuation, ahead of the ~2026-07-11 friend demo. Guilherme deployed `app.py` himself
-via Streamlit Community Cloud's "New app" flow; I verified beforehand that the repo was actually
-ready (pinned `requirements.txt`, committed `app_data/*.parquet`, no secrets needed since the app
-reads only static local artifacts, no live StatsBomb pulls at runtime) and flagged one real risk in
-the deploy form: `app.py` imports `src.similarity` → `src.data_loader`, which imports `kloppy` at
-module level even though the app itself never calls it — `kloppy` is the heaviest/least-common
-dependency in `requirements.txt`, so a build failure would likely start there.
+Guilherme flagged, before committing, that `INITIATIVE.md` seemed to carry the project's logs "in
+full" and asked whether that was too heavy — he remembered a separate history file for that (there
+isn't one by that name; he meant `PROGRESS_ARCHIVE.md`). Checked rather than assumed: `INITIATIVE.md`
+was 203 lines, its "Log" section repeating the same milestones as full paragraphs already fully
+covered, in more detail, in `PROGRESS_ARCHIVE.md` (which has no size cap of its own and was already
+852 lines). Confirmed every dated INITIATIVE.md log entry has a matching, more detailed entry in
+PROGRESS_ARCHIVE.md before trimming, so nothing was lost — genuine duplication, not two views of
+different information.
 
-**Set Python version to 3.10 in the deploy's advanced settings, overriding Cloud's 3.14 default.**
-Every pinned dependency was tested against 3.10 locally; deploying on a newer interpreter risked
-missing wheels for `kloppy`/`pyarrow`/`statsbombpy`, forcing an unplanned dependency-bump-and-
-reverify right before the demo for zero functional gain. Recommended *against* actually modernising
-the project's Python target for the same reason when Guilherme asked — added as a low-priority
-Phase 9 opportunistic backlog item instead (see ROADMAP.md), explicitly not now.
+**Trimmed `INITIATIVE.md`'s Log to a one-line-per-milestone index** (203 → 89 lines), each line
+pointing at PROGRESS.md/PROGRESS_ARCHIVE.md for the narrative. Matches the file's own stated
+purpose ("this is the where-are-we tracker," not a second history) and removes a two-logs-must-
+stay-in-sync-by-hand failure mode.
 
-**Live at [gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app)**,
-confirmed rendering correctly by Guilherme in a real browser — the strongest verification yet,
-stronger than the local Playwright-over-Edge check from 2026-07-08. README now links it at the top
-next to the CI badge. Phase 8 is now fully ✅ done; the only work left in the whole initiative is
-Phases 5–7 and the small app-UX backlog in CLAUDE.md's Current Status.
+Also asked to make sure all the relevant `.md` files were actually current, not just the ones
+directly asked about — checked each:
+- **`docs/ML_TOOLING.md`**: a real gap. This session hit the same Playwright-view-switch
+  stale-content timing artifact twice (Leaderboard, then About & Roadmap) but it had only been
+  written up in PROGRESS.md's narrative, not logged as the reusable tooling gotcha it actually is.
+  Added a new entry (placed next to the existing Playwright-over-Edge recipe).
+- **`ML_LEARNING_LOG.md`**: nothing to add — this session touched no `src/` code, no model, no
+  data; that log is for modelling/data gotchas specifically, and there weren't any.
+- **`CLAUDE.md`**: the "Next (open backlog)" line still called the "Under the hood" rework an open
+  item — stale as of this session's own earlier work. Updated to mark it done, added the
+  2026-07-13 pass to the Active Initiative narrative, and fixed two unrelated small drifts noticed
+  while in there: the Repository Layout's test count said "61" (actually 72 — this number is
+  deliberately excluded from the metrics.json doc-lint check per Phase 3b, so it can drift
+  silently), and its one-line descriptions of `ROADMAP.md`/`PROGRESS.md`/`PROGRESS_ARCHIVE.md` were
+  stale summaries from when those files held different content. Also added the new `PITCH.md` to
+  the layout listing.
+- **`docs/PRODUCT_SPEC.md`**: the "Under the hood... flagged as low-value, under review" backlog
+  bullet was the exact item this session's earlier pass had already shipped — marked
+  `[DONE 2026-07-13]` with what actually got built, matching the `[DONE ...]` convention the other
+  backlog bullets in that same list already use.
+
+No `src/`/test changes; full `pytest` suite re-run after all doc edits, still **72 green** (docs
+can't break tests, verified rather than assumed).
 
 ---
 
 ## Commit Status
 
-Verified against `git log` 2026-07-09. Git CLI is used directly now (see CLAUDE.md's Session
-Workflow) — this section is a lightweight pointer, not a substitute for `git log`/`git status`.
-Latest commit: `d3093e7` (Phase 4c + the `.gitignore` fix, pushed to `origin/main`). Everything
-through this session's work is committed and pushed; nothing outstanding.
+Verified against `git log`/`git status` 2026-07-13. Git CLI is used directly (see CLAUDE.md's
+Session Workflow) — this section is a lightweight pointer, not a substitute for `git log`/`git
+status`. Latest commit: `3c62c2d` (penalty info + clickable similar-player drill-down). This
+session's changes (`app.py`'s "About & Roadmap" tab + headline-number refactor, `docs/PITCH.md`
+(new), plus a doc-hygiene pass across `INITIATIVE.md`/`CLAUDE.md`/`PRODUCT_SPEC.md`/`ML_TOOLING.md`/
+`docs/DATA.md`/`docs/ROADMAP.md`, and this file) are presentation/docs-only and **not yet
+committed** — Guilherme to review before committing. Older entries (2026-07-08 through 2026-07-09
+cont. 5) moved to [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md) to keep this file under 150 lines.

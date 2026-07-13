@@ -175,3 +175,36 @@ Honest assessment before reaching for this:
   standings table at the date of each match would unblock that without needing per-shot detail.
 - **Verdict:** worth a small spike (one competition, one season) if/when Phase 4's data-availability
   friction or Module C gets picked up — not a default assumption that it will work cleanly.
+
+### Market value (Transfermarkt) — flagged 2026-07-13, not started
+
+Raised ahead of a pitch: pairing a "players like X" match with a market-value number (e.g.
+"similar profile, cheaper") would sharpen Module B's scouting story, which today explicitly stops
+at playing style (see [FRAMEWORK.md](FRAMEWORK.md)'s Out of Scope note on transfer fees/market
+value).
+
+**What's available:** no official free API — Transfermarkt publishes none — but
+[dcaribou/transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets) is a
+maintained, weekly-refreshed, openly-licensed CSV/Parquet mirror (also on
+[Kaggle](https://www.kaggle.com/datasets/davidcariboo/player-scores)): 37k+ players, transfers,
+appearances, and — the relevant one — a dated `player_valuations` table, queryable directly via
+DuckDB with no full download needed. Meaningfully lower-effort than scraping Transfermarkt
+ourselves (several ready-made scrapers exist too, e.g. `dcaribou/transfermarkt-scraper`, but reuse
+the maintained dataset rather than re-running one).
+
+**Why it's not a quick add despite the data being free and ready:**
+- **No shared player ID with StatsBomb.** Matching "Aaron Cresswell, West Ham, PL 2015/16" to a
+  Transfermarkt record is a name-resolution problem — accents, full-birth-name vs. shirt-name
+  mismatches, and same-name collisions across clubs all need handling. That's the real cost, not
+  the data pull.
+- **Valuation is dated, not one number.** StatsBomb's competitions here span 2015/16 to 2023/24, so
+  showing "value at the time of that season" vs. "value today" is a real decision, not a detail —
+  picking the wrong snapshot would misrepresent a player's era.
+- **Legality is secondhand, not reviewed.** Transfermarkt's own ToS hasn't been checked here; the
+  upstream dataset is itself built by scraping public pages, so using someone else's mirror
+  inherits that risk rather than removing it. Likely fine for a personal portfolio demo; worth an
+  actual look before relying on it beyond that.
+
+**Verdict:** genuinely promising and cheaper than assumed thanks to the ready-made dataset, but the
+entity-resolution step is real engineering, not a config line — a scoped future session, not a
+same-day addition. Not implemented.

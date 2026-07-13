@@ -171,6 +171,23 @@ actually put a real screenshot on disk. What worked, and what didn't:
 - Not added to `requirements.txt` — this is a local verification tool for actually looking at the
   app, not a runtime dependency of `app.py` itself.
 
+## A Playwright screenshot taken right after switching Streamlit views can show stale content
+
+Symptom (2026-07-13, verifying `app.py`'s new "About & Roadmap" sidebar view): a screenshot taken
+~2-3s after clicking a different `st.sidebar.radio` option showed the *new* view's content at the
+top of the page, with the *previous* view's trailing elements (a shot map, an expander) still
+rendered underneath — looked exactly like a real bug (two views bleeding into each other) on first
+glance. It wasn't: re-shooting the same click with a longer wait (5-6s) came back clean every time,
+from both a warm session and a fresh page load. Root cause: Streamlit only prunes DOM elements left
+over from the previous script run once the *new* run fully finishes; a screenshot taken mid-run can
+catch old trailing elements that haven't been removed yet, stacked below the new run's elements that
+have already streamed in over the WebSocket. Same underlying mechanism as the "black screen" entry
+below (content arrives incrementally, not atomically) — just the opposite failure mode (extra stale
+content instead of none). **Lesson: if a click-driven Playwright screenshot shows something
+inconsistent right after a rerun-triggering action (a view switch, a filter change), reshoot with a
+longer wait before concluding it's a product bug** — this cost real back-and-forth twice in the same
+session before the pattern was recognised.
+
 ## A local Streamlit "black screen" is almost always the WebSocket, not the app
 
 Symptom (2026-07-08): `streamlit run app.py` opens a browser showing nothing but a black/empty

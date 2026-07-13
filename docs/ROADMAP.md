@@ -6,6 +6,14 @@
 
 ## Session Roadmap (S1–S9)
 
+**Historical build log — a different numbering scheme from the Phase 0–9 table below, not a
+continuation of it.** S1–S9 tracked the *original* build (2026-06-28 to 2026-06-29, pre-hardening);
+the Framework Hardening & Expansion Initiative (Phase 0–9) started right after S8 and reused the
+0–9 range for a completely different set of milestones — the same numbers, two unrelated tracks.
+S9 (Module C — PUP) was never dropped: it lives on as part of the *new* Phase 9's opportunistic
+backlog (see [INITIATIVE.md](INITIATIVE.md)'s phase table), which is why it can look "unfinished"
+here while the project is already well past Phase 4 below — they're not sequential with each other.
+
 | Session | Focus | Status |
 |---|---|---|
 | S1 | Scaffold + data exploration | ✅ Done |
@@ -168,6 +176,14 @@ the cloud by Guilherme directly.
   and `statsbombpy` would all need re-checking for wheel availability and behaviour on a newer
   interpreter, which is unplanned rework for zero model/product gain. Pure housekeeping — pick up
   only when there's no deadline pressure, not opportunistically mid-demo-prep.
+- **Side-by-side player comparison view** — flagged 2026-07-13 during pitch-prep as a natural app
+  extension (radar overlay, stat-table diff, xG diff for two players at once); backlog only,
+  deliberately not scoped further or built this session.
+- **Market value (Transfermarkt) alongside "players like X"** — flagged 2026-07-13 ahead of a
+  pitch; a maintained open dataset exists (`dcaribou/transfermarkt-datasets`, has a dated
+  `player_valuations` table), so data isn't the blocker — matching StatsBomb player identities to
+  Transfermarkt ones (no shared ID) is. See [DATA.md](DATA.md#market-value-transfermarkt--flagged-2026-07-13-not-started)
+  for the full assessment.
 - **xA / chance-creation model** — sibling to xG on the same pipeline; also upgrades 6d.
 - **Module C (PUP)** — only if desired; carries a selection-bias confound + label-acquisition cost,
   and Phase 5 already delivers most of its payoff. Spec: [MODULES.md](MODULES.md#L53).
