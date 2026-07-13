@@ -170,6 +170,11 @@ the cloud by Guilherme directly.
 
 ## Phase 9 — Opportunistic  ⬜
 
+- **A bigger visual + documentation pass** — flagged 2026-07-13, right after that day's own
+  visual/brand pass (Leaderboard filters, page-header branding, About & Roadmap expansion — see
+  PROGRESS.md's "cont. 4" entry). Guilherme wants to go further on both fronts next session;
+  scope (which pages, which docs, how deep — e.g. a doc consolidation pass vs. a full app redesign)
+  wasn't decided yet, so treat this as an open discussion, not a fixed task list.
 - **Modernize the pinned Python target (3.10 → a newer stable, e.g. 3.14)** — flagged 2026-07-09
   during the Phase 8 Streamlit Cloud deploy (Cloud's dropdown defaulted to 3.14; deployed on 3.10
   instead to match `requirements.txt`). No functional upside and a real risk: `kloppy`, `pyarrow`,

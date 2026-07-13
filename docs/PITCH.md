@@ -23,9 +23,10 @@ colleague pitch (date TBD — today or the next day at the time of writing).
 
 ## Demo script (suggested order)
 
-1. **Leaderboard** — scale (6 competitions, ~1,500 players), sort by Goals, point out a
+1. **Leaderboard** — scale (6 competitions, 1,635 players), sort by Goals, point out a
    penalty-inflated total (e.g. a defender whose goals are mostly penalties) — shows why "raw
-   goals" is a misleading stat on its own.
+   goals" is a misleading stat on its own. Mention the name/position filters above the table if
+   asked how to find a specific player quickly.
 2. **Player explorer, pick a well-known forward** — radar vs. position peers, signature stats.
 3. **"Players like X"** — click a row in the table, show the recursive drill-down (jumps to the
    similar player, recomputes everything for them).
@@ -36,7 +37,8 @@ colleague pitch (date TBD — today or the next day at the time of writing).
 
 ## Key numbers to lead with (whole numbers — say these without notes)
 
-- **6** competitions, **1,511** players in the similarity pool.
+- **6** competitions, **1,635** players in the similarity pool (incl. **124 goalkeepers**, wired in
+  2026-07-13 with their own feature set — saves, shots faced, goals conceded, claims, save %).
 - **10,824** shots trained the xG model; a further **4,704** held-out shots — across **4**
   different tournaments the model never trained on — used to check it generalises.
 - **72** automated tests, green on every push (CI), a reproducible one-command rebuild
@@ -70,9 +72,11 @@ via `python -m src.metrics`).
 
 ## Roadmap to show (what's next)
 
-- **Open backlog (small, near-term):** goalkeepers not yet wired into the app; cross-league
-  normalisation for similarity still open. (The methodology section already got its rework this
-  session — see the new **About & Roadmap** view in the app.)
+- **Open backlog (small, near-term):** goalkeepers are wired in but not yet K-means clustered (no
+  K/silhouette check chosen for them, so no style-archetype layer the way outfield players have);
+  cross-league normalisation for similarity still open. (The "About & Roadmap" view now also has
+  visible, non-collapsed "Data used" and "How each model works" sections, plus Leaderboard
+  name/position filters — both shipped 2026-07-13, same day as this cheat sheet's last refresh.)
 - **Backlog, bigger (not scoped further):** a side-by-side two-player comparison view.
 - **Phase 5 (not started):** uncertainty on the xG number (bootstrap intervals), a hierarchical
   finishing model — "is this player's over/underperformance statistically real."

@@ -204,6 +204,22 @@ whether real content appears — if it does, the problem is the human's browser/
 
 ---
 
+## A Playwright `get_by_text(..., exact=True)` can match more than one element as app copy grows
+
+Symptom (2026-07-13, screenshotting the new sidebar branding): a verification script's
+`page.get_by_text("About & Roadmap", exact=True).click()` — which had worked fine in earlier
+sessions — started raising `strict mode violation: ... resolved to 2 elements`. Not a real app bug:
+that same session's sidebar copy pass added a caption ("New here? Start with **About & Roadmap**
+for the full story.") whose bold text is now an exact-text duplicate of the sidebar radio's own
+"About & Roadmap" option label. Fix: scope the locator to the specific widget container instead of
+searching the whole page — `page.get_by_test_id("stRadio").get_by_text("About & Roadmap",
+exact=True)`. **Lesson: a bare `get_by_text(exact=True)` locator is only as stable as the app's copy
+staying free of exact-text duplicates — as soon as this project's own habit of writing explanatory
+captions/pointers ("see X for more") introduces a second copy of some label text, the same script
+that worked last session can break. Prefer scoping to a `get_by_test_id(...)` container (e.g.
+`stRadio`, `stSidebar`) over a bare page-wide `get_by_text` once an app has more than a couple of
+short labels.**
+
 ## How to use this file
 
 - Hit a real environment/tooling obstacle this session (network, encoding, kernel, caching, a silent tool failure)? Add it here **before** the session ends, dated only if the fix might later change — most of these don't need a date, just the symptom and the fix. Don't wait for a retrospective "were there any obstacles?" question to write them down.

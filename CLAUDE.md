@@ -33,6 +33,10 @@ deploy settings to match `requirements.txt`, not Cloud's newer default — see R
 backlog note on why that version bump is deliberately deferred).
 See [docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renumbered 0–9 program on
 2026-07-02.
+**Next session, start here: Guilherme flagged 2026-07-13 (after the visual/brand pass above) that
+he wants a *bigger* pass on both the app's visuals and the documentation — not just incremental
+tweaks like this session's. Scope isn't decided yet (which pages/docs, how deep) — open with that
+discussion rather than assuming a specific task list.**
 **Next (open backlog): design cross-league normalisation for similarity (Phase 4b's original open
 item, still unresolved); decide a K/silhouette check for goalkeepers so they get a style-archetype
 layer like outfield players (they're wired into the app now, just not clustered yet). A side-by-side

@@ -77,6 +77,11 @@ by hand.
 - **2026-07-13** — Pitch-prep app UX pass: a new "About & Roadmap" sidebar view, headline stats
   refactored to whole-number counts, the Phase 4c generalisation chart wired into the app for the
   first time.
+- **2026-07-13 (cont. 3)** — Goalkeepers wired into the app (124 keepers, own feature set, not yet
+  clustered); Leaderboard copy expanded.
+- **2026-07-13 (cont. 4)** — Visual/brand pass: Leaderboard name/position filters, a proper Player
+  explorer intro, a reusable page-header brand badge + richer sidebar, About & Roadmap expanded
+  with "Data used"/"How each model works" sections and a Module C roadmap mention.
 
 ---
 

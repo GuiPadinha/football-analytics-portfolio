@@ -110,10 +110,8 @@ fix, still **72 green**.
 
 Verified against `git log`/`git status` 2026-07-13. Git CLI is used directly (see CLAUDE.md's
 Session Workflow) — this section is a lightweight pointer, not a substitute for `git log`/`git
-status`. Latest commit: `919b6ce` ("Wire goalkeepers into the app; expand Leaderboard copy" —
-covers the goalkeeper-wiring session above, now the "cont. 3" entry), pushed to `origin/main`.
-This session's changes (the visual/brand pass above — Leaderboard filters, Player explorer intro,
-`render_page_header`/sidebar branding, the About & Roadmap data/methods/roadmap expansion — plus
-doc updates to this file and `PRODUCT_SPEC.md`) are **not yet committed** — Guilherme to review
-before committing. Entries through 2026-07-13 (cont. 2) moved to
-[PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md) to keep this file under 150 lines.
+status`. Latest commit: `078caaf` ("Visual/brand pass: Leaderboard filters, Player explorer intro,
+branding, About & Roadmap expansion" — covers the "cont. 4" entry above), pushed to `origin/main`.
+Working tree clean as of this write-up — no uncommitted changes pending review. Entries through
+2026-07-13 (cont. 2) moved to [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md) to keep this file under
+150 lines.
