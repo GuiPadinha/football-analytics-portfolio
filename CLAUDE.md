@@ -51,27 +51,34 @@ before clustering/"players like X" ever compare across leagues, a relative fix s
 league-strength data exists in this project); and the Leaderboard's long-standing blank-cell-shows-
 "None" bug is fixed (confirmed as a real, still-open upstream Streamlit limitation — GitHub issue
 #7360 — fixed at the data layer via hand-formatted text columns, not the config layer three prior
-attempts tried). 75 tests green; `metrics.json` unchanged (byte-identical).
+attempts tried). 75 tests green; `metrics.json` unchanged (byte-identical); a same-day (2026-07-14)
+follow-up shipped two more Phase 9 backlog items: **market value** (`src/market_value.py` matches
+each player onto an external Transfermarkt valuation by name — no shared ID exists between the two
+data sources, so this needed real entity-resolution engineering, including finding and fixing two
+genuine matching bugs against real data; ~90% match rate on the four men's competitions, shown on a
+player's page, "players like X," and the Leaderboard) and a new **Compare players** view (any two
+players side by side; market value/Finishing always compare directly, a radar/signature-stats/
+percentile comparison only when both share a position group). 86 tests green.
 See [docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renumbered 0–9 program on
 2026-07-02.
-**Next session, start here: the cont. 6 pass above is complete, verified (AppTest + Playwright),
-and documented, but not yet committed — see docs/PROGRESS.md's Commit Status section.** Decide
-whether to commit/push, then pick up the next backlog item.
-**Next (open backlog): a side-by-side two-player comparison view; a market-value integration
-alongside "players like X"** (a usable open dataset was found — `dcaribou/transfermarkt-datasets`
-— but it's blocked on player-identity matching between data sources, not on data availability; see
-[DATA.md](docs/DATA.md)) — neither started. Exact code entry points are in
-[PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s "Backlog from 2026-07-06 feedback" section and
-[ROADMAP.md](docs/ROADMAP.md)'s Phase 9 list — the PRODUCT_SPEC section also has one minor open
-cosmetic follow-up from the drill-down work (an expander's open/closed state not always carrying
-over consistently across a jump). A "player career" page/view is also under discussion (multi-season
-drill-down, international tournament data — trophies/awards/MOTM data does not exist in any current
-source and would need new scraping infra).**
+**Next session, start here: the 2026-07-14 pass above (market value + Compare players) is complete,
+verified (AppTest + Playwright), and documented, but not yet committed — see docs/PROGRESS.md's
+Commit Status section.** Decide whether to commit/push, then pick up the next backlog item.
+**Next (open backlog): a multi-season "player career" page/view** is under discussion (needs new
+lineups pulls; international-tournament trophies/awards/MOTM data does not exist in any current
+source and would need new scraping infra) — not started, not scoped further. Known small gaps in
+what shipped 2026-07-14: market-value matching can miss a real match (name/position collision, no
+club/season cross-check) and has zero coverage for the two women's leagues (that Transfermarkt
+mirror only covers men's football) — both stated honestly in-app, not silently hidden. Exact code
+entry points for anything else still open are in [PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s
+"Backlog from 2026-07-06 feedback" section and [ROADMAP.md](docs/ROADMAP.md)'s Phase 9 list — the
+PRODUCT_SPEC section also has one minor open cosmetic follow-up from the drill-down work (an
+expander's open/closed state not always carrying over consistently across a jump).**
 (360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
 Run the app locally: `python -m src.app_data` (once, to build `app_data/`) then `streamlit run app.py`
 — or just use the [live demo](https://gpfootball-analytics-portfolio.streamlit.app).
 
-Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped) — Phase 4c (2026-07-09) shows this is the *floor* across four held-out tournaments, not a fluke: FIFA World Cup 2022 0.808, Africa Cup of Nations 2023 0.807, Copa América 2024 0.763 (see `metrics.json`'s `xg_generalisation`, [docs/MODULES.md](docs/MODULES.md)). Similarity: K=4 per position group, silhouette ~0.24 (soft continuum) on the notebook/pipeline's single-competition (PL 2015/16) scope — the app's own player pool is wider (6 competitions, now cross-league normalised, and goalkeepers are K-means clustered too — see MODULES.md). 75 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
+Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped) — Phase 4c (2026-07-09) shows this is the *floor* across four held-out tournaments, not a fluke: FIFA World Cup 2022 0.808, Africa Cup of Nations 2023 0.807, Copa América 2024 0.763 (see `metrics.json`'s `xg_generalisation`, [docs/MODULES.md](docs/MODULES.md)). Similarity: K=4 per position group, silhouette ~0.24 (soft continuum) on the notebook/pipeline's single-competition (PL 2015/16) scope — the app's own player pool is wider (6 competitions, now cross-league normalised, and goalkeepers are K-means clustered too — see MODULES.md). **1,215** players matched to a Transfermarkt market value (men's competitions only, ~90% match rate — see DATA.md). 86 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
 
 → Phase tracker: [docs/INITIATIVE.md](docs/INITIATIVE.md) | Session log: [docs/PROGRESS.md](docs/PROGRESS.md)
 
@@ -81,7 +88,7 @@ Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, 
 
 Player Evaluation Framework — two modules on StatsBomb/SkillCorner open data:
 - **Module A — xG**: supervised binary classification. Logistic regression (recommended over GBM — honest non-win). Train: Leverkusen 2023/24 + PL 2015/16. Test: EURO 2024 (deliberate distribution shift).
-- **Module B — Player similarity**: unsupervised K-means/PCA. Per-90 per position group (Defender/Mid/Forward, GKs excluded). "Players like X" nearest-neighbour lookup + radar charts.
+- **Module B — Player similarity**: unsupervised K-means/PCA. Per-90 per position group (Defender/Mid/Forward on the notebook/pipeline's single-competition scope; the app's own pool also clusters Goalkeepers, own feature set, since 2026-07-13). "Players like X" nearest-neighbour lookup + radar charts, plus an external Transfermarkt market value matched by name (2026-07-14, men's competitions only).
 - **Module C — PUP** (scoped only, not started): per-player performance-under-pressure KPI.
 
 → Module specs: [docs/MODULES.md](docs/MODULES.md) | Data sources: [docs/DATA.md](docs/DATA.md) | Owner/context: [docs/CONTEXT.md](docs/CONTEXT.md) | Product framing: [docs/FRAMEWORK.md](docs/FRAMEWORK.md)
@@ -98,6 +105,7 @@ src/
   models.py          ← logistic pipeline, CV, calibration, GBM, player xG table
   similarity.py      ← clustering, PCA, find_similar_players, resolve_season_positions
   visualisation.py   ← shot map, calibration curve, elbow, PCA, radar, xG ranking
+  market_value.py    ← Transfermarkt entity resolution + valuation lookup (Phase 9, 2026-07-14)
   manifest.py        ← data provenance manifest (`python -m src.manifest`)
   metrics.py         ← metrics.json single source (`python -m src.metrics`)
   pipeline.py        ← headless rebuild: data → models → outputs → manifest/metrics (`python -m src.pipeline`)
@@ -127,7 +135,7 @@ docs/
   ML_THEORY.md           ← ML/stats theory reference (textbook-level)
   ML_TOOLING.md          ← Windows/environment gotchas
 ML_LEARNING_LOG.md       ← ML gotchas and decisions log (pointers to above docs)
-tests/                   ← 75 pytest unit tests, all green
+tests/                   ← 86 pytest unit tests, all green
 outputs/                 ← saved PNGs (gitignored)
 data/                    ← per-match cache + Parquet feature tables (gitignored)
 ```

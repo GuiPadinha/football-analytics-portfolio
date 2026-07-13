@@ -210,6 +210,7 @@ football-analytics-portfolio/
 │   ├── models.py                ← xG model training and evaluation
 │   ├── similarity.py            ← clustering, PCA, nearest-neighbour lookup
 │   ├── visualisation.py         ← pitch plots, radar charts, all chart functions
+│   ├── market_value.py          ← Transfermarkt entity resolution + valuation lookup
 │   ├── manifest.py              ← data provenance manifest (python -m src.manifest)
 │   ├── metrics.py               ← writes metrics.json (python -m src.metrics)
 │   ├── pipeline.py              ← headless rebuild: data → models → outputs (python -m src.pipeline)
@@ -256,9 +257,12 @@ streamlit run app.py
 [gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app)
 (Streamlit Community Cloud, since 2026-07-09). The player pool spans **6 competitions** — Premier
 League, La Liga, Serie A, Ligue 1 (all 2015/16), plus Frauen Bundesliga and FA Women's Super League
-(both 2023/24) — **1,635 players total, including 124 goalkeepers** with their own feature set. The
-app also has a full player **leaderboard** (sortable, goals incl. penalties + xG where available)
-and an **About & Roadmap** tab explaining the framework, the data, and what's next.
+(both 2023/24) — **1,635 players total, including 124 goalkeepers** with their own feature set,
+K-means clustered into style archetypes like the outfield groups. The app also has a full player
+**leaderboard** (sortable, goals incl. penalties + xG where available), a **Compare players** view
+(any two players, side by side), a **Transfermarkt market value** matched onto "players like X" and
+the Leaderboard (men's competitions only, ~90% match rate), and an **About & Roadmap** tab
+explaining the framework, the data, and what's next.
 
 ---
 
@@ -269,6 +273,6 @@ and an **About & Roadmap** tab explaining the framework, the data, and what's ne
   the 51 players who appear in both this project's league and tournament datasets. Fully scoped in
   `docs/MODULES.md`, not started — deprioritised behind Phase 5's hierarchical finishing model,
   which delivers most of the same "real or luck" payoff more cleanly.
-- A side-by-side player comparison view, a market-value integration, and further modelling
-  upgrades (xG uncertainty, 360°-context xG, a smarter distance metric for similarity) — see
+- Further modelling upgrades — xG uncertainty ranges, 360°-context xG, a smarter distance metric
+  for similarity (Mahalanobis, today's Euclidean double-counts correlated stats) — see
   `docs/INITIATIVE.md` for the full phase-by-phase roadmap.

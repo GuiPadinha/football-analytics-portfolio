@@ -52,6 +52,7 @@ from src.similarity import (
 from src.visualisation import (
     plot_diverging_bar,
     plot_player_radar,
+    plot_player_radar_comparison,
     plot_shot_map,
     plot_silhouette_curve,
     plot_similar_players_bar,
@@ -146,17 +147,50 @@ st.set_page_config(page_title="Player Evaluation Framework", page_icon=BRAND_ICO
 
 @st.cache_data
 def load_artifacts():
-    """Load the three precomputed app_data/ tables plus the repo's metrics.json.
+    """Load the precomputed app_data/ tables plus the repo's metrics.json.
 
     Cached by Streamlit so the (small) Parquet reads happen once per server process, not once
     per user interaction — every widget change reruns this script top to bottom.
+
+    `market_value.parquet` is loaded defensively (empty frame if missing) rather than assumed
+    present: `app_data.build_app_artifacts(with_market_value=False)` is a real, supported way to
+    run an otherwise-offline build (see that function's docstring), so a market-value-less
+    `app_data/` is a legitimate state, not a broken one — every market-value UI element already
+    treats "no row for this player" as "not resolved," so an entirely empty table just means
+    everyone falls into that same, already-handled branch.
     """
     per90 = pd.read_parquet(APP_DATA_DIR / "player_per90.parquet")
     xg_table = pd.read_parquet(APP_DATA_DIR / "player_xg_table.parquet")
     shots = pd.read_parquet(APP_DATA_DIR / "shots_with_xg.parquet")
+    market_value_path = APP_DATA_DIR / "market_value.parquet"
+    if market_value_path.exists():
+        market_value = pd.read_parquet(market_value_path)
+    else:
+        market_value = pd.DataFrame(
+            columns=["player", "team", "tm_name", "market_value_eur", "market_value_as_of"]
+        )
     with open(REPO_ROOT / "metrics.json") as metrics_file:
         metrics = json.load(metrics_file)
-    return per90, xg_table, shots, metrics
+    return per90, xg_table, shots, market_value, metrics
+
+
+def format_market_value(eur):
+    """Human-readable market value string ("€30.0M" / "€850k"), or "" for a missing value.
+
+    Shared by every market-value display in the app (player page, "players like X" table,
+    Leaderboard, Compare players) so the same number always reads the same way.
+    """
+    if pd.isna(eur):
+        return ""
+    if eur >= 1_000_000:
+        return f"€{eur / 1_000_000:.1f}M"
+    return f"€{eur / 1_000:.0f}k"
+
+
+def lookup_market_value(market_value, player, team):
+    """Return the matched market-value row for one (player, team), or `None` if unresolved."""
+    match = market_value[(market_value["player"] == player) & (market_value["team"] == team)]
+    return match.iloc[0] if len(match) else None
 
 
 @st.cache_data
@@ -203,7 +237,7 @@ def render_page_header(title):
         st.caption(f"{BRAND_ICON} *{SLOGAN}*")
 
 
-def render_leaderboard(pool, xg_table):
+def render_leaderboard(pool, xg_table, market_value):
     """Render the all-players leaderboard: one sortable table over the current filter pool.
 
     Deliberately different from the player-explorer page (one player at a time): this is the
@@ -213,12 +247,16 @@ def render_leaderboard(pool, xg_table):
 
     xG / G-xG are left-joined from the flagship xG table and blank for anyone outside Module A's
     training set (PL 2015/16 + Leverkusen) — most of the wider similarity pool — rather than
-    faked, matching the single-player panel's honesty about that gap.
+    faked, matching the single-player panel's honesty about that gap. Market value (Phase 9) is
+    left-joined the same way, blank for anyone Transfermarkt matching couldn't resolve (unmatched
+    name, or a women's-league player — that data source only covers men's football, see
+    src/market_value.py) — never faked either.
 
     Args:
         pool (pandas.DataFrame): the per-90 table already narrowed by the sidebar
             position/competition filters (the app's `searchable`).
         xg_table (pandas.DataFrame): flagship player xG table (`total_xg`, `xg_diff` per player).
+        market_value (pandas.DataFrame): output of `market_value.build_market_value_table`.
     """
     render_page_header("Player leaderboard")
     st.markdown(
@@ -238,7 +276,9 @@ def render_leaderboard(pool, xg_table):
         "the biggest \"creating chances, not converting\" candidates; descending for the biggest "
         "likely finishing spikes.\n"
         "- **Position** — includes Goalkeeper now; their Goals/Assists columns are blank here "
-        "(different feature set, see their own Player explorer page for saves/save %)."
+        "(different feature set, see their own Player explorer page for saves/save %).\n"
+        "- **Market value** — a Transfermarkt valuation, men's competitions only; blank where "
+        "name-matching couldn't confidently resolve a player (see \"About & Roadmap\")."
     )
 
     # In-page filters (2026-07-13, requested on top of the sidebar's position/competition
@@ -271,12 +311,15 @@ def render_leaderboard(pool, xg_table):
     ]].merge(
         xg_table[["player", "team", "total_xg", "xg_diff"]],
         on=["player", "team"], how="left",
+    ).merge(
+        market_value[["player", "team", "market_value_eur"]],
+        on=["player", "team"], how="left",
     )
     board = board.rename(columns={
         "player": "Player", "team": "Team", "competition": "Competition",
         "position_group": "Position", "minutes_played": "Minutes",
         "goals": "Goals", "non_penalty_goals": "Non-pen goals", "assists": "Assists",
-        "total_xg": "xG", "xg_diff": "G-xG",
+        "total_xg": "xG", "xg_diff": "G-xG", "market_value_eur": "Market value",
     }).sort_values("Goals", ascending=False)
 
     # Blank xG/G-xG cells (2026-07-13, fixed this pass): `column_config.NumberColumn` renders a
@@ -307,6 +350,9 @@ def render_leaderboard(pool, xg_table):
 
     board["xG"] = board["xG"].map(lambda v: "" if pd.isna(v) else f"{v:.1f}")
     board["G-xG"] = gxg_raw.map(lambda v: "" if pd.isna(v) else f"{v:+.1f}")
+    # Same "hand-format to text, never a null numeric cell" fix as xG/G-xG above — market value
+    # is blank just as often (men's competitions only, and only where name-matching resolved).
+    board["Market value"] = board["Market value"].map(format_market_value)
 
     board_style = board.style
     if gxg_colors is not None:
@@ -326,6 +372,10 @@ def render_leaderboard(pool, xg_table):
                 help="Goals minus xG. Positive = outscoring chance quality (expect regression); "
                 "negative = under-converting good chances (possible buy-low). Flagship set only.",
             ),
+            "Market value": st.column_config.TextColumn(
+                help="Transfermarkt valuation, roughly as of this season (see \"About & Roadmap\" "
+                "for the matching caveats). Men's competitions only; blank where unmatched.",
+            ),
         },
     )
     st.caption(
@@ -335,6 +385,160 @@ def render_leaderboard(pool, xg_table):
         "— those columns come from the outfield feature set, which doesn't cover them; see a "
         "goalkeeper's own page (Player explorer) for their saves/goals-conceded/save % instead."
     )
+
+
+def render_compare_players(per90, xg_table, market_value):
+    """Render the "Compare players" view (Phase 9): two players side by side.
+
+    Deliberately not filtered by the sidebar's position/competition selectors (see the view's own
+    dispatch comment near the top of the script) — two independent search+pick widgets pull from
+    the *whole* `per90` pool, since a side-by-side comparison is a reasonable thing to want across
+    positions or competitions too (e.g. "is this expensive winger really worth more than that
+    cheap forward"), unlike "players like X"/clustering, which only make sense within one shared
+    feature space. The radar/percentile/signature-stat comparison below only renders when both
+    picks share a position group, for the same reason — market value and Finishing still compare
+    directly either way.
+    """
+    render_page_header("Compare players")
+    st.markdown(
+        "Pick any two players — same position group or not — for a side-by-side read: market "
+        "value, and (when they share a position group, so the same stats apply) signature stats, "
+        "an overlaid radar, and a percentile comparison."
+    )
+
+    pick_cols = st.columns(2)
+    picks = []
+    for col, side_label, key in zip(pick_cols, ["Player A", "Player B"], ["a", "b"]):
+        with col:
+            st.markdown(f"**{side_label}**")
+            query = st.text_input(
+                f"Search for {side_label}", placeholder="Type a name...", key=f"compare_search_{key}"
+            )
+            matches = (
+                per90[per90["player"].str.contains(query, case=False, regex=False, na=False)]
+                if query else per90
+            ).sort_values("player")
+            if matches.empty:
+                st.warning(f'No players match "{query}".')
+                picks.append(None)
+                continue
+            label_map = {
+                f"{p} ({t}) · {c}": (p, t)
+                for p, t, c in zip(matches["player"], matches["team"], matches["competition"])
+            }
+            option_labels = sorted(label_map)
+            # Keyed on the query (same reasoning as the Player explorer's own picker, see
+            # ML_TOOLING.md's selectbox-with-changing-options gotcha): resets to a fresh default
+            # whenever the option set changes instead of erroring on a stale selection.
+            picked_label = st.selectbox(
+                f"{len(option_labels)} match{'es' if len(option_labels) != 1 else ''}",
+                option_labels, key=f"compare_pick_{key}_{query}",
+            )
+            picks.append(label_map[picked_label])
+
+    if picks[0] is None or picks[1] is None:
+        return
+    (name_a, team_a), (name_b, team_b) = picks
+    if (name_a, team_a) == (name_b, team_b):
+        st.info("Pick two different players to compare.")
+        return
+
+    row_a = per90[(per90["player"] == name_a) & (per90["team"] == team_a)].iloc[0]
+    row_b = per90[(per90["player"] == name_b) & (per90["team"] == team_b)].iloc[0]
+
+    st.divider()
+    header_a, header_b = st.columns(2)
+    header_a.subheader(f"{name_a} · {row_a['team']} · {row_a['position_group']}")
+    header_a.caption(row_a["competition"])
+    header_b.subheader(f"{name_b} · {row_b['team']} · {row_b['position_group']}")
+    header_b.caption(row_b["competition"])
+
+    # Market value side by side — Module B's original "similar profile, cheaper" pitch (see
+    # DATA.md's market-value note); this view is the most direct place to answer it.
+    mv_a = lookup_market_value(market_value, name_a, team_a)
+    mv_b = lookup_market_value(market_value, name_b, team_b)
+    mv_cols = st.columns(2)
+    for col, mv in zip(mv_cols, [mv_a, mv_b]):
+        if mv is not None:
+            col.metric(
+                "Market value", format_market_value(mv["market_value_eur"]),
+                help=f"Transfermarkt, as of {mv['market_value_as_of']} — matched to \"{mv['tm_name']}\".",
+            )
+        else:
+            col.metric("Market value", "—", help="Not available — see \"About & Roadmap\".")
+    if mv_a is not None and mv_b is not None and mv_a["market_value_eur"] != mv_b["market_value_eur"]:
+        diff = mv_a["market_value_eur"] - mv_b["market_value_eur"]
+        cheaper, pricier, amount = (name_b, name_a, diff) if diff > 0 else (name_a, name_b, -diff)
+        st.caption(f"{cheaper} is valued {format_market_value(amount)} less than {pricier}.")
+
+    same_group = row_a["position_group"] == row_b["position_group"]
+    if not same_group:
+        st.info(
+            f"{name_a} is a {row_a['position_group'].lower()}, {name_b} is a "
+            f"{row_b['position_group'].lower()} — different feature sets, so a stat-by-stat radar "
+            "comparison isn't meaningful here. Finishing below still compares directly."
+        )
+    else:
+        position_group = row_a["position_group"]
+        if position_group == "Goalkeeper":
+            feature_columns = GK_PER90_FEATURE_COLUMNS
+        else:
+            feature_columns = PER90_FEATURE_COLUMNS
+        signature_cols = SIGNATURE_STATS_BY_POSITION[position_group]
+        group_df = per90[per90["position_group"] == position_group].reset_index(drop=True)
+        row_a_full = group_df[(group_df["player"] == name_a) & (group_df["team"] == team_a)].iloc[0]
+        row_b_full = group_df[(group_df["player"] == name_b) & (group_df["team"] == team_b)].iloc[0]
+
+        st.subheader("Signature stats")
+        stat_cols = st.columns(len(signature_cols))
+        for col, stat in zip(stat_cols, signature_cols):
+            raw_col = stat.replace("_p90", "")
+            col.metric(
+                STAT_LABELS[stat],
+                f"{int(round(row_a_full[raw_col]))} vs {int(round(row_b_full[raw_col]))}",
+                help=f"Per 90: {name_a} {row_a_full[stat]:.2f} · {name_b} {row_b_full[stat]:.2f}",
+            )
+
+        st.subheader(f"Radar vs. {position_group.lower()} peers")
+        fig, ax = plt.subplots(figsize=(7, 7))
+        plot_player_radar_comparison(
+            row_a_full, row_b_full, population=group_df, feature_columns=feature_columns, ax=ax,
+            circle_facecolor=DARK_PANEL, circle_edgecolor=GRID_LINE,
+            player_a_color=ACCENT_BLUE, player_b_color=ACCENT_ORANGE,
+            player_a_label=name_a, player_b_label=name_b,
+        )
+        st.pyplot(fig)
+        plt.close(fig)
+
+        st.subheader("Percentile within position group")
+        percentiles = group_df[feature_columns].rank(pct=True)
+        pct_a = percentiles.loc[row_a_full.name]
+        pct_b = percentiles.loc[row_b_full.name]
+        pct_table = pd.DataFrame({
+            "Stat": [STAT_LABELS[c] for c in feature_columns],
+            name_a: [f"{pct_a[c] * 100:.0f}th" for c in feature_columns],
+            name_b: [f"{pct_b[c] * 100:.0f}th" for c in feature_columns],
+        })
+        st.dataframe(pct_table, hide_index=True, width="stretch")
+        st.caption(
+            f"Percentile among {len(group_df)} {position_group.lower()}s in the current pool — "
+            "raw per-90 rates, not league-normalised (see \"About & Roadmap\")."
+        )
+
+    st.subheader("Finishing — is the output real?")
+    fin_cols = st.columns(2)
+    for col, name, team in zip(fin_cols, [name_a, name_b], [team_a, team_b]):
+        xg_row = xg_table[(xg_table["player"] == name) & (xg_table["team"] == team)]
+        with col:
+            st.markdown(f"**{name}**")
+            if xg_row.empty:
+                st.caption("No logged shots in the xG training set.")
+            else:
+                row = xg_row.iloc[0]
+                xg_metric_cols = st.columns(3)
+                xg_metric_cols[0].metric("Goals", int(row["goals"]))
+                xg_metric_cols[1].metric("xG", f"{row['total_xg']:.1f}")
+                xg_metric_cols[2].metric("G-xG", f"{row['xg_diff']:+.1f}")
 
 
 def render_about_and_roadmap(per90, metrics):
@@ -413,14 +617,16 @@ def render_about_and_roadmap(per90, metrics):
 
     with st.expander("How to use this app", expanded=True):
         st.markdown(
-            "1. **Pick a view** in the sidebar — *Player explorer* (one player, deep dive) or "
-            "*Leaderboard* (browse/sort everyone in the current filters).\n"
+            "1. **Pick a view** in the sidebar — *Player explorer* (one player, deep dive), "
+            "*Leaderboard* (browse/sort everyone in the current filters), or *Compare players* "
+            "(two players side by side).\n"
             "2. **Narrow with the sidebar filters** — position group and competition are both "
-            "optional.\n"
+            "optional (Player explorer/Leaderboard only; Compare players searches the whole pool).\n"
             "3. **Search for a player** by name (press Enter), or just pick from the dropdown of "
             "current matches.\n"
             "4. On a player's page: their **radar** (pick which stats form the spokes), "
-            "**signature stats** for their position, and the ranked **\"Players like X\"** list.\n"
+            "**signature stats** for their position, **market value** (men's competitions only), "
+            "and the ranked **\"Players like X\"** list.\n"
             "5. **Click a row** in the \"players like X\" table to jump straight to that player — "
             "a recursive drill-down, not a static list.\n"
             "6. If the player has logged shots in the xG training set (Premier League 2015/16 + "
@@ -430,9 +636,10 @@ def render_about_and_roadmap(per90, metrics):
 
     st.subheader("Data used")
     st.markdown(
-        "All open data — **StatsBomb** event data and **SkillCorner** tracking data. No paid "
-        "licence, nothing scraped live; the app only reads precomputed tables built by "
-        "`python -m src.pipeline`.\n\n"
+        "All open data — **StatsBomb** event data, **SkillCorner** tracking data, and (new) "
+        "**Transfermarkt** market values via a maintained open mirror. No paid licence, nothing "
+        "scraped live; the app only reads precomputed tables built by `python -m src.pipeline` / "
+        "`python -m src.app_data`.\n\n"
         "- **Similarity pool, 6 competitions:** Premier League, La Liga, Serie A, Ligue 1 (all "
         "2015/16), Frauen-Bundesliga and the FA Women's Super League (both 2023/24) — the newest "
         "full season StatsBomb's free tier has for each league.\n"
@@ -440,6 +647,10 @@ def render_about_and_roadmap(per90, metrics):
         "league and country from the test set below, on purpose.\n"
         "- **xG generalisation tests, 4 tournaments never trained on:** UEFA EURO 2024 (the "
         "headline test), FIFA World Cup 2022, Africa Cup of Nations 2023, Copa América 2024.\n"
+        "- **Market value:** Transfermarkt valuations for the four men's competitions above (that "
+        "mirror has no women's-football coverage at all), matched to a StatsBomb player by name — "
+        "there's no shared ID between the two sources, so an unresolved or ambiguous name is left "
+        "blank rather than guessed (see \"What's already shipped, and what's next\" below).\n"
         "- **SkillCorner tracking data (A-League):** a standalone physical-metrics demo (distance, "
         "high-speed running, sprints per 90) — no player overlap with the datasets above yet, so "
         "it doesn't feed either model.\n\n"
@@ -473,21 +684,24 @@ def render_about_and_roadmap(per90, metrics):
         "**Done:** the full similarity + xG pipeline across 6 competitions, a leaderboard view "
         "with name/position filters, clickable similar-player drill-down, penalty-aware goal "
         "totals, goalkeepers wired in with their own feature set (saves, shots faced, goals "
-        "conceded, claims, save %) *and* now K-means clustered into style archetypes like the "
-        "outfield groups, league-normalised similarity (each stat compared to the player's own "
-        "competition before it's compared across leagues), and this app deployed live.\n\n"
+        "conceded, claims, save %) and K-means clustered into style archetypes like the outfield "
+        "groups, league-normalised similarity (each stat compared to the player's own competition "
+        "before it's compared across leagues), a **side-by-side player comparison view**, "
+        "**Transfermarkt market value** matched onto \"players like X\" and the Leaderboard, and "
+        "this app deployed live.\n\n"
         "**Open, small:** the league normalisation is a relative (z-score) adjustment, not a true "
         "competitiveness rating — there's no external league-strength data behind it, so it "
         "assumes each league's stat distribution is roughly comparable in shape, not that the "
-        "leagues are equally strong.\n\n"
+        "leagues are equally strong. Market-value matching is name-based (no shared player ID "
+        "exists between StatsBomb and Transfermarkt) — a real match can be missed (left blank, "
+        "never guessed) when two different real players share a name and broad position; women's-"
+        "league players have no market value at all, since the Transfermarkt mirror used here only "
+        "covers men's football.\n\n"
         "**Bigger modelling upgrades:** uncertainty ranges on the xG number instead of one point "
         "estimate; a smarter distance metric for similarity (today's treats correlated stats — "
         "e.g. tackles and interceptions — as independent, which double-counts overlapping skill); "
         "shot context from player-tracking freeze-frames (360°-context xG, building on the same "
-        "kind of tracking data already demoed for physical metrics); a side-by-side player "
-        "comparison view; market-value data alongside a similarity match (a usable open dataset "
-        "has been found, but it needs player-identity matching work first — no shared ID between "
-        "data sources).\n\n"
+        "kind of tracking data already demoed for physical metrics).\n\n"
         "**A third lens, not started:** a **\"performance under pressure\"** module — do players "
         "who perform well in high-stakes league moments (title races, relegation battles, derbies) "
         "also perform well in tournaments? There's a real 51-player overlap between one league "
@@ -567,7 +781,7 @@ full-season data anywhere in this project).
         )
 
 
-per90, xg_table, shots, metrics = load_artifacts()
+per90, xg_table, shots, market_value, metrics = load_artifacts()
 
 # "Similar player" row-click drill-down (2026-07-09 backlog item): clicking a row in the
 # "Players like X" table (near the bottom of this script) stashes a (player, team) pair in
@@ -606,9 +820,10 @@ st.sidebar.caption(
 st.sidebar.divider()
 
 view = st.sidebar.radio(
-    "View", ["Player explorer", "Leaderboard", "About & Roadmap"],
+    "View", ["Player explorer", "Leaderboard", "Compare players", "About & Roadmap"],
     help="Player explorer: one player's radar, similar players and finishing. "
     "Leaderboard: browse and sort every player in the current filters. "
+    "Compare players: two players side by side. "
     "About & Roadmap: what this is, how to use it, what's built, and what's next.",
     key="view_radio",
 )
@@ -646,7 +861,14 @@ if view == "Leaderboard":
     if searchable.empty:
         st.warning("No players match the current filters.")
         st.stop()
-    render_leaderboard(searchable, xg_table)
+    render_leaderboard(searchable, xg_table, market_value)
+    st.stop()
+
+# Compare players is its own two-player pane, not filtered by the sidebar's position/competition
+# selectors (a comparison is meaningful across positions/competitions too, unlike the shared
+# per-90 feature space "players like X"/clustering need) — it reads the full, unfiltered `per90`.
+if view == "Compare players":
+    render_compare_players(per90, xg_table, market_value)
     st.stop()
 
 render_page_header("Player explorer")
@@ -764,6 +986,24 @@ elif pd.notna(player_row_full.get("goals")):
     if total_goals > 0:
         penalty_note = f" ({penalty_goals} from penalties)" if penalty_goals > 0 else ""
         st.caption(f"**Goals (incl. penalties): {total_goals}**{penalty_note}")
+
+# Market value (Phase 9): a Transfermarkt valuation, matched by name (see src/market_value.py)
+# and only ever resolved for the four men's competitions in MARKET_VALUE_AS_OF_DATES - that
+# mirror has no women's-football coverage at all (verified against the real data, not assumed),
+# so Frauen Bundesliga/FA WSL players fall into the same "not resolved" caption as any player a
+# name match genuinely failed for, rather than a separate, more alarming-sounding message.
+player_market_value = lookup_market_value(market_value, player_name, team_name)
+if player_market_value is not None:
+    st.caption(
+        f"**Market value: {format_market_value(player_market_value['market_value_eur'])}** "
+        f"(Transfermarkt, as of {player_market_value['market_value_as_of']} — matched to "
+        f"\"{player_market_value['tm_name']}\")"
+    )
+else:
+    st.caption(
+        "Market value: not available (no confident Transfermarkt name match, or a "
+        "competition outside its coverage — see \"About & Roadmap\")."
+    )
 
 # Style archetype (2026-07-13 visual/feature pass, extended to goalkeepers + league-normalised
 # in a same-day follow-up): app_data.py's build step computes a K=4 style-archetype `cluster`
@@ -892,6 +1132,12 @@ with col_similar:
     similar = find_similar_players(
         per90, position_feature_columns_lz, player=player_name, team=team_name, n=5
     ).reset_index(drop=True)
+    # Left merge preserves `similar`'s row order (needed below: `selection.rows` positions index
+    # back into this same frame via `similar.iloc[...]`) - "similar profile, cheaper" is Module
+    # B's original market-value pitch (see DATA.md), so this is exactly where it belongs.
+    similar = similar.merge(
+        market_value[["player", "team", "market_value_eur"]], on=["player", "team"], how="left"
+    )
     fig, ax = plt.subplots(figsize=(7, 0.7 * len(similar) + 1))
     plot_similar_players_bar(similar, accent_color=ACCENT_ORANGE, grid_color=GRID_LINE, ax=ax)
     st.pyplot(fig)
@@ -917,13 +1163,15 @@ with col_similar:
         # an infinite chain through each player's own most-similar match. Caught by actually
         # driving the click via Playwright, not by reasoning about it in the abstract: the app
         # visibly kept jumping player-to-player instead of settling on one page.
+        similar_display = similar[["player", "team", "competition", "distance"]].rename(
+            columns={
+                "player": "Player", "team": "Team",
+                "competition": "Competition", "distance": "Distance (standardised)",
+            }
+        )
+        similar_display["Market value"] = similar["market_value_eur"].map(format_market_value)
         selection_event = st.dataframe(
-            similar[["player", "team", "competition", "distance"]].rename(
-                columns={
-                    "player": "Player", "team": "Team",
-                    "competition": "Competition", "distance": "Distance (standardised)",
-                }
-            ),
+            similar_display,
             hide_index=True,
             width="stretch",
             on_select="rerun",

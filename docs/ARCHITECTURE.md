@@ -14,7 +14,8 @@ else in the repo shows the shape of `src/` end-to-end.
 
 ```
 Layer 0 — ingestion:       data_loader.py, config.py
-Layer 1 — feature build:   features.py (Module A), similarity.py (Module B)
+Layer 1 — feature build:   features.py (Module A), similarity.py (Module B),
+                            market_value.py (external enrichment, Phase 9)
 Layer 2 — model/analysis:  models.py                (Module A only — Module B's clustering
                                                        already lives inside similarity.py)
 Layer 3 — presentation:    visualisation.py
@@ -27,8 +28,9 @@ into the same Layer 1–3 functions. **tests/** exercises the pure functions dir
 (Phase 8) is a third orchestration entry point alongside `pipeline.py` — same cache-or-rebuild
 instinct (skip a build step when its `data/`/`app_data/` output already exists), but its job is
 narrower: call `build_player_per90_features`/`build_goalkeeper_per90_features`/
-`build_player_xg_table` across `config.SIMILARITY_SETS` and write the small `app_data/*.parquet`
-artifacts `app.py` reads at runtime, rather than rebuilding every output PNG/manifest/metric.
+`build_player_xg_table`/`market_value.build_market_value_table` across `config.SIMILARITY_SETS`
+and write the small `app_data/*.parquet` artifacts `app.py` reads at runtime, rather than
+rebuilding every output PNG/manifest/metric.
 
 ---
 
@@ -42,10 +44,11 @@ artifacts `app.py` reads at runtime, rather than rebuilding every output PNG/man
 | `similarity.py` | `data_loader` | `metrics.py`, `pipeline.py` (+ notebook 03) |
 | `models.py` | — | `metrics.py`, `pipeline.py` (+ notebook 02) |
 | `visualisation.py` | — | `pipeline.py` (+ notebooks 02/03) |
+| `market_value.py` | — | `app_data.py` |
 | `manifest.py` | `config`, `data_loader` | `pipeline.py` |
 | `metrics.py` | `config`, `models`, `similarity` | `pipeline.py` |
 | `pipeline.py` | `config`, `features`, `manifest`, `metrics`, `models`, `similarity`, `visualisation` | — (top-level entry point, `python -m src.pipeline`) |
-| `app_data.py` | `config`, `models`, `pipeline`, `similarity` | — (top-level entry point, `python -m src.app_data`) |
+| `app_data.py` | `config`, `market_value`, `models`, `pipeline`, `similarity` | — (top-level entry point, `python -m src.app_data`) |
 
 Two things worth noticing, because they're deliberate design choices, not accidents:
 
@@ -55,6 +58,12 @@ whatever arrays/DataFrames a caller hands it. Neither knows StatsBomb, `config.p
 existence. This is why the same `plot_calibration_curve`/`plot_shot_map` functions work unchanged
 whether the caller is notebook 02, `pipeline.py`, or (per [PRODUCT_SPEC.md](PRODUCT_SPEC.md)) the
 deployed Streamlit app.
+
+**`market_value.py` (Phase 9) also imports nothing from `src/`, for a different reason:** it isn't
+StatsBomb-specific at all — its only inputs are a plain DataFrame (`player`/`team`/
+`position_group`/`competition` columns) and an external Transfermarkt CSV mirror it downloads
+itself. `app_data.py` is the only caller, and the only place that decides *which* per-90 table's
+players get matched.
 
 **`features.py` and `similarity.py` don't import `config.py` either**, even though the whole
 project is "about" specific StatsBomb competitions. `build_training_dataset(datasets)` and

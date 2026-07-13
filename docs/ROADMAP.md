@@ -185,14 +185,16 @@ the cloud by Guilherme directly.
   and `statsbombpy` would all need re-checking for wheel availability and behaviour on a newer
   interpreter, which is unplanned rework for zero model/product gain. Pure housekeeping — pick up
   only when there's no deadline pressure, not opportunistically mid-demo-prep.
-- **Side-by-side player comparison view** — flagged 2026-07-13 during pitch-prep as a natural app
-  extension (radar overlay, stat-table diff, xG diff for two players at once); backlog only,
-  deliberately not scoped further or built this session.
-- **Market value (Transfermarkt) alongside "players like X"** — flagged 2026-07-13 ahead of a
-  pitch; a maintained open dataset exists (`dcaribou/transfermarkt-datasets`, has a dated
-  `player_valuations` table), so data isn't the blocker — matching StatsBomb player identities to
-  Transfermarkt ones (no shared ID) is. See [DATA.md](DATA.md#market-value-transfermarkt--flagged-2026-07-13-not-started)
-  for the full assessment.
+- ~~**Side-by-side player comparison view**~~ — flagged 2026-07-13 during pitch-prep, built
+  2026-07-14: a new "Compare players" view, any two players (radar overlay when they share a
+  position group, market value and Finishing always compare directly). See MODULES.md's Module B
+  section.
+- ~~**Market value (Transfermarkt) alongside "players like X"**~~ — flagged 2026-07-13 ahead of a
+  pitch, built 2026-07-14: `src/market_value.py` resolves a Transfermarkt valuation per player by
+  name (no shared ID exists, so this needed real entity-resolution engineering — see
+  ML_LEARNING_LOG.md for two real matching bugs found and fixed against actual data), ~90% match
+  rate on the four men's competitions. See [DATA.md](DATA.md#transfermarkt-market-value-data-phase-9-built-2026-07-14)
+  for the full account.
 - **xA / chance-creation model** — sibling to xG on the same pipeline; also upgrades 6d.
 - **Module C (PUP)** — only if desired; carries a selection-bias confound + label-acquisition cost,
   and Phase 5 already delivers most of its payoff. Spec:

@@ -128,6 +128,58 @@ Current processed data state:
 
 ---
 
+## Transfermarkt Market Value Data (Phase 9, built 2026-07-14)
+
+Pairs a "players like X" match with a market-value number (e.g. "similar profile, cheaper") —
+raised ahead of a pitch on 2026-07-13 as a candidate addition (see the git history for that
+research spike), built the next day. See `src/market_value.py` for the implementation and
+[FRAMEWORK.md](FRAMEWORK.md)'s Out of Scope note on the modelling-vs-displaying distinction.
+
+**Source:** [dcaribou/transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets),
+a maintained, weekly-refreshed, openly-licensed CSV mirror of Transfermarkt (also on
+[Kaggle](https://www.kaggle.com/datasets/davidcariboo/player-scores)) — no official Transfermarkt
+API exists. Two tables used: `players.csv.gz` (current profile) and `player_valuations.csv.gz`
+(dated history, ~508k rows) — fetched via a plain `urllib` GET with a browser `User-Agent` (the
+hosting R2 bucket returns `403` for Python's default UA, and for HEAD/Range requests — checked
+directly, not assumed) and cached under `data/transfermarkt/`.
+
+**Entity resolution (the real cost, exactly as flagged in the original research spike):** there is
+no shared player ID between StatsBomb and Transfermarkt. `match_players_to_transfermarkt` resolves
+it with normalised-name matching — exact match first, then a rarity-weighted token-subset fallback
+for the very common "StatsBomb logs the full legal name, Transfermarkt logs the popular name" case
+(StatsBomb's "Cristiano Ronaldo dos Santos Aveiro" ↔ Transfermarkt's "Cristiano Ronaldo"). A plain
+"most tokens wins" rule was tried first and is a real, demonstrable trap for Lusophone/Hispanic
+full legal names: a coincidental collision built entirely from common surname tokens ("Santos",
+"Junior", "Silva", "Da") can outrank the correct match — it nearly matched Neymar to an unrelated
+real player, "Júnior Santos", purely because those tokens are common. Fixed by weighting tokens by
+inverse corpus frequency (so "neymar," genuinely rare, outweighs a same-length match built from
+common surnames) — see `_token_rarity_scores` and ML_LEARNING_LOG.md for the full account,
+including a second real bug (a name-construction particle like "de" winning by default when it was
+the *only* candidate, fixed by requiring at least one non-particle token). A name with zero or
+still-ambiguous candidates (e.g. two genuinely different real players who share a name and
+position) is left unmatched, never guessed — **~90% of the four men's competitions matched**
+(1,215 of ~1,344 players) on the real data, verified by spot-checking that every star player
+(Messi, Ronaldo, Neymar, Suárez, Kane, Agüero, Ibrahimović, Higuaín...) resolved to a plausible,
+era-correct valuation.
+
+**Valuation is dated, not one number:** uses `player_valuations`' history, picking the entry
+nearest a representative "as of" date per competition (`market_value.MARKET_VALUE_AS_OF_DATES` —
+2016-01-01 for the four 2015/16 men's leagues), not `players.market_value_in_eur` (Transfermarkt's
+*current* figure, which would show e.g. a 38-year-old's much-reduced valuation next to their
+24-year-old-season stats).
+
+**Coverage gap, verified not assumed:** this Transfermarkt mirror only covers men's football —
+checked directly against the real `players` table (every `current_club_domestic_competition_id` is
+a men's league code; zero rows matched any known women's club name) before relying on it. Frauen
+Bundesliga / FA WSL players are skipped outright by `build_market_value_table` (never
+attempted-and-failed), not silently blank with no explanation.
+
+**Legality:** secondhand, not independently reviewed — Transfermarkt's own ToS hasn't been checked;
+the upstream mirror is itself built by scraping public pages, so using it inherits that risk rather
+than removing it. Treated as acceptable for a personal portfolio demo, as before.
+
+---
+
 ## Cache Files (gitignored, in `data/`)
 
 | File | Format | Contents |
@@ -138,6 +190,7 @@ Current processed data state:
 | `data/shots_generalisation.parquet` | Parquet | Combined shots across `config.GENERALISATION_TEST_SETS` (Phase 4c held-out tournaments), scored per-competition by `metrics.compute_generalisation_metrics` |
 | `data/player_per90_pl_2015_16.pkl` | Pickle | Per-90 player features + position for PL 2015/16 clustering |
 | `data/physical_per90_skillcorner_sample.pkl` | Pickle | SkillCorner physical per-90 features for A-League sample |
+| `data/transfermarkt/players.csv.gz`, `player_valuations.csv.gz` | CSV (gzip) | Raw Transfermarkt tables, downloaded once and reused by `market_value.build_market_value_table` |
 
 ---
 
@@ -180,35 +233,3 @@ Honest assessment before reaching for this:
 - **Verdict:** worth a small spike (one competition, one season) if/when Phase 4's data-availability
   friction or Module C gets picked up — not a default assumption that it will work cleanly.
 
-### Market value (Transfermarkt) — flagged 2026-07-13, not started
-
-Raised ahead of a pitch: pairing a "players like X" match with a market-value number (e.g.
-"similar profile, cheaper") would sharpen Module B's scouting story, which today explicitly stops
-at playing style (see [FRAMEWORK.md](FRAMEWORK.md)'s Out of Scope note on transfer fees/market
-value).
-
-**What's available:** no official free API — Transfermarkt publishes none — but
-[dcaribou/transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets) is a
-maintained, weekly-refreshed, openly-licensed CSV/Parquet mirror (also on
-[Kaggle](https://www.kaggle.com/datasets/davidcariboo/player-scores)): 37k+ players, transfers,
-appearances, and — the relevant one — a dated `player_valuations` table, queryable directly via
-DuckDB with no full download needed. Meaningfully lower-effort than scraping Transfermarkt
-ourselves (several ready-made scrapers exist too, e.g. `dcaribou/transfermarkt-scraper`, but reuse
-the maintained dataset rather than re-running one).
-
-**Why it's not a quick add despite the data being free and ready:**
-- **No shared player ID with StatsBomb.** Matching "Aaron Cresswell, West Ham, PL 2015/16" to a
-  Transfermarkt record is a name-resolution problem — accents, full-birth-name vs. shirt-name
-  mismatches, and same-name collisions across clubs all need handling. That's the real cost, not
-  the data pull.
-- **Valuation is dated, not one number.** StatsBomb's competitions here span 2015/16 to 2023/24, so
-  showing "value at the time of that season" vs. "value today" is a real decision, not a detail —
-  picking the wrong snapshot would misrepresent a player's era.
-- **Legality is secondhand, not reviewed.** Transfermarkt's own ToS hasn't been checked here; the
-  upstream dataset is itself built by scraping public pages, so using someone else's mirror
-  inherits that risk rather than removing it. Likely fine for a personal portfolio demo; worth an
-  actual look before relying on it beyond that.
-
-**Verdict:** genuinely promising and cheaper than assumed thanks to the ready-made dataset, but the
-entity-resolution step is real engineering, not a config line — a scoped future session, not a
-same-day addition. Not implemented.

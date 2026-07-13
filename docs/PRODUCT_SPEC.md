@@ -199,6 +199,38 @@ screenshots confirming both the goalkeeper archetype panel and a genuinely blank
 Leaderboard cell for a La Liga-only filter. `metrics.json` unchanged (byte-identical) — this
 pass's scope is the app's wider pool, not the notebook/pipeline's narrow single-competition one.
 
+### Market value + two-player comparison — 2026-07-14
+
+Two backlog items from the previous session's "Bigger, not scoped further" list, both built:
+
+- **Market value.** New `src/market_value.py` (see DATA.md's Transfermarkt section for the full
+  data/entity-resolution account) resolves a Transfermarkt valuation per player by name, wired
+  into `app_data.build_app_artifacts` as a new `market_value.parquet` artifact and shown in three
+  spots: a player's own page (a caption naming the matched Transfermarkt name and valuation date,
+  for transparency), the "players like X" table (directly answering the "similar profile, cheaper"
+  pitch), and the Leaderboard (a new column, using the same hand-formatted-text-column fix as
+  xG/G-xG to avoid reintroducing the "None" bug for a third nullable column). ~90% match rate on
+  the four men's competitions (1,215 of ~1,344 players) — two real entity-resolution bugs found
+  and fixed against actual Transfermarkt data before trusting the match rate, see
+  ML_LEARNING_LOG.md.
+- **Compare players.** New sidebar view, two independent player pickers (search + select, mirrors
+  the Player explorer's own pattern) pulling from the whole pool — not filtered by the sidebar's
+  position/competition selectors, since a comparison is meaningful across positions too. Market
+  value and a Finishing panel always compare directly; signature stats, an overlaid radar (new
+  `visualisation.plot_player_radar_comparison`, using mplsoccer's native `draw_radar_compare`), and
+  a percentile table only render when both picks share a position group.
+
+Verified: 86 tests green (75 + 11 new `tests/test_market_value.py` cases, several reproducing the
+real matching bugs found — see ML_LEARNING_LOG.md), a scripted `AppTest` pass covering the Compare
+players view (same-position and cross-position picks) and a market-value caption render, and
+Playwright-over-Edge screenshots confirming: zero literal "None" text anywhere in the new UI, a
+real Messi-vs-Ronaldo comparison with a correct radar overlay and "valued €X less than" caption,
+and the cross-position (Forward vs. Goalkeeper) case correctly skipping the radar section without
+an exception. One real screenshot false alarm along the way — a Leaderboard screenshot taken right
+after switching views showed stale Compare-players content underneath, the same documented
+Playwright timing artifact from a previous session (see ML_TOOLING.md); reshot with a longer wait
+and it rendered cleanly, confirming it wasn't a real bug. `metrics.json` unchanged.
+
 ---
 
 ## Purpose

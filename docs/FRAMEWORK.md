@@ -54,9 +54,10 @@ unique).
 - **Decision it informs:** a like-for-like replacement for a departing player, a cheaper/less-hyped
   alternative to an expensive transfer target, or simply what *kind* of player an unfamiliar name is.
 
-It does not know transfer fees, age, or contracts — it matches on *playing style from on-pitch
-output* only. Pairing its shortlist with budget/age filters is a human step (and a candidate
-front-end feature).
+The match itself is on *playing style from on-pitch output* only — it does not know age or
+contracts. As of Phase 9 (2026-07-14) it does pair a shortlist with an external **Transfermarkt
+market value**, matched by name (see DATA.md's Market value note) — a real, if approximate,
+answer to "cheaper," not just a manual budget filter left to the human.
 
 ---
 
@@ -95,8 +96,10 @@ front-end feature).
   SkillCorner (physical tracking) datasets share zero players, so physical and event metrics are
   demonstrated separately, not fused per player. A club's internal data would have both for one
   roster; public data does not.
-- **Transfer-fee / market-value modelling.** Out of scope; the tool informs a human's valuation,
-  it doesn't price players.
+- **Transfer-fee / market-value *modelling*.** Still out of scope; the tool informs a human's
+  valuation, it doesn't price players itself. **Displaying** an external Transfermarkt valuation
+  alongside a similarity match is in scope as of Phase 9 (2026-07-14, see DATA.md) — a genuinely
+  different thing from predicting one.
 
 ---
 

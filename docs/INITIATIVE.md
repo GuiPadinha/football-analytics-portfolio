@@ -34,7 +34,7 @@ was folded in — the old Phase 3 (360 xG) and Phase 5 (product) moved *later* b
 | **6** | Module B upgrades: Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features | part of old 6 | ⬜ Not started |
 | **7** | New model: 360-context xG + post-shot xG (xGOT) | **3** | ⬜ Not started |
 | **8** | Product layer: lightweight Streamlit app — [spec done](PRODUCT_SPEC.md) 2026-07-01, minimal v1 built 2026-07-04 | **5** | ✅ Done — [live](https://gpfootball-analytics-portfolio.streamlit.app) (deployed 2026-07-09) |
-| **9** | Opportunistic: xA/chance-creation model, Module C (PUP), remaining alt-models (hierarchical, cosine, monotonic GBM), 2026 World Cup predictive model (data-availability check first) | old 6 + Module C | ⬜ Not started |
+| **9** | Opportunistic: xA/chance-creation model, Module C (PUP), remaining alt-models (hierarchical, cosine, monotonic GBM), 2026 World Cup predictive model (data-availability check first) | old 6 + Module C | 🟡 Two backlog items done 2026-07-14 (market value, Compare players view — see ROADMAP.md); the rest not started |
 
 Execution order: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8, with 9 opportunistic. Full per-phase task
 lists live in [ROADMAP.md](ROADMAP.md).
@@ -93,6 +93,15 @@ by hand.
   the data layer, not the config layer). 75 tests green (72 + 3 new for the normalisation
   function), `metrics.json` unchanged (byte-identical — this pass's scope is the app's wider
   pool, not the notebook's narrow one).
+- **2026-07-14** — **Phase 9 backlog: market value + Compare players view, both built.**
+  `src/market_value.py` resolves a Transfermarkt valuation per player by name (no shared ID exists
+  between StatsBomb and Transfermarkt) — a rarity-weighted token-matching approach, fixed twice
+  against real bugs found in real data (a common-surname collision that nearly mismatched Neymar;
+  a name-particle-only false match), ~90% match rate on the four men's competitions (1,215 of
+  ~1,344 players); shown on a player's page, "players like X," and the Leaderboard. New "Compare
+  players" sidebar view puts any two players side by side — market value/Finishing always compare;
+  radar/signature-stats/percentiles only when both share a position group. 86 tests green (75 + 11
+  new), `metrics.json` unchanged.
 
 ---
 

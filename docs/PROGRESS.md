@@ -6,97 +6,83 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
-## 2026-07-13 (cont. 6) — Goalkeeper clustering, cross-league similarity normalisation, and the Leaderboard "None" bug fixed
+## 2026-07-14 — Market value (Transfermarkt) + two-player Compare view
 
-Three explicitly-scoped items from the top of this session, all shipped: goalkeeper style-archetype
-clustering, cross-league normalisation for similarity (Phase 4b's original open item), and the
-Leaderboard's long-standing blank-cell-shows-"None" cosmetic bug. Scoped before writing any code —
-computed the real silhouette/elbow numbers on the actual production pools first (via scratch
-scripts), rather than picking K or a normalisation design by assumption.
+Continuing straight on from the previous session's three fixes: picked up two of the three
+remaining backlog items named explicitly at the start of this pass (market-value integration,
+side-by-side comparison view), deliberately stopping short of the third (a multi-season "player
+career" page — needs new data pulls, out of scope here).
 
-**Goalkeeper clustering.** No K-means/silhouette decision had ever been made for goalkeepers (wired
-into the app 2026-07-05/07-13 with their own feature set, but "players like X" only ever ranked by
-raw distance, no cluster label). Computed the elbow/silhouette curve on the actual 124-keeper
-6-competition pool the app clusters (there's no single-league goalkeeper table to match the
-outfield notebook's narrower scope against — goalkeepers only ever existed in the wide pool):
-silhouette peaks at K=2 (~0.217, the same soft-continuum shape every outfield group shows). Kept
-K=4 anyway, the same "archetype granularity over the metric's own preference" call already made for
-outfield players, at a comparable silhouette value to theirs (0.155 vs. 0.133–0.153). Wired via a
-new `src/app_data.py::_cluster_position_groups`, generalising the old outfield-only
-`_add_cluster_labels` to take a group list and a feature-column list — goalkeepers and outfield
-players now share one clustering code path and the app's Style archetype panel.
+**Market value.** Researched `dcaribou/transfermarkt-datasets` properly before writing any
+matching code — confirmed real network access (Python via the Bash tool has it; only Git Bash's
+own shell-level `curl` doesn't, a refinement of an older, over-broad ML_TOOLING.md note), found the
+real schema (`players`/`player_valuations` tables, dated valuation history), and hit a real `403`
+from the hosting CDN that turned out to be User-Agent sniffing, not an auth problem (see
+ML_TOOLING.md). Built `src/market_value.py`'s entity resolution — exact name match first, then a
+token-subset fallback for "StatsBomb logs the full legal name, Transfermarkt the popular one." The
+first version of that fallback (rank candidates by raw token count) was validated against real
+data before shipping, not assumed correct, and it genuinely failed: it nearly matched Neymar to an
+unrelated real player, "Júnior Santos," because common Portuguese surname tokens ("Santos",
+"Junior") outscored the correct, much rarer "neymar" token under a naive count-based rule. Fixed
+by weighting tokens by inverse corpus frequency instead of raw count — full account, including a
+second bug (a name-construction particle like "de" winning a match by default when it was the only
+candidate), in ML_LEARNING_LOG.md. Final result, verified against real 2015/16-era valuations for
+every star player checked (Messi, Ronaldo, Neymar, Suárez, Kane, Agüero, Ibrahimović, Higuaín):
+**1,215 of ~1,344 players matched (~90%)** across the four men's competitions in the pool — checked
+directly, not assumed, that this Transfermarkt mirror has zero women's-football coverage at all,
+so Frauen Bundesliga/FA WSL players are skipped outright rather than attempted-and-failed. Wired
+into `app_data.build_app_artifacts` as a new `market_value.parquet` artifact (its own,
+independently-rebuildable step — `with_market_value=False` skips it for an offline dev build) and
+shown in three places: a player's own page, the "players like X" table, and a new Leaderboard
+column (formatted with the same hand-formatted-text-column pattern the previous session's "None"
+fix established, to avoid reintroducing that exact bug for a third nullable column).
 
-**Cross-league normalisation.** The similarity pool spans 6 competitions of very different
-competitiveness (PL 2015/16 down to FA WSL 2023/24), and per-90 rates were being compared raw
-across them. No external league-strength rating exists in this project's data (checked DATA.md's
-SofaScore/FlashScore candidate-source note again — that's a standings-table source, not a
-competitiveness index), so the honest, data-only fix is relative: `similarity.
-normalize_within_competition` (new, `src/similarity.py`) expresses each per-90 stat as standard
-deviations above/below the player's own competition's average before clustering or
-`find_similar_players` ever compare across leagues. Checked whether this also changed the *K*
-decision for the three existing outfield groups before shipping it — it didn't (silhouette still
-peaks at K=2 for all three; K=4's value moves by ±0.02, not a material shift), which is the right
-outcome: the fix should correct *which* players look similar, not accidentally retune how tightly
-they cluster. Wired into `_cluster_position_groups` for both outfield and goalkeeper clustering, and
-into `app.py`'s `find_similar_players`/cluster-profile calls via new `_lz`-suffixed feature-column
-lists (`PER90_LEAGUE_Z_COLUMNS`/`GK_PER90_LEAGUE_Z_COLUMNS`). Radar axes, percentiles, and signature
-stats deliberately stay on the raw per-90 rates — those are "how good is this player in real units"
-displays, not a similarity computation, so a fan still reads an actual rate, not a z-score they'd
-need to be taught to interpret. Copy updated throughout the app (Player explorer's "players like X"
-caption, the Style archetype panel's explanatory text, "About & Roadmap"'s "How each model works"
-and "What's already shipped, and what's next" sections, the Methodology expander's "Known
-limitations" paragraph) to describe the real mechanism rather than the old "not yet designed"
-language.
+**Compare players.** A new sidebar view — two independent player search/pick widgets (mirrors the
+Player explorer's own pattern) pulling from the whole unfiltered pool, since a comparison across
+positions/competitions is a reasonable thing to want (e.g. "is this expensive winger really worth
+more than that cheap forward"). Market value and a Finishing panel always compare directly;
+signature stats, an overlaid radar (new `visualisation.plot_player_radar_comparison`, built on
+mplsoccer's own `draw_radar_compare` — no need to hand-roll a two-polygon radar), and a percentile
+table only render when both picks share a position group, with a plain-language info message
+explaining why when they don't.
 
-**Leaderboard "None" bug.** Three independent fixes were tried and verified live in the previous
-session, none worked (full account in ML_TOOLING.md) — used `WebSearch` this time before attempting
-a fourth blind fix, and found the real cause: a still-open Streamlit GitHub issue (#7360, "Allow
-configuration of missing value placeholder in `st.dataframe`") confirms this Streamlit version
-hardcodes a missing *numeric* cell to the literal text "None" with no config-level override —
-consistent with why Styler `na_rep` and `column_config.NumberColumn`'s own `format=` both failed
-regardless of how they were combined. The real fix has to happen at the data layer: `xG`/`G-xG` are
-now hand-formatted `TextColumn`s (`f"{v:.1f}"`/`f"{v:+.1f}"`, `""` for missing) instead of
-`NumberColumn`s, so there is no null numeric cell for the grid to special-case. The one
-complication: G-xG's diverging background colour needs numeric input
-(`Styler.background_gradient`), which can't run on the now-text column — worked around with a small
-manual `_diverging_css` helper that samples the same colormap directly from the still-numeric
-`xg_diff` values before they're overwritten by the display strings, applied via `Styler.apply`.
-**Known, accepted trade-off, stated in a code comment:** these two columns now sort lexically when
-a user clicks the header ("+10.5" sorts before "+4.2"), not numerically — there is no
-`column_config` option in this Streamlit version to declare "sort by column A, display column B,"
-so a perfectly numeric click-sort and a blank-for-missing cell aren't simultaneously achievable
-here. The default row order (sorted by Goals) is unaffected.
+**Verification.** Full `pytest` suite green (**86** — 75 unchanged + 11 new
+`tests/test_market_value.py` cases, several reproducing the real matching bugs above as regression
+tests: the Santos/Junior collision with a padded synthetic corpus matching the real one's token
+frequencies, the particle-only false match, a genuine two-real-players ambiguity correctly left
+unresolved). A scripted `AppTest` pass covered the Compare players view (same-position and
+cross-position picks, checking for the right subheaders/info-message) and a market-value caption
+render on a real player's page — zero exceptions. Playwright-over-Edge screenshots confirmed: a
+real Messi-vs-Ronaldo comparison renders a correct blue/orange radar overlay and a "Cristiano
+Ronaldo dos Santos Aveiro is valued €10.0M less than..." caption; a Forward-vs-Goalkeeper pick
+correctly shows the cross-position info message and skips the radar section without an exception;
+zero literal "None" text anywhere in either new feature; the Leaderboard's new Market value column
+renders correctly (including a genuinely blank cell for the one La Liga forward whose name
+matched two different real Transfermarkt players — left unresolved by design, not a bug). One real
+screenshot false alarm on the way, immediately recognised rather than chased: a Leaderboard
+screenshot taken right after a view switch showed stale Compare-players content underneath — the
+exact documented Playwright timing artifact from a previous session (ML_TOOLING.md) — reshot with
+a longer wait and it rendered cleanly. `python -m src.metrics` regenerates `metrics.json`
+byte-identical throughout (this session's scope never touches the notebook/pipeline's narrow
+single-competition numbers).
 
-**Verification.** Full `pytest` suite green (**75** — 72 unchanged + 3 new `test_similarity.py`
-cases for `normalize_within_competition`: relative z-scoring across very different league
-baselines, the zero-std/singleton-group guard, and grouping by an extra column). `python -m
-src.metrics` regenerates `metrics.json` byte-identical (`git diff` empty) — this session's scope is
-the app's wider multi-competition pool, not the notebook/pipeline's narrow single-competition one,
-so the headline numbers every doc quotes are untouched by design. A scripted `AppTest` pass covered
-all four position groups (including Goalkeeper, checking for the "Style archetype" subheader) and
-all three views, plus the Leaderboard's all-blank-G-xG guard path (La Liga-only filter) — zero
-exceptions. Playwright-over-Edge screenshots (system Edge, per the established recipe, at a wider
-2000px viewport to fit every Leaderboard column) confirmed: zero literal "None" occurrences on the
-Leaderboard with a La Liga-only filter (previously every blank cell in that view showed it); real
-xG/G-xG values still render correctly with their diverging background colour intact; the goalkeeper
-Style archetype panel renders a real 4-cluster readout ("skews high on Sweeper Actions... a style
-shared with 33 other players") and a cross-league "players like X" match (an Italian Serie A
-goalkeeper matched to a Premier League one).
-
-**Docs updated:** MODULES.md (Module B's app-pool/goalkeeper/planned-upgrades paragraphs),
-DATA.md (Phase 4 section), ML_LEARNING_LOG.md (two new dated Module B entries with the real
-silhouette numbers behind both K decisions), ML_TOOLING.md (closed out the "None" bug entry with
-the real fix and the GitHub issue reference), INITIATIVE.md (Log), ROADMAP.md (Phase 4b entry),
-PITCH.md (open-backlog and "why isn't X done" sections), PRODUCT_SPEC.md (new dated section).
+**Docs updated:** DATA.md (new "Transfermarkt Market Value Data" section, replacing the old
+"flagged, not started" research-spike note; Cache Files table), MODULES.md (new Module B
+paragraph), FRAMEWORK.md (two Out of Scope notes — modelling vs. displaying a market value is a
+real distinction now, not just a future one), ML_LEARNING_LOG.md (the rarity-weighting entity-
+resolution lesson), ML_TOOLING.md (the R2/User-Agent gotcha, and the Git-Bash-vs-Python-network
+clarification), ROADMAP.md (Phase 9 list), PITCH.md (demo script, key numbers, roadmap, "why isn't
+X done" sections), PRODUCT_SPEC.md (new dated section), app.py's own "About & Roadmap" copy (Data
+used / How to use / What's shipped sections).
 
 ---
 
 ## Commit Status
 
-Verified against `git log`/`git status` 2026-07-13. Git CLI is used directly (see CLAUDE.md's
+Verified against `git log`/`git status` 2026-07-14. Git CLI is used directly (see CLAUDE.md's
 Session Workflow) — this section is a lightweight pointer, not a substitute for `git log`/`git
-status`. Latest commit on `origin/main`: `5abd590`. The "cont. 6" entry above (goalkeeper
-clustering, cross-league normalisation, Leaderboard "None" fix) is **complete but not yet
-committed** — working tree has uncommitted changes as of this write-up (per CLAUDE.md's Session
-Workflow, only commit when explicitly asked). Entries through 2026-07-13 (cont. 5) moved to
-[PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md) to keep this file under 150 lines.
+status`. Latest commit on `origin/main`: `067a9d2` (goalkeeper clustering, cross-league
+normalisation, Leaderboard "None" fix). The market value + Compare players entry above is
+**complete but not yet committed** — working tree has uncommitted changes as of this write-up (per
+CLAUDE.md's Session Workflow, only commit when explicitly asked). Entries through 2026-07-13
+(cont. 6) moved to [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md) to keep this file under 150 lines.

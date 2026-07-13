@@ -20,6 +20,15 @@ pass, both the three outfield groups and goalkeepers are K-means clustered via
 `_cluster_position_groups`, on cross-league-normalised features (`similarity.normalize_within_
 competition`) rather than the raw pooled per-90 rates — see that function's docstring for why.
 
+Market value (Phase 9, same-day follow-up): `market_value.build_market_value_table` resolves an
+external Transfermarkt valuation per player, written as its own artifact
+(`app_data/market_value.parquet`) rather than joined into `player_per90.parquet` — it needs a
+network pull (cached under `data/transfermarkt/`, see that module), so keeping it a separate,
+independently-rebuildable step means a normal `python -m src.app_data` run doesn't need network
+access if the Transfermarkt cache is already warm, and a stale/missing market-value pull can't
+block the rest of the build. Only ever resolved for the four men's competitions in
+`market_value.MARKET_VALUE_AS_OF_DATES` — see that module's docstring for why.
+
 Usage:
     python -m src.app_data
 """
@@ -29,6 +38,7 @@ from pathlib import Path
 import pandas as pd
 
 from src import config
+from src.market_value import build_market_value_table
 from src.models import build_feature_matrix, build_player_xg_table, train_logistic_regression
 from src.pipeline import CLUSTER_K, POSITION_GROUPS, build_shot_tables
 from src.similarity import (
@@ -137,11 +147,16 @@ def _cluster_position_groups(per90_features, position_groups, feature_columns, n
     return pd.concat(labelled_groups, ignore_index=True)
 
 
-def build_app_artifacts(app_data_dir=APP_DATA_DIR):
-    """Write the three artifacts the app reads: per-90 features, player xG table, shots+xG.
+def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
+    """Write the artifacts the app reads: per-90 features, player xG table, shots+xG, market value.
 
     Args:
         app_data_dir (str | Path): destination directory, created if missing.
+        with_market_value (bool): build/write `market_value.parquet` too. Defaults on, but
+            escapable (e.g. offline dev iteration, or if Transfermarkt's host is briefly down) —
+            `False` skips the one network-dependent step in an otherwise offline build; app.py
+            already treats a missing/stale `market_value.parquet` as "no data for this player"
+            rather than a hard failure.
 
     Returns:
         dict: row counts per artifact, as a cheap sanity-check summary for the caller.
@@ -183,11 +198,18 @@ def build_app_artifacts(app_data_dir=APP_DATA_DIR):
     xg_table.to_parquet(app_data_dir / "player_xg_table.parquet")
     flagship_shots.to_parquet(app_data_dir / "shots_with_xg.parquet")
 
-    return {
+    result = {
         "players": len(per90_features),
         "xg_table_rows": len(xg_table),
         "shots": len(flagship_shots),
     }
+
+    if with_market_value:
+        market_value = build_market_value_table(per90_features)
+        market_value.to_parquet(app_data_dir / "market_value.parquet")
+        result["market_value_rows"] = len(market_value)
+
+    return result
 
 
 def main():
@@ -195,7 +217,8 @@ def main():
     result = build_app_artifacts()
     print(
         f"Wrote app_data/: {result['players']} players, "
-        f"{result['xg_table_rows']} xG-table rows, {result['shots']} shots."
+        f"{result['xg_table_rows']} xG-table rows, {result['shots']} shots, "
+        f"{result.get('market_value_rows', 0)} market values."
     )
 
 

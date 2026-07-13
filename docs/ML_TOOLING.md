@@ -77,9 +77,17 @@ Fixed with `safe_bool_column` / `safe_column` helpers in `data_loader.py` (share
 
 ---
 
-## Git Bash has no network egress; PowerShell does
+## Git Bash has no network egress; PowerShell does — but this is about the *shell*, not Python
 
-Hit during Phase 4 research: `curl` and similar network calls from the Bash tool (Git Bash) silently return nothing in this environment, with no obvious error to explain why. PowerShell's `Invoke-WebRequest` works fine for the same request. Any raw HTTP fetch (verifying a StatsBomb competition/season id against the live API, checking a candidate data source) should go through PowerShell here, not Bash — don't burn time re-diagnosing a "network is down" false alarm.
+Hit during Phase 4 research: `curl` and similar network calls from the Bash tool (Git Bash) silently return nothing in this environment, with no obvious error to explain why. PowerShell's `Invoke-WebRequest` works fine for the same request.
+
+**Clarified 2026-07-14 (market-value research):** this restriction is specifically Git Bash's own shell-level networking (`curl`, presumably any other Bash-native network tool) — a **Python process launched from the Bash tool has normal network access**, checked directly (`python -c "import urllib.request; urllib.request.urlopen(...)"` succeeded from Bash without issue) rather than assumed from the older note above. So: a raw shell command (`curl`, `wget`) needs PowerShell here; a Python script that happens to make an HTTP call does not — don't reflexively route every network-touching task through PowerShell if it's actually going to run as Python, that's real friction (PowerShell's own syntax, output parsing) for no reason.
+
+---
+
+## A CDN can 403 a request that "looks like" a script, even for public data
+
+Hit fetching Transfermarkt CSVs from their R2-hosted mirror (`dcaribou/transfermarkt-datasets`): both a `HEAD` request and a `GET` with a `Range` header returned `403 Forbidden`, with no auth involved and the data being genuinely public — looked like a permissions problem at first. The actual cause: the bucket was rejecting requests carrying Python's default `urllib` `User-Agent` string. A plain `GET` with an explicit browser-like `User-Agent` header (`"Mozilla/5.0"`, no more specificity needed) succeeded immediately. **Lesson:** a `403` on an otherwise-public, unauthenticated resource is worth trying a browser `User-Agent` before assuming the data isn't actually accessible or that a real permissions/auth flow is needed — some CDNs/object stores use UA sniffing as a crude anti-scraping measure even on data meant to be freely downloaded.
 
 ---
 

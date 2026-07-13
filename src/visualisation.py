@@ -231,6 +231,68 @@ def plot_player_radar(
     return ax
 
 
+def plot_player_radar_comparison(
+    player_a_row, player_b_row, population, feature_columns, ax=None, title=None,
+    circle_facecolor="#f0f0f0", circle_edgecolor="#cccccc",
+    player_a_color="#1a78cf", player_b_color="#e8752f",
+    player_a_label="Player A", player_b_label="Player B",
+):
+    """Draw two players' per-90 metrics overlaid on one radar (two-player comparison view).
+
+    Same axis-scaling reasoning as `plot_player_radar` (5th-95th percentile of `population`, to
+    avoid one extreme outlier compressing everyone else's radar into an unreadable sliver) — the
+    only difference is drawing both players via mplsoccer's own `draw_radar_compare` (built for
+    exactly this two-radar-overlay case) instead of `draw_radar` once.
+
+    Args:
+        player_a_row, player_b_row (pandas.Series): one row each of a per-player feature table,
+            both must contain `feature_columns` — callers are responsible for only comparing two
+            players from a `population` whose `feature_columns` mean the same thing (i.e. the
+            same position group's feature set).
+        population (pandas.DataFrame): the comparison group used to set each axis's range —
+            typically both players' shared position group.
+        feature_columns (list[str]): columns to plot, one per radar axis.
+        ax (matplotlib.axes.Axes, optional): existing axes to draw on (plain rectangular, not
+            polar — see `plot_player_radar`'s same note); a new figure is created if omitted.
+        title (str, optional): plot title.
+        circle_facecolor, circle_edgecolor (str): ring/background colours, same dark-theme
+            override pattern as `plot_player_radar`.
+        player_a_color, player_b_color (str): each player's own filled shape colour — default to
+            this project's blue/orange accent pair (never two same-temperature hues, per the
+            dataviz skill's colour formula, since the two players need to read as clearly
+            distinct, not "which one is higher/lower" on a shared scale).
+        player_a_label, player_b_label (str): legend labels.
+
+    Returns:
+        matplotlib.axes.Axes: the axes the radar was drawn on.
+    """
+    labels = [col.replace("_p90", "").replace("_", " ").title() for col in feature_columns]
+    min_range = population[feature_columns].quantile(0.05).tolist()
+    max_range = population[feature_columns].quantile(0.95).tolist()
+
+    radar = Radar(labels, min_range, max_range, num_rings=4)
+
+    if ax is None:
+        _, ax = plt.subplots(figsize=(8, 8))
+    radar.setup_axis(ax=ax, facecolor=circle_facecolor)
+    radar.draw_circles(ax=ax, facecolor=circle_facecolor, edgecolor=circle_edgecolor)
+    radar.draw_radar_compare(
+        player_a_row[feature_columns].tolist(), player_b_row[feature_columns].tolist(), ax=ax,
+        kwargs_radar={"facecolor": player_a_color, "alpha": 0.5},
+        kwargs_compare={"facecolor": player_b_color, "alpha": 0.5},
+    )
+    radar.draw_param_labels(ax=ax, fontsize=10)
+
+    handles = [
+        plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=c, markersize=10, label=lbl)
+        for lbl, c in [(player_a_label, player_a_color), (player_b_label, player_b_color)]
+    ]
+    ax.legend(handles=handles, loc="upper right", bbox_to_anchor=(1.15, 1.1), fontsize=10)
+    if title:
+        ax.set_title(title, fontsize=13, pad=30)
+    return ax
+
+
 def plot_similar_players_bar(similar, accent_color="steelblue", grid_color="#dddddd", ax=None):
     """Horizontal bar chart of "players like X" results, closest match at top.
 

@@ -81,6 +81,33 @@ Key gotchas and lessons — most recent first:
 
 Key gotchas and lessons — most recent first:
 
+- **A naive "most tokens wins" name-matching rule has a real, demonstrable failure mode on
+  Lusophone/Hispanic full legal names — common surname tokens can outrank a rarer, correct
+  mononym match** (2026-07-14, Transfermarkt market-value entity resolution). Matching
+  StatsBomb's "Neymar da Silva Santos Junior" to Transfermarkt's "Neymar" needs a token-subset
+  fallback (StatsBomb logs the full legal name, Transfermarkt the popular one) — but scoring
+  candidates by raw token count first picked a real, unrelated player, "Júnior Santos," because
+  "Santos"/"Junior" are common enough surnames (95/93 occurrences across ~50k Transfermarkt
+  profiles) that a 2-token collision built entirely from them outscored the correct 1-token
+  match ("neymar" itself occurs only twice). Fixed by weighting each candidate by *inverse
+  corpus frequency* summed across its tokens (`_token_rarity_scores`/`_rarity_score`,
+  `src/market_value.py`) instead of raw token count — a rare, distinctive token now correctly
+  outweighs a same-length match built from common ones. Also required removing a hard
+  broad-position pre-filter that was silently *causing* this exact bug: Transfermarkt tags
+  Neymar "Midfield," this project's own StatsBomb-derived position is "Forward," so filtering
+  candidates to the "expected" position excluded the real Neymar entirely and let the
+  same-position collision win by default. Position is now only a last-resort tiebreaker between
+  otherwise-equally-good name matches, not a pre-filter — checked directly against real
+  Transfermarkt data (Ronaldo/Messi/Neymar/Suárez/Kane/Agüero/Higuaín all spot-checked against
+  known real 2015/16-era valuations) before trusting the fix, not assumed from the logic alone.
+  A second, smaller bug found the same way: a match built *entirely* from a name-construction
+  particle ("de" alone, matching Transfermarkt's real player "Dé") won by default when it was
+  the only candidate at all, with nothing to lose to — fixed with a small stopword list
+  (`NAME_PARTICLE_STOPWORDS`) requiring at least one non-particle token. General lesson: a
+  "specificity" heuristic based on raw counts (more tokens = more specific) is not the same
+  thing as *evidential* specificity — a token's *rarity* in the corpus it's being matched
+  against is the thing that actually carries information about which entity it identifies, and
+  the two can disagree exactly where naming conventions produce long, common-component names.
 - **League-normalising the features barely moved the K decision — and that's the useful
   finding, not a null result** (2026-07-13, cross-league normalisation + goalkeeper
   clustering). Before committing to "z-score within competition" as the fix for comparing

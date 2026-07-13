@@ -34,23 +34,31 @@ colleague pitch (date TBD — today or the next day at the time of writing).
    then explains itself." Click into "Browse this archetype" to show a few other players in the
    same style bucket.
 4. **"Players like X"** — click a row in the table, show the recursive drill-down (jumps to the
-   similar player, recomputes everything for them).
+   similar player, recomputes everything for them). Point out the **Market value** column
+   (2026-07-14) — this is the "who else plays like them, ideally cheaper?" pitch line answered
+   with a real number, not just a vibe.
 5. **"Finishing" panel** — goals vs. xG, shot map. This is the "is it real or luck" answer.
-6. Close on the credibility numbers below, then the roadmap.
+6. **Compare players** (2026-07-14) — pick two well-known names (works across positions/
+   competitions), show the overlaid radar and the market-value delta line ("X is valued €Y less
+   than Z"). A good closer beat: it's the two lenses *and* the new valuation feature on one screen.
+7. Close on the credibility numbers below, then the roadmap.
 
 ---
 
 ## Key numbers to lead with (whole numbers — say these without notes)
 
 - **6** competitions, **1,635** players in the similarity pool (incl. **124 goalkeepers**, wired in
-  2026-07-13 with their own feature set — saves, shots faced, goals conceded, claims, save %).
+  2026-07-13 with their own feature set — saves, shots faced, goals conceded, claims, save % — and
+  K-means clustered into style archetypes like the outfield groups).
 - **10,824** shots trained the xG model; a further **4,704** held-out shots — across **4**
   different tournaments the model never trained on — used to check it generalises.
-- **75** automated tests, green on every push (CI), a reproducible one-command rebuild
+- **1,215** players matched to a real Transfermarkt market value (2026-07-14, men's competitions
+  only — see the Roadmap section below for the honest coverage caveat).
+- **86** automated tests, green on every push (CI), a reproducible one-command rebuild
   (`python -m src.pipeline`), and a live deployed app.
 
-*(These are the numbers in the app's "About & Roadmap" → "What's been built" tiles — say them from
-memory, no notes needed.)*
+*(The first two lines are the app's "About & Roadmap" → "What's been built" tiles; market value
+and test count aren't on-screen tiles but are just as safe to say from memory.)*
 
 ## Methodology backup — only if asked to justify the model
 
@@ -77,22 +85,19 @@ via `python -m src.metrics`).
 
 ## Roadmap to show (what's next)
 
-- **Open backlog (small, near-term):** the cross-league normalisation is a *relative* (z-score)
-  adjustment, not a true competitiveness rating — there's no external league-strength data behind
-  it. (Goalkeepers are now K-means clustered and share the Style archetype panel with outfield
-  players, and cross-league normalisation shipped — both 2026-07-13, same day as this cheat
-  sheet's last refresh. The "About & Roadmap" view also has visible, non-collapsed "Data used" and
-  "How each model works" sections, plus Leaderboard name/position filters, from the same day.)
-- **Backlog, bigger (not scoped further):** a side-by-side two-player comparison view.
+- **Open backlog (small):** the cross-league normalisation is a *relative* (z-score) adjustment,
+  not a true competitiveness rating — there's no external league-strength data behind it. Market-
+  value matching is name-based (no shared player ID exists) — a real match can be missed on a
+  name/position collision, and women's-league players have no market value at all (the
+  Transfermarkt mirror used here only covers men's football).
 - **Phase 5 (not started):** uncertainty on the xG number (bootstrap intervals), a hierarchical
   finishing model — "is this player's over/underperformance statistically real."
 - **Phase 6 (not started):** Mahalanobis/PCA-whitened distance for similarity (today's Euclidean
   double-counts correlated stats), possession-adjusted defensive actions.
 - **Phase 7 (not started):** 360°-context xG (defender positions at the moment of the shot) +
   post-shot xG (xGOT).
-- **Phase 9 (opportunistic):** an xA/chance-creation model, a market-value integration (researched
-  2026-07-13 — see [DATA.md](DATA.md#market-value-transfermarkt--flagged-2026-07-13-not-started)),
-  a 2026 World Cup predictive model (data-availability check first).
+- **Phase 9 (opportunistic):** an xA/chance-creation model, a 2026 World Cup predictive model
+  (data-availability check first).
 
 Full phase-by-phase detail: [INITIATIVE.md](INITIATIVE.md) (status table + log) and
 [ROADMAP.md](ROADMAP.md) (per-phase task lists).
@@ -108,7 +113,8 @@ Full phase-by-phase detail: [INITIATIVE.md](INITIATIVE.md) (status table + log) 
   league-adjusted (z-scored within each competition) before comparing across the 6-competition
   pool. Still a relative, data-only fix, not a true competitiveness rating — flagged honestly
   in-app, not oversold as a full solution.
-- **Market value / transfer fees:** out of scope for *modelling* (this tool informs a human's
-  valuation, it doesn't price players) — but *displaying* an external market-value number next to
-  a similarity match was scoped 2026-07-13 as a good future addition; blocked on entity resolution
-  between StatsBomb and Transfermarkt player identities, not on data availability.
+- **Market value modelling** (not *displaying* one — that's done, see above): still out of scope
+  by design. This tool informs a human's valuation, it doesn't price players itself.
+- **If a specific player's market value is missing:** either a genuine name-matching miss (no
+  shared player ID exists between StatsBomb and Transfermarkt — see DATA.md) or a women's-league
+  player (that data source has zero coverage there) — never a silently faked number.
