@@ -75,13 +75,55 @@ lives here, not duplicated there), ML_LEARNING_LOG.md (the percentile-direction 
 
 ---
 
+## 2026-07-14 (cont. 2) — Scouting-report blurb + phase-alignment check-in
+
+Two things this pass. First, a strategic check-in Guilherme raised directly: after several
+sessions in a row inside Phase 8/9 (product/UX work), are Phases 5–7 (the core ML-depth phases —
+xG uncertainty, Module B metric upgrades, 360-context xG) being quietly forgotten? Answered
+honestly: yes, that's a real drift worth naming, not a false alarm — the Phase 8 order-jump on
+2026-07-04 had a real deadline (a friend demo) that's since been satisfied, so continuing in Phase
+9 no longer has that same justification. Recommended pivoting to Phase 5a (uncertainty on
+goals−xG) next session. Before that, asked to rank the two open Phase 9 backlog items (the
+Leaderboard filter question, the "new app features" candidates) by effort and do the fastest one
+first — the **auto-generated scouting-report blurb** (reuses already-computed data, no new
+modelling), clearly faster than a deep-link feature, a new team-level view, or the Leaderboard
+filter's unresolved design question.
+
+**Scouting-report blurb.** New `app.py` function `build_scouting_blurb` stitches three
+already-rendered panels into one paragraph at the top of a player's page (new "Scouting report"
+subheader, right after the page header): the Style archetype read (top 2 cluster traits + the
+weakest one), the single best percentile stat (`percentiles.idxmax()`, using the same
+goodness-adjusted percentiles and `percentile_tier` wording the rest of the page already uses),
+and market value. A fixed template over already-verified numbers, not an LLM-generated summary —
+it literally cannot say anything the rest of the page doesn't already say, since every value comes
+from a computation that panel below it also uses. Required moving three existing computations
+(`percentiles`, the cluster/`profile_clusters` read, the market-value lookup) earlier in the script
+so the blurb has what it needs before its own panels render further down — reused, not duplicated;
+the Style archetype and signature-stat sections below now read from the same already-computed
+variables instead of recomputing them.
+
+**Verification.** Full `pytest` suite green (**89**, unchanged — this is presentation-only, no
+`src/` logic touched beyond the reordering, which changes nothing about what's computed). Playwright
+-over-Edge confirmed the blurb reads sensibly for two different feature sets: a forward (Messi —
+"A Key Passes and Progressive Passes forward, light on Clearances... Stands out most for Dribbles
+Completed, ranking in the 100th percentile (Elite)... Valued at €120.0M") and a goalkeeper (Kasper
+Schmeichel — confirms `goodness_percentiles`' goals-conceded flip doesn't surface a misleadingly
+"good"-sounding stat via `idxmax()`). One honest nuance noted, not fixed: `idxmax()` can surface a
+volume/context stat (e.g. a keeper's Shots Faced) as "stands out most for," which isn't really a
+skill judgment the way Save % would be — inherited from the existing feature-set design (only
+Goals Conceded is flagged direction-sensitive), not a new bug, and the same ambiguity already
+exists in the percentile chart the blurb reads from.
+
+**Docs updated:** ROADMAP.md (Phase 9 candidate list — scouting blurb marked done).
+
+---
+
 ## Commit Status
 
 Verified against `git log`/`git status` 2026-07-14. Git CLI is used directly (see CLAUDE.md's
 Session Workflow) — this section is a lightweight pointer, not a substitute for `git log`/`git
-status`. Latest commit on `origin/main`: `78feefe` (market value + two-player Compare view — that
-entry moved to [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md) alongside it). The search-box/Style
-archetype/percentile-direction entry above is **complete but not yet committed** — working tree has
-uncommitted changes (`app.py`, `src/similarity.py`, `tests/test_similarity.py`,
-`ML_LEARNING_LOG.md`) as of this write-up (per CLAUDE.md's Session Workflow, only commit when
+status`. Latest commit on `origin/main`: `78db78f` (search-box live-filtering fix, Style archetype
+rework, percentile-direction bug fix). The scouting-report blurb entry above is **complete but not
+yet committed** — working tree has uncommitted changes (`app.py`, `docs/ROADMAP.md`,
+`docs/PROGRESS.md`) as of this write-up (per CLAUDE.md's Session Workflow, only commit when
 explicitly asked).

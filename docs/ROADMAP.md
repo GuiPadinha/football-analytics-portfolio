@@ -174,6 +174,59 @@ the cloud by Guilherme directly.
 
 ## Phase 9 — Opportunistic  ⬜
 
+- **Leaderboard's name filter still needs Enter** — flagged 2026-07-14 (cont.), deliberately not
+  fixed that session: it's an `st.text_input` feeding a multi-row `st.dataframe`, not a single-pick
+  widget, so the live-filtering-selectbox trick that fixed the other three search boxes that
+  session doesn't transfer directly. Options considered, none implemented:
+  - **Leave as-is.** Streamlit's `text_input` genuinely cannot rerun per keystroke in this version
+    (checked directly against the installed 1.58 API — no debounce/`update_on` param exists), and
+    unlike the fixed search boxes, this one has no second widget silently disagreeing with it — it's
+    a conventional "type, Enter, see a filtered table" pattern most users already know from any
+    admin-table search box. Already honestly labelled ("then press Enter"). Plausibly not actually
+    broken, just less slick than the fixed boxes — worth deciding this explicitly before spending
+    effort on it.
+  - **`st.multiselect` of player names instead of a free-text filter.** `multiselect` has the same
+    client-side live type-to-filter as `selectbox` (the mechanism the other fixes rely on), so this
+    would genuinely be live — but it changes the interaction from "narrow a big table by typing" to
+    "hand-pick specific players to show," a different feature, not a pure UX fix. Would need a
+    product call on whether that tradeoff is worth it for a browse-and-sort view.
+  - **A third-party live-search component** (e.g. `streamlit-searchbox`) or a custom bidirectional
+    component with real debounce. Would need a new `requirements.txt` dependency, re-verification
+    on Streamlit Community Cloud's pinned Python 3.10, and more moving parts for one filter box —
+    the highest-effort, highest-risk option of the three.
+  - `st.fragment` (partial reruns) was considered and ruled out on inspection: it changes *what*
+    reruns on an interaction, not *when* — it wouldn't make `text_input` rerun on keystroke, so it
+    doesn't actually solve this problem.
+- **New app features** — asked for after the 2026-07-14 (cont.) UX-debt pass; deliberately left as
+  an open discussion, not a task list, same as the visual/docs item below. Candidates surfaced
+  while thinking this through, roughly in "buildable from data already in `app_data/`" → "needs new
+  data" order:
+  - ~~**Auto-generated scouting-report blurb**~~ — flagged 2026-07-14 (cont.), built same day
+    (chosen first as the fastest of this list's candidates): a new **"Scouting report"** section at
+    the top of a player's page (`app.py`'s `build_scouting_blurb`), one paragraph combining the
+    Style archetype read, the single best percentile stat, and market value into prose — the same
+    "synthesize already-computed numbers into a sentence" move the Style archetype panel and
+    signature-stat cards already make. No new modelling, no new data; a fixed template over
+    already-verified numbers (not LLM-generated), so it can't say anything the rest of the page
+    doesn't already say. Required reordering three existing computations (percentiles, the style
+    cluster read, market value) earlier in the script so the blurb has what it needs before its own
+    panels render — no duplicate computation, same variables reused by both. Verified live via
+    Playwright for a forward (Messi: "A Key Passes and Progressive Passes forward, light on
+    Clearances...") and a goalkeeper (Kasper Schmeichel), confirming the sentence reads sensibly for
+    both feature sets and that `goodness_percentiles`' goals-conceded flip doesn't put a misleading
+    stat forward via the blurb's `percentiles.idxmax()` pick.
+  - **Shareable deep links** via `st.query_params` — encode the current view/filters/picked player
+    in the URL so a specific player's page (or a specific comparison) can be linked directly,
+    instead of always landing on a blank search. Session-only state today; this would need no new
+    data, just wiring existing selections through the URL.
+  - **A team-level or "Best XI" view** — aggregate stats by team, or let a user assemble a squad
+    from the pool and see combined market value / style mix. New scope, buildable from existing
+    per-player data, no new pulls — but a genuinely new page, not a small addition.
+  - **Multi-season "player career" page** — already the standing next-open-backlog item (see
+    CLAUDE.md's Current Status and MODULES.md); needs new lineups pulls, and trophies/awards/MOTM
+    data doesn't exist in any current source. Repeated here only so it isn't lost among newer ideas.
+  - **xA / chance-creation model, Module C (PUP)** — both already listed below in this same Phase 9
+    section; larger, model-layer undertakings rather than app-layer features.
 - **A bigger visual + documentation pass** — flagged 2026-07-13, right after that day's own
   visual/brand pass (Leaderboard filters, page-header branding, About & Roadmap expansion — see
   PROGRESS.md's "cont. 4" entry). Guilherme wants to go further on both fronts next session;

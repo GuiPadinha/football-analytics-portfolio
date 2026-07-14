@@ -58,27 +58,40 @@ data sources, so this needed real entity-resolution engineering, including findi
 genuine matching bugs against real data; ~90% match rate on the four men's competitions, shown on a
 player's page, "players like X," and the Leaderboard) and a new **Compare players** view (any two
 players side by side; market value/Finishing always compare directly, a radar/signature-stats/
-percentile comparison only when both share a position group). 86 tests green.
+percentile comparison only when both share a position group). 86 tests green; a same-day (cont.)
+UX-debt pass fixed three things flagged from actually using the deployed app: the Player
+explorer/Compare players search boxes felt dead (typed text did nothing until Enter — replaced
+with live-filtering, blank-start `st.selectbox`es, one deliberate revisit of a widget shape
+PRODUCT_SPEC.md records as explicitly rejected once before, confirmed with Guilherme first given
+that history); the **Style archetype** panel led with raw σ jargon (now plain language first, exact
+z-scores demoted to a collapsed expander); and a real **percentile-direction bug** where a
+goalkeeper's Goals Conceded percentile read backwards (a leaky keeper looked "elite") — fixed via
+new `similarity.goodness_percentiles`, with a plain-language tier word (Elite/Good/Average/Poor/…)
+now shown next to every percentile in the app. 89 tests green. Both this pass and the market
+value/Compare players work above are **committed and pushed** (`78db78f`, `78feefe`).
 See [docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renumbered 0–9 program on
 2026-07-02.
-**Next session, start here: the 2026-07-14 pass above (market value + Compare players) is complete,
-verified (AppTest + Playwright), and documented, but not yet committed — see docs/PROGRESS.md's
-Commit Status section.** Decide whether to commit/push, then pick up the next backlog item.
-**Next (open backlog): a multi-season "player career" page/view** is under discussion (needs new
-lineups pulls; international-tournament trophies/awards/MOTM data does not exist in any current
-source and would need new scraping infra) — not started, not scoped further. Known small gaps in
-what shipped 2026-07-14: market-value matching can miss a real match (name/position collision, no
-club/season cross-check) and has zero coverage for the two women's leagues (that Transfermarkt
-mirror only covers men's football) — both stated honestly in-app, not silently hidden. Exact code
-entry points for anything else still open are in [PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s
-"Backlog from 2026-07-06 feedback" section and [ROADMAP.md](docs/ROADMAP.md)'s Phase 9 list — the
-PRODUCT_SPEC section also has one minor open cosmetic follow-up from the drill-down work (an
-expander's open/closed state not always carrying over consistently across a jump).**
+**Next session, start here:** nothing mid-flight — pick up an open backlog item.
+**Next (open backlog, all documented, none started):** (1) a multi-season "player career" page/view
+(needs new lineups pulls; international-tournament trophies/awards/MOTM data does not exist in any
+current source and would need new scraping infra); (2) the Leaderboard's name filter still needs
+Enter (feeds a multi-row table, not a single pick, so the live-selectbox fix above doesn't transfer
+directly — three options weighed, none chosen, see ROADMAP.md's Phase 9 list); (3) "new app
+features" — an open discussion, not a task list, with a curated candidate set (auto-generated
+scouting-report blurb, shareable deep links via `st.query_params`, a team-level/"Best XI" view) in
+the same ROADMAP.md Phase 9 section. Known small gaps in what shipped 2026-07-14: market-value
+matching can miss a real match (name/position collision, no club/season cross-check) and has zero
+coverage for the two women's leagues (that Transfermarkt mirror only covers men's football) — both
+stated honestly in-app, not silently hidden. Exact code entry points for anything else still open
+are in [PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s "Backlog from 2026-07-06 feedback" section and
+[ROADMAP.md](docs/ROADMAP.md)'s Phase 9 list — the PRODUCT_SPEC section also has one minor open
+cosmetic follow-up from the drill-down work (an expander's open/closed state not always carrying
+over consistently across a jump).**
 (360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
 Run the app locally: `python -m src.app_data` (once, to build `app_data/`) then `streamlit run app.py`
 — or just use the [live demo](https://gpfootball-analytics-portfolio.streamlit.app).
 
-Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped) — Phase 4c (2026-07-09) shows this is the *floor* across four held-out tournaments, not a fluke: FIFA World Cup 2022 0.808, Africa Cup of Nations 2023 0.807, Copa América 2024 0.763 (see `metrics.json`'s `xg_generalisation`, [docs/MODULES.md](docs/MODULES.md)). Similarity: K=4 per position group, silhouette ~0.24 (soft continuum) on the notebook/pipeline's single-competition (PL 2015/16) scope — the app's own player pool is wider (6 competitions, now cross-league normalised, and goalkeepers are K-means clustered too — see MODULES.md). **1,215** players matched to a Transfermarkt market value (men's competitions only, ~90% match rate — see DATA.md). 86 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
+Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped) — Phase 4c (2026-07-09) shows this is the *floor* across four held-out tournaments, not a fluke: FIFA World Cup 2022 0.808, Africa Cup of Nations 2023 0.807, Copa América 2024 0.763 (see `metrics.json`'s `xg_generalisation`, [docs/MODULES.md](docs/MODULES.md)). Similarity: K=4 per position group, silhouette ~0.24 (soft continuum) on the notebook/pipeline's single-competition (PL 2015/16) scope — the app's own player pool is wider (6 competitions, now cross-league normalised, and goalkeepers are K-means clustered too — see MODULES.md). **1,215** players matched to a Transfermarkt market value (men's competitions only, ~90% match rate — see DATA.md). 89 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
 
 → Phase tracker: [docs/INITIATIVE.md](docs/INITIATIVE.md) | Session log: [docs/PROGRESS.md](docs/PROGRESS.md)
 

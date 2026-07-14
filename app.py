@@ -196,6 +196,50 @@ def style_intensity_label(z):
     direction = "more" if rounded > 0 else "less"
     return f"{strength.capitalize()} {direction} ({rounded:+.1f}σ)"
 
+
+def build_scouting_blurb(position_group, high_traits, low_stat_col, n_clusters, percentiles, market_value_row):
+    """One-paragraph scouting-report summary for the top of a player's page (2026-07-14 Phase 9
+    feature): stitches three panels the page already renders lower down — the Style archetype
+    read, the single best percentile stat, and market value — into prose. No new modelling and no
+    new number: every value here is read straight off `profile_clusters`/`goodness_percentiles`/
+    `market_value`, the same computations the panels below already display. Deliberately not an
+    LLM-generated summary — a fixed template over already-verified numbers, so it can't say
+    anything the rest of the page doesn't already say.
+
+    Args:
+        position_group (str): the player's position group label.
+        high_traits (pandas.Series): top cluster z-scores, index=feature column, output of
+            `cluster_z.sort_values(ascending=False).head(n)` — same series the Style archetype
+            panel's own headline sentence uses.
+        low_stat_col (str): the feature column with the lowest cluster z-score.
+        n_clusters (int): how many style clusters exist for this position group.
+        percentiles (pandas.Series): this player's goodness-adjusted percentiles
+            (`similarity.goodness_percentiles`), index=feature column.
+        market_value_row (pandas.Series or None): output of `lookup_market_value`, or `None` if
+            unresolved.
+
+    Returns:
+        str: a Markdown-formatted paragraph.
+    """
+    style_text = " and ".join(f"**{STAT_LABELS[c]}**" for c in high_traits.index)
+    best_stat = percentiles.idxmax()
+    best_pct = percentiles[best_stat] * 100
+    sentences = [
+        f"A **{style_text}** {position_group.lower()}, light on **{STAT_LABELS[low_stat_col]}** — "
+        f"one of {n_clusters} style clusters found among {position_group.lower()}s in this pool.",
+        f"Stands out most for **{STAT_LABELS[best_stat]}**, ranking in the "
+        f"**{format_percentile(best_pct)} percentile ({percentile_tier(best_pct)})** among "
+        f"{position_group.lower()}s.",
+    ]
+    if market_value_row is not None:
+        sentences.append(
+            f"Valued at **{format_market_value(market_value_row['market_value_eur'])}** (Transfermarkt)."
+        )
+    else:
+        sentences.append("Market value not on record.")
+    return " ".join(sentences)
+
+
 st.set_page_config(page_title="Player Evaluation Framework", page_icon=BRAND_ICON, layout="wide")
 
 
@@ -1023,14 +1067,40 @@ radar_axes = st.sidebar.multiselect(
 render_page_header(f"{player_name} · {team_name} · {position_group}")
 st.caption(competition_name)
 
-st.subheader(f"Signature stats for a {position_group.lower()}")
-signature_cols = SIGNATURE_STATS_BY_POSITION[position_group]
 player_row_full = group_df[(group_df["player"] == player_name) & (group_df["team"] == team_name)].iloc[0]
 # goodness_percentiles flips goals_conceded_p90 so a bigger number always means "better than
-# peers" — shared by the signature-stat cards below and the "All per-90 stats" percentile chart
-# further down the page, both of which read from this one `percentiles` variable.
+# peers" — shared by the scouting-report blurb, the signature-stat cards, and the "All per-90
+# stats" percentile chart further down the page, all of which read from this one `percentiles`
+# variable.
 percentiles = goodness_percentiles(group_df[position_feature_columns].rank(pct=True).loc[player_row_full.name])
 
+# Style-cluster read and market value are both computed here, ahead of their own panels further
+# down the page (Style archetype, the Market value caption), because the scouting-report blurb
+# right below needs both — moved up rather than duplicated (2026-07-14 Phase 9 feature).
+cluster_id = int(player_row_full["cluster"])
+cluster_profile = cached_cluster_profile(group_df, position_feature_columns_lz)
+cluster_z = cluster_profile.loc[cluster_id]
+cluster_peers = group_df[
+    (group_df["cluster"] == cluster_id)
+    & ~((group_df["player"] == player_name) & (group_df["team"] == team_name))
+]
+high_traits = cluster_z.sort_values(ascending=False).head(2)
+low_col = cluster_z.sort_values().index[0]
+player_market_value = lookup_market_value(market_value, player_name, team_name)
+
+st.subheader("Scouting report")
+st.markdown(
+    build_scouting_blurb(
+        position_group, high_traits, low_col, cluster_profile.shape[0], percentiles, player_market_value
+    )
+)
+st.caption(
+    "Auto-generated from the panels below — same numbers, read as one sentence. Not a new model "
+    "or a new number."
+)
+
+st.subheader(f"Signature stats for a {position_group.lower()}")
+signature_cols = SIGNATURE_STATS_BY_POSITION[position_group]
 metric_cols = st.columns(len(signature_cols))
 for col, stat in zip(metric_cols, signature_cols):
     raw_col = stat.replace("_p90", "")
@@ -1074,7 +1144,7 @@ elif pd.notna(player_row_full.get("goals")):
 # mirror has no women's-football coverage at all (verified against the real data, not assumed),
 # so Frauen Bundesliga/FA WSL players fall into the same "not resolved" caption as any player a
 # name match genuinely failed for, rather than a separate, more alarming-sounding message.
-player_market_value = lookup_market_value(market_value, player_name, team_name)
+# (`player_market_value` itself is computed earlier, alongside the scouting-report blurb.)
 if player_market_value is not None:
     st.caption(
         f"**Market value: {format_market_value(player_market_value['market_value_eur'])}** "
@@ -1092,17 +1162,10 @@ else:
 # label per player — outfield and goalkeeper alike, on league-normalised features (see the module
 # docstring) — but nothing in the app surfaced it until this pass. No new model here:
 # `profile_clusters` (src/similarity.py, already used to name clusters in the notebooks) is a
-# pure z-score readout of stats the clustering already ran on.
+# pure z-score readout of stats the clustering already ran on. (`cluster_id`/`cluster_profile`/
+# `cluster_z`/`cluster_peers`/`high_traits`/`low_col` are all computed earlier, alongside the
+# scouting-report blurb, which needs them too.)
 st.subheader("Style archetype")
-cluster_id = int(player_row_full["cluster"])
-cluster_profile = cached_cluster_profile(group_df, position_feature_columns_lz)
-cluster_z = cluster_profile.loc[cluster_id]
-cluster_peers = group_df[
-    (group_df["cluster"] == cluster_id)
-    & ~((group_df["player"] == player_name) & (group_df["team"] == team_name))
-]
-high_traits = cluster_z.sort_values(ascending=False).head(2)
-low_col = cluster_z.sort_values().index[0]
 # Headline sentence is plain language only (2026-07-14 pass, dropped the inline "(+1.4σ)"
 # parentheticals) — feedback was that leading with a Greek letter made a genuinely simple idea
 # ("this group does more of X, less of Y") read as jargon. The exact numbers still exist, just
