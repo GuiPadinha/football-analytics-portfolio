@@ -11,6 +11,7 @@ from src.similarity import (
     extract_goalkeeper_match_actions,
     extract_player_match_actions,
     find_similar_players,
+    goodness_percentiles,
     normalize_within_competition,
     resolve_season_positions,
 )
@@ -273,3 +274,33 @@ def test_compute_silhouette_scores_prefers_true_cluster_count():
 
     assert scores.idxmax() == 2
     assert scores.loc[2] > 0.8       # near-perfect separation scores close to 1
+
+
+def test_goodness_percentiles_flips_lower_is_better_stats_on_a_series():
+    # A goalkeeper at the 90th raw percentile of goals_conceded_p90 concedes more than 90% of
+    # peers — the worst outcome, not the best — so the goodness-adjusted value should read as
+    # the 10th percentile instead. tackles_p90 (more is better) must be left untouched.
+    raw = pd.Series({"goals_conceded_p90": 0.9, "tackles_p90": 0.9})
+    adjusted = goodness_percentiles(raw)
+
+    assert adjusted["goals_conceded_p90"] == pytest.approx(0.1)
+    assert adjusted["tackles_p90"] == pytest.approx(0.9)
+
+
+def test_goodness_percentiles_flips_lower_is_better_stats_on_a_dataframe():
+    # Same flip, applied column-wise across a whole pool's rank(pct=True) output.
+    raw = pd.DataFrame({
+        "goals_conceded_p90": [0.2, 0.8],
+        "saves_p90": [0.2, 0.8],
+    })
+    adjusted = goodness_percentiles(raw)
+
+    assert adjusted["goals_conceded_p90"].tolist() == pytest.approx([0.8, 0.2])
+    assert adjusted["saves_p90"].tolist() == pytest.approx([0.2, 0.8])
+
+
+def test_goodness_percentiles_does_not_mutate_input():
+    raw = pd.Series({"goals_conceded_p90": 0.9})
+    goodness_percentiles(raw)
+
+    assert raw["goals_conceded_p90"] == pytest.approx(0.9)

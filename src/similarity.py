@@ -598,6 +598,35 @@ LEAGUE_Z_SUFFIX = "_lz"
 PER90_LEAGUE_Z_COLUMNS = [f"{col}{LEAGUE_Z_SUFFIX}" for col in PER90_FEATURE_COLUMNS]
 GK_PER90_LEAGUE_Z_COLUMNS = [f"{col}{LEAGUE_Z_SUFFIX}" for col in GK_PER90_FEATURE_COLUMNS]
 
+# Stats where a *smaller* raw value is the better outcome (currently just a goalkeeper conceding
+# fewer goals — every outfield ACTION_COLUMNS stat is "more is better"). A plain
+# `rank(pct=True)` on the raw column would put the leakiest keepers at the top of a percentile
+# chart, which reads as "best" when it means the opposite — see `goodness_percentiles` below,
+# added 2026-07-14 after the app's percentile displays were found to have exactly this bug live.
+LOWER_IS_BETTER_STATS = {"goals_conceded_p90"}
+
+
+def goodness_percentiles(percentiles):
+    """Flip `LOWER_IS_BETTER_STATS` columns so a bigger percentile always means "better than
+    peers," not just "bigger raw number" — the direction fix behind every percentile display in
+    the app (signature stat cards, the per-90 percentile chart, the Compare players table).
+
+    Args:
+        percentiles (pandas.Series or pandas.DataFrame): raw `rank(pct=True)` output — a Series
+            of one player's percentiles (index = stat columns) or a DataFrame with one column
+            per stat across a whole pool.
+
+    Returns:
+        Same type and shape as `percentiles`, with every `LOWER_IS_BETTER_STATS` entry replaced
+        by `1 - value` (so 100th percentile still means "best," now for every stat) and every
+        other column unchanged.
+    """
+    adjusted = percentiles.copy()
+    columns = adjusted.index if isinstance(adjusted, pd.Series) else adjusted.columns
+    for stat in LOWER_IS_BETTER_STATS & set(columns):
+        adjusted[stat] = 1 - adjusted[stat]
+    return adjusted
+
 
 def scale_features(features, feature_columns=PER90_FEATURE_COLUMNS):
     """Standardise features to mean 0, std 1 before clustering.

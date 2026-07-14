@@ -47,6 +47,7 @@ from src.similarity import (
     PER90_LEAGUE_Z_COLUMNS,
     compute_silhouette_scores,
     find_similar_players,
+    goodness_percentiles,
     profile_clusters,
 )
 from src.visualisation import (
@@ -141,6 +142,59 @@ STAT_LABELS["save_pct"] = "Save %"
 # raw `_p90` ones (see the module docstring) — same clean label either way, so a reader sees
 # "Tackles" whether the underlying number is a per-90 rate or a league z-score.
 STAT_LABELS.update({f"{col}_lz": label for col, label in list(STAT_LABELS.items())})
+
+
+def percentile_tier(goodness_pct):
+    """Plain-language read of a 0-100 goodness percentile (`similarity.goodness_percentiles`).
+
+    A bare "72nd percentile" still asks the reader to supply their own judgment of what counts
+    as good — and for the app's one lower-is-better stat (a goalkeeper's goals conceded), the
+    raw percentile actively read backwards before `goodness_percentiles` fixed the direction.
+    These bands are the FBref/StatsBomb scouting-report convention, so the number never has to
+    carry the "is this good?" call by itself. Every caller here already passes a
+    goodness-adjusted percentile, never a raw one.
+    """
+    if goodness_pct >= 95:
+        return "Elite"
+    if goodness_pct >= 80:
+        return "Very good"
+    if goodness_pct >= 60:
+        return "Good"
+    if goodness_pct >= 40:
+        return "Average"
+    if goodness_pct >= 20:
+        return "Below average"
+    return "Poor"
+
+
+def format_percentile(goodness_pct):
+    """"72nd", not "72th" — every percentile display in the app goes through this so the ordinal
+    suffix is never wrong (11th/12th/13th are the exception to 1st/2nd/3rd, handled by the
+    `10 <= n % 100 <= 20` guard below).
+    """
+    n = round(goodness_pct)
+    suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+def style_intensity_label(z):
+    """Plain-language read of one cluster-vs-population z-score (`similarity.profile_clusters`)
+    for the Style archetype panel's bar chart — same "lead with the word, not the Greek letter"
+    fix as `percentile_tier`, prompted by exactly that feedback: "+1.4σ" reads as jargon, "Much
+    more (+1.4σ)" reads as English with the number kept for whoever wants it. Unlike a
+    percentile, a z-score here has no good/bad direction (see the panel's own "not a ranking"
+    caption) — the word describes *how unusual*, not *how good*.
+    """
+    # Round before thresholding, not after: two bars that both display "0.3σ" must always get the
+    # same word, even if their unrounded values (e.g. 0.296 and 0.304) sit on opposite sides of a
+    # threshold — a mismatch there would look like a bug, not a rounding artifact.
+    rounded = round(z, 1)
+    magnitude = abs(rounded)
+    if magnitude < 0.3:
+        return f"Typical ({magnitude:.1f}σ)"
+    strength = "far" if magnitude >= 1.5 else "much" if magnitude >= 0.8 else "somewhat"
+    direction = "more" if rounded > 0 else "less"
+    return f"{strength.capitalize()} {direction} ({rounded:+.1f}σ)"
 
 st.set_page_config(page_title="Player Evaluation Framework", page_icon=BRAND_ICON, layout="wide")
 
@@ -286,8 +340,14 @@ def render_leaderboard(pool, xg_table, market_value):
     # the whole table doesn't require leaving it to touch the sidebar.
     filter_name_col, filter_position_col = st.columns([2, 1])
     with filter_name_col:
+        # Feeds a multi-row table rather than a single pick, so it can't be swapped for the
+        # live-filtering selectbox pattern the two player-picker search boxes use (see Player
+        # explorer's own comment) — a table has no single "pick one" widget to become. Streamlit's
+        # text_input still only reruns on Enter/blur, so the placeholder says so plainly instead
+        # of implying a live filter it can't deliver.
         name_query = st.text_input(
-            "Filter by player name", placeholder="Type a name...", key="leaderboard_name_filter"
+            "Filter by player name", placeholder="Type a name, then press Enter...",
+            key="leaderboard_name_filter",
         )
     with filter_position_col:
         position_options = sorted(pool["position_group"].unique())
@@ -406,37 +466,33 @@ def render_compare_players(per90, xg_table, market_value):
         "an overlaid radar, and a percentile comparison."
     )
 
+    # One live-filtering selectbox per side (2026-07-14, same fix and reasoning as the Player
+    # explorer's search box — see its own comment: a text_input + selectbox combo doesn't
+    # actually filter until Enter/blur, which felt broken under an actual Playwright drive of the
+    # running app). Starts unselected (`index=None`) rather than defaulting to the alphabetically
+    # -first player on both sides at once — the old two-widget version did that, which meant a
+    # fresh "Compare players" load immediately showed the same player against themselves and the
+    # "pick two different players" warning below, before anyone had touched anything.
+    label_map = {
+        f"{p} ({t}) · {c}": (p, t)
+        for p, t, c in zip(per90["player"], per90["team"], per90["competition"])
+    }
+    option_labels = sorted(label_map)
+
     pick_cols = st.columns(2)
     picks = []
     for col, side_label, key in zip(pick_cols, ["Player A", "Player B"], ["a", "b"]):
         with col:
             st.markdown(f"**{side_label}**")
-            query = st.text_input(
-                f"Search for {side_label}", placeholder="Type a name...", key=f"compare_search_{key}"
-            )
-            matches = (
-                per90[per90["player"].str.contains(query, case=False, regex=False, na=False)]
-                if query else per90
-            ).sort_values("player")
-            if matches.empty:
-                st.warning(f'No players match "{query}".')
-                picks.append(None)
-                continue
-            label_map = {
-                f"{p} ({t}) · {c}": (p, t)
-                for p, t, c in zip(matches["player"], matches["team"], matches["competition"])
-            }
-            option_labels = sorted(label_map)
-            # Keyed on the query (same reasoning as the Player explorer's own picker, see
-            # ML_TOOLING.md's selectbox-with-changing-options gotcha): resets to a fresh default
-            # whenever the option set changes instead of erroring on a stale selection.
             picked_label = st.selectbox(
-                f"{len(option_labels)} match{'es' if len(option_labels) != 1 else ''}",
-                option_labels, key=f"compare_pick_{key}_{query}",
+                f"Search for {side_label} ({len(option_labels):,} players)",
+                option_labels, index=None, placeholder="Start typing a name...",
+                key=f"compare_pick_{key}",
             )
-            picks.append(label_map[picked_label])
+            picks.append(label_map[picked_label] if picked_label else None)
 
     if picks[0] is None or picks[1] is None:
+        st.info("Search for two players above to compare them.")
         return
     (name_a, team_a), (name_b, team_b) = picks
     if (name_a, team_a) == (name_b, team_b):
@@ -511,18 +567,34 @@ def render_compare_players(per90, xg_table, market_value):
         plt.close(fig)
 
         st.subheader("Percentile within position group")
-        percentiles = group_df[feature_columns].rank(pct=True)
+        # goodness_percentiles flips goals_conceded_p90 (the one stat here where a *smaller* raw
+        # number is the better outcome) so a bigger percentile always means "better than peers,"
+        # never just "bigger raw number" — see similarity.py's own docstring for why that flip
+        # exists. The tier word is the actual "is this good?" answer; the ordinal number alone
+        # doesn't carry it (see the percentile-perception discussion this pass grew out of).
+        percentiles = goodness_percentiles(group_df[feature_columns].rank(pct=True))
         pct_a = percentiles.loc[row_a_full.name]
         pct_b = percentiles.loc[row_b_full.name]
         pct_table = pd.DataFrame({
             "Stat": [STAT_LABELS[c] for c in feature_columns],
-            name_a: [f"{pct_a[c] * 100:.0f}th" for c in feature_columns],
-            name_b: [f"{pct_b[c] * 100:.0f}th" for c in feature_columns],
+            name_a: [
+                f"{format_percentile(pct_a[c] * 100)} ({percentile_tier(pct_a[c] * 100)})"
+                for c in feature_columns
+            ],
+            name_b: [
+                f"{format_percentile(pct_b[c] * 100)} ({percentile_tier(pct_b[c] * 100)})"
+                for c in feature_columns
+            ],
         })
         st.dataframe(pct_table, hide_index=True, width="stretch")
         st.caption(
             f"Percentile among {len(group_df)} {position_group.lower()}s in the current pool — "
-            "raw per-90 rates, not league-normalised (see \"About & Roadmap\")."
+            "raw per-90 rates, not league-normalised (see \"About & Roadmap\"). Higher is always "
+            "better here" + (
+                ", including Goals Conceded — fewer goals conceded is flipped to read as a "
+                "higher percentile, not a lower one."
+                if position_group == "Goalkeeper" else "."
+            )
         )
 
     st.subheader("Finishing — is the output real?")
@@ -622,8 +694,8 @@ def render_about_and_roadmap(per90, metrics):
             "(two players side by side).\n"
             "2. **Narrow with the sidebar filters** — position group and competition are both "
             "optional (Player explorer/Leaderboard only; Compare players searches the whole pool).\n"
-            "3. **Search for a player** by name (press Enter), or just pick from the dropdown of "
-            "current matches.\n"
+            "3. **Start typing a player's name** — the list filters live as you type, no need to "
+            "press Enter.\n"
             "4. On a player's page: their **radar** (pick which stats form the spokes), "
             "**signature stats** for their position, **market value** (men's competitions only), "
             "and the ranked **\"Players like X\"** list.\n"
@@ -797,9 +869,8 @@ if "jump_to_player" in st.session_state:
         st.session_state["view_radio"] = "Player explorer"
         st.session_state["position_filter"] = "All"
         st.session_state["competition_filter"] = "All"
-        st.session_state["player_search_query"] = ""
         jump_competition = jump_match.iloc[0]["competition"]
-        st.session_state["player_pick_All_All_"] = f"{jump_player} ({jump_team}) · {jump_competition}"
+        st.session_state["player_pick_All_All"] = f"{jump_player} ({jump_team}) · {jump_competition}"
 
 # Brand header (2026-07-13 visual pass): icon + name + slogan, then a few live quick-facts so the
 # sidebar carries more than just filter widgets — the same "what's this app made of" numbers as
@@ -877,47 +948,51 @@ st.markdown(
     "against their position-group peers, a ranked **\"Players like X\"** shortlist you can click "
     "through (a recursive drill-down, not a static list), and — for players inside the xG "
     "training set — a **Finishing** panel comparing goals to expected goals.\n\n"
-    "Narrow the pool with the sidebar's position/competition filters, then search by name below."
+    "Narrow the pool with the sidebar's position/competition filters, then start typing a name "
+    "below — the list filters live as you type."
 )
 
-# Typing search: a free-text query narrows the match list once committed (Enter, or clicking
-# away — st.text_input shows its own "Press Enter to apply" hint while a keystroke is pending;
-# it does NOT rerun on every character the way an earlier version of this comment claimed,
-# caught 2026-07-06 by actually driving the app with Playwright rather than assuming), and the
-# selectbox right below always shows the current matches with the top one pre-selected. This
-# is still a deliberately different interaction from a plain combobox (click to open, then type
-# inside it) — the text box is the obvious first thing to type into, matching "typing search"
-# as asked, not a searchable-but-still-dropdown-shaped control.
-search_query = st.text_input(
-    "Search for a player", placeholder="Type a name, then press Enter...",
-    key="player_search_query",
-)
-if search_query:
-    matches = searchable[searchable["player"].str.contains(search_query, case=False, regex=False, na=False)]
-else:
-    matches = searchable
-matches = matches.sort_values("player")
-
-if matches.empty:
-    st.warning(f'No players match "{search_query}" with the current filters.' if search_query else "No players match the current filters.")
+if searchable.empty:
+    st.warning("No players match the current filters.")
     st.stop()
 
+# Live-filtering search (2026-07-14 pass, replacing a two-widget text_input + selectbox combo):
+# driving the *running* app with Playwright showed that combo felt broken — st.text_input only
+# reruns the script on Enter/blur, so typing produced no visible change (the match count and the
+# selectbox below both sat frozen on the old query) even though the box looked like a live search
+# field. st.selectbox's own dropdown already does instant client-side type-to-filter, no server
+# roundtrip needed to narrow the list — the same interaction VS Code's Quick Open or GitHub's
+# file finder use — so one widget now does the whole job.
+#
+# This does revisit a shape PRODUCT_SPEC.md records as explicitly rejected once already
+# (2026-07-05, round 1: a bare selectbox "read as a dropdown-first interaction, not a search
+# box," which is why round 2 replaced it with the text_input + selectbox combo this pass just
+# removed). Two things are different this time, not just a straight revert: (a) today's complaint
+# was specifically about live-as-you-type behaviour, which a selectbox's built-in filtering
+# actually delivers and text_input never did; (b) `index=None` below means the box starts empty
+# with placeholder text, never pre-filled with a value the way round 1's did — round 1 always
+# showed some already-selected player, which is a large part of what made it read as "a dropdown
+# with a choice already made" rather than "an empty box waiting for input." Confirmed with the
+# user before making this change, given the documented history.
 player_by_label = {
     f"{player} ({team}) · {competition}": (player, team, position_group, competition)
     for player, team, position_group, competition in zip(
-        matches["player"], matches["team"], matches["position_group"], matches["competition"]
+        searchable["player"], searchable["team"], searchable["position_group"], searchable["competition"]
     )
 }
 labels = sorted(player_by_label)
 picked_label = st.selectbox(
-    f"{len(labels)} match{'es' if len(labels) != 1 else ''}",
-    labels,
-    # Keyed on every filter/query that can change the option set, so the widget always resets
-    # to the (fresh) top suggestion instead of Streamlit trying to preserve a prior selection
-    # that may no longer be a valid option (the exact crash this shape avoids — see
-    # ML_TOOLING.md's selectbox-with-changing-options gotcha).
-    key=f"player_pick_{position_filter}_{competition_filter}_{search_query}",
+    f"Search for a player ({len(labels):,} in the current filters)",
+    labels, index=None, placeholder="Start typing a name...",
+    # Keyed on the sidebar filters that change the option set (position/competition), so the
+    # widget always resets to a fresh default instead of Streamlit trying to preserve a prior
+    # selection that may no longer be a valid option (ML_TOOLING.md's selectbox-with-changing-
+    # options gotcha). No query in the key anymore — there's no separate query state to track.
+    key=f"player_pick_{position_filter}_{competition_filter}",
 )
+if picked_label is None:
+    st.info("Search for a player above to see their profile.")
+    st.stop()
 player_name, team_name, position_group, competition_name = player_by_label[picked_label]
 group_df = per90[per90["position_group"] == position_group].reset_index(drop=True)
 
@@ -951,7 +1026,10 @@ st.caption(competition_name)
 st.subheader(f"Signature stats for a {position_group.lower()}")
 signature_cols = SIGNATURE_STATS_BY_POSITION[position_group]
 player_row_full = group_df[(group_df["player"] == player_name) & (group_df["team"] == team_name)].iloc[0]
-percentiles = group_df[position_feature_columns].rank(pct=True).loc[player_row_full.name]
+# goodness_percentiles flips goals_conceded_p90 so a bigger number always means "better than
+# peers" — shared by the signature-stat cards below and the "All per-90 stats" percentile chart
+# further down the page, both of which read from this one `percentiles` variable.
+percentiles = goodness_percentiles(group_df[position_feature_columns].rank(pct=True).loc[player_row_full.name])
 
 metric_cols = st.columns(len(signature_cols))
 for col, stat in zip(metric_cols, signature_cols):
@@ -961,12 +1039,16 @@ for col, stat in zip(metric_cols, signature_cols):
     pct = percentiles[stat] * 100
     col.metric(
         STAT_LABELS[stat], f"{total:,}",
-        help=f"{rate:.2f} per 90 · {pct:.0f}th percentile among {position_group.lower()}s",
+        help=f"{rate:.2f} per 90 · {format_percentile(pct)} percentile among "
+        f"{position_group.lower()}s ({percentile_tier(pct)})",
     )
 st.caption(
     "Season totals (not personalised to this player's strengths — a fixed set per position "
     f"group). Hover a card for the per-90 rate and percentile vs. {len(group_df)} "
-    f"{position_group.lower()}s across {group_df['competition'].nunique()} competitions."
+    f"{position_group.lower()}s across {group_df['competition'].nunique()} competitions." + (
+        " Goals Conceded's percentile is flipped so fewer conceded reads as higher, not lower."
+        if position_group == "Goalkeeper" else ""
+    )
 )
 
 # Penalty breakdown (2026-07-09 backlog item): signature stats show non_penalty_goals only, so a
@@ -1021,33 +1103,38 @@ cluster_peers = group_df[
 ]
 high_traits = cluster_z.sort_values(ascending=False).head(2)
 low_col = cluster_z.sort_values().index[0]
-low_z = cluster_z.sort_values().iloc[0]
-high_text = " and ".join(f"**{STAT_LABELS[c]}** ({z:+.1f}σ)" for c, z in high_traits.items())
+# Headline sentence is plain language only (2026-07-14 pass, dropped the inline "(+1.4σ)"
+# parentheticals) — feedback was that leading with a Greek letter made a genuinely simple idea
+# ("this group does more of X, less of Y") read as jargon. The exact numbers still exist, just
+# one click away in the expander below, for whoever wants them.
+high_text = " and ".join(f"**{STAT_LABELS[c]}**" for c in high_traits.index)
 st.markdown(
     f"One of **{cluster_profile.shape[0]}** style clusters found among {position_group.lower()}s "
     "in this pool (K-means on league-normalised per-90 stats — the grouping came from the "
-    f"numbers alone, no role label was given to the model). This cluster skews high on "
-    f"{high_text} and low on **{STAT_LABELS[low_col]}** ({low_z:+.1f}σ), vs. other "
+    f"numbers alone, no role label was given to the model). This cluster does noticeably more "
+    f"{high_text} and noticeably less **{STAT_LABELS[low_col]}** than other "
     f"{position_group.lower()}s — a style shared with **{len(cluster_peers)}** other players "
     "in the current pool."
 )
-fig, ax = plt.subplots(figsize=(7, 0.5 * len(cluster_z) + 1))
-plot_diverging_bar(
-    labels=[STAT_LABELS[c] for c in cluster_z.index], values=cluster_z.values, reference=0,
-    label_format=lambda v: f"{v:+.1f}σ",
-    above_color=ACCENT_ORANGE, below_color=ACCENT_BLUE, grid_color=GRID_LINE,
-    xlabel="Cluster average vs. position-group average (standard deviations)", ax=ax,
-)
-st.pyplot(fig)
-plt.close(fig)
-st.caption(
-    "Standard deviations (σ) of this cluster's average stats vs. the whole position group's "
-    "average, each stat first expressed relative to its own competition's peers (so a Bundesliga "
-    "cluster isn't just describing 'more actions than a WSL team') — the same z-score reading the "
-    "project notebooks use to name clusters (e.g. high Tackles/Interceptions + low Clearances "
-    "reads as a ball-winning full-back). Not a ranking — a low value here is a different style, "
-    "not a worse one."
-)
+with st.expander("See the full style breakdown"):
+    fig, ax = plt.subplots(figsize=(7, 0.5 * len(cluster_z) + 1))
+    plot_diverging_bar(
+        labels=[STAT_LABELS[c] for c in cluster_z.index], values=cluster_z.values, reference=0,
+        label_format=style_intensity_label,
+        above_color=ACCENT_ORANGE, below_color=ACCENT_BLUE, grid_color=GRID_LINE,
+        xlabel="Cluster average vs. position-group average", ax=ax,
+    )
+    st.pyplot(fig)
+    plt.close(fig)
+    st.caption(
+        "Each stat first expressed relative to its own competition's peers (so a Bundesliga "
+        "cluster isn't just describing 'more actions than a WSL team'), then this cluster's "
+        "average measured in standard deviations (σ) from the whole position group's average — "
+        "the same z-score reading the project notebooks use to name clusters (e.g. high "
+        "Tackles/Interceptions + low Clearances reads as a ball-winning full-back). **Not a "
+        "ranking** — a low value here is a different style, not a worse one (unlike the "
+        "percentile chart further down the page, which is a ranking)."
+    )
 if len(cluster_peers):
     with st.expander(f"Browse this archetype ({len(cluster_peers)} other players)"):
         archetype_board = cluster_peers.sort_values("minutes_played", ascending=False).head(8)
@@ -1080,9 +1167,13 @@ with st.expander(
     plot_diverging_bar(
         labels=[STAT_LABELS[c] for c in position_feature_columns],
         values=[percentiles[c] * 100 for c in position_feature_columns],
-        reference=50, label_format=lambda v: f"{v:.0f}th",
+        # label_format carries the tier word, not just the ordinal number — a bare "72nd" still
+        # asks the reader to judge whether that's good; "72nd (Good)" doesn't (see
+        # percentile_tier's own docstring for why this app leads with the word).
+        reference=50, label_format=lambda v: f"{format_percentile(v)} ({percentile_tier(v)})",
         above_color=ACCENT_ORANGE, below_color=ACCENT_BLUE, grid_color=GRID_LINE,
-        xlabel=f"Percentile within position group (n={len(group_df)})", ax=ax,
+        xlabel=f"Percentile within position group (n={len(group_df)}) — higher is always better",
+        ax=ax,
     )
     st.pyplot(fig)
     plt.close(fig)
@@ -1090,7 +1181,8 @@ with st.expander(
         st.caption(
             "Counts are from StatsBomb's `Goal Keeper` event sub-types (Shot Faced, Shot Saved, "
             "Goal Conceded, Collected, Punch, Keeper Sweeper) — save % isn't shown here since "
-            "it's already above, as a ratio rather than a per-90 rate."
+            "it's already above, as a ratio rather than a per-90 rate. Goals Conceded's "
+            "percentile is flipped so fewer conceded reads as higher, not lower."
         )
     else:
         st.caption(
@@ -1107,7 +1199,9 @@ with st.expander(
             "Per 90": [player_row_full[c] for c in position_feature_columns],
             "Percentile (numeric)": [percentiles[c] * 100 for c in position_feature_columns],
         }).sort_values("Percentile (numeric)", ascending=False)
-        stat_table["Percentile"] = stat_table["Percentile (numeric)"].map(lambda p: f"{p:.0f}th")
+        stat_table["Percentile"] = stat_table["Percentile (numeric)"].map(
+            lambda p: f"{format_percentile(p)} ({percentile_tier(p)})"
+        )
         st.dataframe(
             stat_table.drop(columns="Percentile (numeric)"), hide_index=True, width="stretch"
         )

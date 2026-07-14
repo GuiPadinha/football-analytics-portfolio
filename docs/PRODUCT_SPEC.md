@@ -48,6 +48,14 @@ expander rather than surfaced.
   app with Playwright, see ML_TOOLING.md), feeding a selectbox of current matches with the top
   one pre-selected — the text
   box is now the obvious first thing to type into, not a combobox you click open before typing.
+  (**Superseded again, 2026-07-14 (cont.):** this exact text_input + selectbox combo turned out to
+  have the opposite problem round 1 didn't — `st.text_input` never reruns until Enter/blur, so
+  typing produced no visible change, which read as broken under live use. Round 3 went back to a
+  bare `st.selectbox` (its own dropdown filters instantly, client-side, no roundtrip needed) but
+  changed the one thing that plausibly caused round 1's "reads as a dropdown" complaint in the
+  first place: it now starts blank (`index=None`, placeholder text) instead of pre-filled with an
+  already-selected player. Full account, including the direct confirmation this reversal was
+  checked against before shipping, in docs/PROGRESS.md's 2026-07-14 (cont.) entry.)
 - **Widened player pool (Phase 4b real wiring):** the similarity pool now spans
   `config.SIMILARITY_SETS` — PL/La Liga/Serie A/Ligue 1 2015/16 plus Frauen Bundesliga/FA WSL
   2023/24 (6 competitions total), clustered together per position group, not per league. Named

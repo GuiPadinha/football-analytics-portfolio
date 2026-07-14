@@ -81,6 +81,24 @@ Key gotchas and lessons — most recent first:
 
 Key gotchas and lessons — most recent first:
 
+- **`rank(pct=True)` on a raw column silently assumes "bigger is better" — it isn't, for every
+  stat** (2026-07-14, percentile-perception pass on the app's UI). Every percentile display in
+  the app (signature stat cards, the "All per-90 stats" chart, the Compare players table) computed
+  `group_df[feature_columns].rank(pct=True)` directly on raw per-90 rates. That's correct for ten
+  of the eleven outfield/goalkeeper stats, but a goalkeeper's `goals_conceded_p90` is the one
+  stat here where a *smaller* raw number is the better outcome — a leaky keeper who concedes the
+  most in the pool landed at the 90th+ percentile, which every other percentile in the app reads
+  as "elite." Caught by actually looking at a goalkeeper's page, not by reasoning about the code —
+  the bug was invisible until a real 90th-percentile Goals Conceded number sat next to a "this is
+  good" colour cue. Fixed with `goodness_percentiles` (`src/similarity.py`): a `LOWER_IS_BETTER_STATS`
+  set and a small transform that flips just those columns (`1 - value`) so every percentile in the
+  app means the same thing — "how does this compare to peers," always in the same direction —
+  before it's ever displayed. General lesson: a percentile or z-score computed straight off a raw
+  column inherits that column's *scale* correctly but says nothing about its *direction* — a
+  bigger-is-worse metric (goals conceded, errors, fouls, turnovers) needs an explicit sign flip
+  before it's fed into any "higher = better" visual convention (colour, ranking, ordering), and
+  that flip has to happen at the data layer, not hoped for at the display layer, or every chart
+  reusing the same raw percentile inherits the same silent bug.
 - **A naive "most tokens wins" name-matching rule has a real, demonstrable failure mode on
   Lusophone/Hispanic full legal names — common surname tokens can outrank a rarer, correct
   mononym match** (2026-07-14, Transfermarkt market-value entity resolution). Matching

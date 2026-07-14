@@ -6,74 +6,72 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
-## 2026-07-14 — Market value (Transfermarkt) + two-player Compare view
+## 2026-07-14 (cont.) — Search-box UX fix, Style archetype rework, percentile direction bug
 
-Continuing straight on from the previous session's three fixes: picked up two of the three
-remaining backlog items named explicitly at the start of this pass (market-value integration,
-side-by-side comparison view), deliberately stopping short of the third (a multi-season "player
-career" page — needs new data pulls, out of scope here).
+Guilherme's ask: focus a pass on the webpages themselves — Style archetype "is boring and
+confusing with that delta/beta (Greek letter)"; percentiles "not good at giving perception of
+good/bad performance"; and "more real webpage behaviour in search boxes (inline suggestion/real
+time suggestion) — try and 'play' with the webpage to see what I mean." App was already running
+locally; used it directly (Playwright-over-Edge against the live `localhost:8501` server, not just
+reading the code) to find and verify each issue before fixing it, per the "actually drive the app"
+lesson ML_TOOLING.md already has on file from two earlier sessions.
 
-**Market value.** Researched `dcaribou/transfermarkt-datasets` properly before writing any
-matching code — confirmed real network access (Python via the Bash tool has it; only Git Bash's
-own shell-level `curl` doesn't, a refinement of an older, over-broad ML_TOOLING.md note), found the
-real schema (`players`/`player_valuations` tables, dated valuation history), and hit a real `403`
-from the hosting CDN that turned out to be User-Agent sniffing, not an auth problem (see
-ML_TOOLING.md). Built `src/market_value.py`'s entity resolution — exact name match first, then a
-token-subset fallback for "StatsBomb logs the full legal name, Transfermarkt the popular one." The
-first version of that fallback (rank candidates by raw token count) was validated against real
-data before shipping, not assumed correct, and it genuinely failed: it nearly matched Neymar to an
-unrelated real player, "Júnior Santos," because common Portuguese surname tokens ("Santos",
-"Junior") outscored the correct, much rarer "neymar" token under a naive count-based rule. Fixed
-by weighting tokens by inverse corpus frequency instead of raw count — full account, including a
-second bug (a name-construction particle like "de" winning a match by default when it was the only
-candidate), in ML_LEARNING_LOG.md. Final result, verified against real 2015/16-era valuations for
-every star player checked (Messi, Ronaldo, Neymar, Suárez, Kane, Agüero, Ibrahimović, Higuaín):
-**1,215 of ~1,344 players matched (~90%)** across the four men's competitions in the pool — checked
-directly, not assumed, that this Transfermarkt mirror has zero women's-football coverage at all,
-so Frauen Bundesliga/FA WSL players are skipped outright rather than attempted-and-failed. Wired
-into `app_data.build_app_artifacts` as a new `market_value.parquet` artifact (its own,
-independently-rebuildable step — `with_market_value=False` skips it for an offline dev build) and
-shown in three places: a player's own page, the "players like X" table, and a new Leaderboard
-column (formatted with the same hand-formatted-text-column pattern the previous session's "None"
-fix established, to avoid reintroducing that exact bug for a third nullable column).
+**Search boxes.** Typing into the existing `st.text_input` + `st.selectbox` combo (Player explorer,
+both Compare players pickers) produced no visible change until Enter/blur — confirmed live: typed
+"mess" and the match count and dropdown both sat frozen on the old query. Replaced with a single
+`st.selectbox` per search box (its dropdown already does instant client-side type-to-filter, no
+server roundtrip) — same interaction as VS Code's Quick Open or GitHub's file finder. **This
+revisits a shape PRODUCT_SPEC.md records as already tried and explicitly rejected once**
+(2026-07-05 round 1: a bare selectbox "read as a dropdown-first interaction, not a search box,"
+which is why round 2 built the text_input + selectbox combo this pass just removed) — flagged that
+history to Guilherme directly rather than silently reverting it. Two things differ from round 1,
+not just a straight revert: today's complaint was specifically about live-as-you-type behaviour,
+which round 1 never had either (it was live-filtering but that wasn't the feedback that killed it);
+and — the actual fix, confirmed with Guilherme via a direct question — every search box now starts
+**blank** (`index=None`, placeholder text) instead of pre-filled with an already-selected player,
+which round 1 always was. A pre-filled box reading as "a dropdown with a choice already made" is
+plausibly a bigger part of the original "doesn't feel like a search box" complaint than the
+click-to-focus mechanic itself, which is unavoidable with any combobox-shaped widget. Player
+explorer's "About & Roadmap" copy and its own "How to use" steps updated to match (no more "press
+Enter"). Leaderboard's name filter (feeds a multi-row table, not a single pick — no selectbox
+pattern applies) kept as `text_input` but its placeholder now says "then press Enter" instead of
+implying a live filter it can't deliver.
 
-**Compare players.** A new sidebar view — two independent player search/pick widgets (mirrors the
-Player explorer's own pattern) pulling from the whole unfiltered pool, since a comparison across
-positions/competitions is a reasonable thing to want (e.g. "is this expensive winger really worth
-more than that cheap forward"). Market value and a Finishing panel always compare directly;
-signature stats, an overlaid radar (new `visualisation.plot_player_radar_comparison`, built on
-mplsoccer's own `draw_radar_compare` — no need to hand-roll a two-polygon radar), and a percentile
-table only render when both picks share a position group, with a plain-language info message
-explaining why when they don't.
+**Percentile direction bug.** Every percentile display in the app (signature stat cards, "All
+per-90 stats" chart/table, Compare players table) computed `rank(pct=True)` directly on raw per-90
+rates — correct for ten of eleven stats, backwards for the one where a *smaller* number is better:
+a goalkeeper's `goals_conceded_p90`. A leaky keeper landed at the 90th+ percentile, reading as
+"elite" next to every other percentile in the app. New `similarity.goodness_percentiles`
+(+`LOWER_IS_BETTER_STATS`) flips just that column so every percentile means the same thing before
+it's ever displayed — full account in ML_LEARNING_LOG.md. Also addressed the broader "percentile
+alone doesn't convey good/bad" complaint: added `percentile_tier` (Elite/Very good/Good/Average/
+Below average/Poor — the FBref/StatsBomb scouting-report convention) next to every percentile
+number, everywhere one is shown. Found and fixed a smaller, pre-existing bug along the way while
+touching every one of these format strings: percentiles read "91th" instead of "91st" (no ordinal
+suffix logic) — new `format_percentile` helper fixes this app-wide.
 
-**Verification.** Full `pytest` suite green (**86** — 75 unchanged + 11 new
-`tests/test_market_value.py` cases, several reproducing the real matching bugs above as regression
-tests: the Santos/Junior collision with a padded synthetic corpus matching the real one's token
-frequencies, the particle-only false match, a genuine two-real-players ambiguity correctly left
-unresolved). A scripted `AppTest` pass covered the Compare players view (same-position and
-cross-position picks, checking for the right subheaders/info-message) and a market-value caption
-render on a real player's page — zero exceptions. Playwright-over-Edge screenshots confirmed: a
-real Messi-vs-Ronaldo comparison renders a correct blue/orange radar overlay and a "Cristiano
-Ronaldo dos Santos Aveiro is valued €10.0M less than..." caption; a Forward-vs-Goalkeeper pick
-correctly shows the cross-position info message and skips the radar section without an exception;
-zero literal "None" text anywhere in either new feature; the Leaderboard's new Market value column
-renders correctly (including a genuinely blank cell for the one La Liga forward whose name
-matched two different real Transfermarkt players — left unresolved by design, not a bug). One real
-screenshot false alarm on the way, immediately recognised rather than chased: a Leaderboard
-screenshot taken right after a view switch showed stale Compare-players content underneath — the
-exact documented Playwright timing artifact from a previous session (ML_TOOLING.md) — reshot with
-a longer wait and it rendered cleanly. `python -m src.metrics` regenerates `metrics.json`
-byte-identical throughout (this session's scope never touches the notebook/pipeline's narrow
-single-competition numbers).
+**Style archetype rework.** Headline sentence dropped its inline "(+1.4σ)" parentheticals — "this
+cluster does noticeably more X and less Y" now reads as plain English, with the exact z-scores one
+click away in a new collapsed expander (mirrors the "All per-90 stats" expander's own progressive-
+disclosure pattern, fixing the second complaint that the panel was "boring" — it no longer renders
+a second full-height bar chart immediately under the first one). Inside that expander, bars are now
+labelled "Much more (+1.4σ)" / "Typical (+0.1σ)" / "Somewhat less (-0.4σ)" via new
+`style_intensity_label`, not a bare number — word first, Greek letter kept but demoted to a
+secondary detail. Rounds before thresholding (not after) so two bars that display the same rounded
+value never get different words.
 
-**Docs updated:** DATA.md (new "Transfermarkt Market Value Data" section, replacing the old
-"flagged, not started" research-spike note; Cache Files table), MODULES.md (new Module B
-paragraph), FRAMEWORK.md (two Out of Scope notes — modelling vs. displaying a market value is a
-real distinction now, not just a future one), ML_LEARNING_LOG.md (the rarity-weighting entity-
-resolution lesson), ML_TOOLING.md (the R2/User-Agent gotcha, and the Git-Bash-vs-Python-network
-clarification), ROADMAP.md (Phase 9 list), PITCH.md (demo script, key numbers, roadmap, "why isn't
-X done" sections), PRODUCT_SPEC.md (new dated section), app.py's own "About & Roadmap" copy (Data
-used / How to use / What's shipped sections).
+**Verification.** Full `pytest` suite green (**89** — 86 unchanged + 3 new
+`goodness_percentiles` cases in `test_similarity.py`). Playwright-over-Edge against a freshly
+restarted local server (killed and relaunched twice mid-session to pick up on-disk changes, per
+ML_TOOLING.md's "a page reload doesn't guarantee the server has the new code" lesson) confirmed:
+live substring filtering with no Enter (typed "mess" → Messi appeared instantly at the top of the
+dropdown); Player explorer and both Compare players pickers all start blank; the reworked Style
+archetype panel renders plain-language labels with no visual duplication of the percentile chart
+below it; percentile displays show tier words and correct ordinal suffixes (e.g. "91st (Very
+good)"); a goalkeeper-relevant lower-is-better stat now reads consistently with every other stat.
+
+**Docs updated:** PRODUCT_SPEC.md (this entry's search-box history cross-reference — full detail
+lives here, not duplicated there), ML_LEARNING_LOG.md (the percentile-direction lesson, Module B).
 
 ---
 
@@ -81,8 +79,9 @@ used / How to use / What's shipped sections).
 
 Verified against `git log`/`git status` 2026-07-14. Git CLI is used directly (see CLAUDE.md's
 Session Workflow) — this section is a lightweight pointer, not a substitute for `git log`/`git
-status`. Latest commit on `origin/main`: `067a9d2` (goalkeeper clustering, cross-league
-normalisation, Leaderboard "None" fix). The market value + Compare players entry above is
-**complete but not yet committed** — working tree has uncommitted changes as of this write-up (per
-CLAUDE.md's Session Workflow, only commit when explicitly asked). Entries through 2026-07-13
-(cont. 6) moved to [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md) to keep this file under 150 lines.
+status`. Latest commit on `origin/main`: `78feefe` (market value + two-player Compare view — that
+entry moved to [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md) alongside it). The search-box/Style
+archetype/percentile-direction entry above is **complete but not yet committed** — working tree has
+uncommitted changes (`app.py`, `src/similarity.py`, `tests/test_similarity.py`,
+`ML_LEARNING_LOG.md`) as of this write-up (per CLAUDE.md's Session Workflow, only commit when
+explicitly asked).
