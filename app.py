@@ -440,11 +440,12 @@ def render_leaderboard(pool, xg_table, market_value):
     # numeric input and can no longer be used directly on the (now text) G-xG column.
     #
     # Known trade-off, stated plainly: Streamlit's interactive "click a header to sort" now sorts
-    # these two columns lexically (text), not numerically — e.g. "+10.5" sorts before "+4.2".
-    # There is no column_config option to declare "sort column A, display column B" in this
-    # Streamlit version, so a perfectly numeric click-sort and a blank-for-missing cell are not
-    # simultaneously achievable here; the default row order (sorted by Goals, below) is
-    # unaffected, and this is a materially smaller issue than every blank cell reading "None".
+    # these columns lexically (text), not numerically — e.g. "+10.5" sorts before "+4.2", and (once
+    # Goals/Non-pen goals/Assists get the same treatment below) "9" sorts after "10". There is no
+    # column_config option to declare "sort column A, display column B" in this Streamlit version,
+    # so a perfectly numeric click-sort and a blank-for-missing cell are not simultaneously
+    # achievable here; the default row order (sorted by Goals, below) is unaffected, and this is a
+    # materially smaller issue than every blank cell reading "None".
     gxg_raw = board["G-xG"]
     if gxg_raw.notna().any():
         gxg_span = gxg_raw.abs().max() or 1.0
@@ -457,6 +458,14 @@ def render_leaderboard(pool, xg_table, market_value):
     # Same "hand-format to text, never a null numeric cell" fix as xG/G-xG above — market value
     # is blank just as often (men's competitions only, and only where name-matching resolved).
     board["Market value"] = board["Market value"].map(format_market_value)
+    # Same fix again, same root cause (Streamlit issue #7360): Goals/Non-pen goals/Assists come
+    # from the outfield feature set and are genuinely NaN for all 124 goalkeepers (blank Goals/
+    # Assists is the documented, intentional behaviour — see this function's docstring and the
+    # caption below) — but until now those three columns still used `column_config.NumberColumn`,
+    # so every goalkeeper row rendered the literal text "None" three times over. Hand-format to
+    # text the same way xG/G-xG/Market value already are.
+    for count_col in ("Goals", "Non-pen goals", "Assists"):
+        board[count_col] = board[count_col].map(lambda v: "" if pd.isna(v) else f"{v:.0f}")
 
     board_style = board.style
     if gxg_colors is not None:
@@ -468,9 +477,9 @@ def render_leaderboard(pool, xg_table, market_value):
         width="stretch",
         column_config={
             "Minutes": st.column_config.NumberColumn(format="%d"),
-            "Goals": st.column_config.NumberColumn(format="%d"),
-            "Non-pen goals": st.column_config.NumberColumn(format="%d"),
-            "Assists": st.column_config.NumberColumn(format="%d"),
+            "Goals": st.column_config.TextColumn(help="Includes penalties. Blank for goalkeepers."),
+            "Non-pen goals": st.column_config.TextColumn(help="Blank for goalkeepers."),
+            "Assists": st.column_config.TextColumn(help="Blank for goalkeepers."),
             "xG": st.column_config.TextColumn(help="Flagship xG set only"),
             "G-xG": st.column_config.TextColumn(
                 help="Goals minus xG. Positive = outscoring chance quality (expect regression); "

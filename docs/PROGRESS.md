@@ -6,6 +6,36 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-07-14 (cont. 3) — Leaderboard "None" cell bug, round 2: Goals/Non-pen goals/Assists
+
+Guilherme, driving the live app himself: "player leaderboards still has multiple missing/(empty)
+values." The 2026-07-13 fix (see the archived entry, and CLAUDE.md's Current Status) only converted
+xG/G-xG/Market value to hand-formatted text columns — Goals, Non-pen goals, and Assists were left on
+`column_config.NumberColumn(format="%d")`. Those three are genuinely `NaN` for all 124 goalkeepers
+(outfield feature set doesn't cover them — documented, intentional), so every goalkeeper row hit the
+exact same Streamlit issue #7360 (`NumberColumn` renders a missing numeric cell as the literal text
+"None") the prior fix was written to kill. Confirmed via `player_per90.parquet`
+(`goals`/`non_penalty_goals`/`assists` all null for the 124-row Goalkeeper group, 0 nulls elsewhere)
+before touching code.
+
+**Fix:** same pattern as the 2026-07-13 fix, applied to the three remaining columns —
+`render_leaderboard` now hand-formats Goals/Non-pen goals/Assists to text (blank string for NaN,
+`f"{v:.0f}"` otherwise) *after* the Goals sort already ran on the numeric column, and their
+`column_config` entries switched from `NumberColumn` to `TextColumn`. Extended the existing
+"known trade-off" comment (lexical, not numeric, click-to-sort) to cover all six now-text columns,
+not just xG/G-xG.
+
+**Verification.** Full `pytest` suite still green (89, unchanged — display-only). Killed and
+restarted the local Streamlit server (on-disk change, per the standing "reload isn't enough"
+lesson), then Playwright-over-Edge: filtered the Leaderboard's in-page position filter down to
+Goalkeeper-only (124 rows, where every one of these three columns is null) and screenshotted the
+result — genuinely blank cells, no "None" text anywhere in the grid.
+
+**Docs:** none beyond this entry — no new gotcha class, just the same fix applied to columns the
+first pass missed.
+
+---
+
 ## 2026-07-14 (cont.) — Search-box UX fix, Style archetype rework, percentile direction bug
 
 Guilherme's ask: focus a pass on the webpages themselves — Style archetype "is boring and

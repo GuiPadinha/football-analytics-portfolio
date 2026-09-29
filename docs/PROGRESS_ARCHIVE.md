@@ -1326,3 +1326,72 @@ resolution lesson), ML_TOOLING.md (the R2/User-Agent gotcha, and the Git-Bash-vs
 clarification), ROADMAP.md (Phase 9 list), PITCH.md (demo script, key numbers, roadmap, "why isn't
 X done" sections), PRODUCT_SPEC.md (new dated section), app.py's own "About & Roadmap" copy (Data
 used / How to use / What's shipped sections).
+
+---
+
+## 2026-07-14 (cont.) — Search-box UX fix, Style archetype rework, percentile direction bug
+
+Guilherme's ask: focus a pass on the webpages themselves — Style archetype "is boring and
+confusing with that delta/beta (Greek letter)"; percentiles "not good at giving perception of
+good/bad performance"; and "more real webpage behaviour in search boxes (inline suggestion/real
+time suggestion) — try and 'play' with the webpage to see what I mean." App was already running
+locally; used it directly (Playwright-over-Edge against the live `localhost:8501` server, not just
+reading the code) to find and verify each issue before fixing it, per the "actually drive the app"
+lesson ML_TOOLING.md already has on file from two earlier sessions.
+
+**Search boxes.** Typing into the existing `st.text_input` + `st.selectbox` combo (Player explorer,
+both Compare players pickers) produced no visible change until Enter/blur — confirmed live: typed
+"mess" and the match count and dropdown both sat frozen on the old query. Replaced with a single
+`st.selectbox` per search box (its dropdown already does instant client-side type-to-filter, no
+server roundtrip) — same interaction as VS Code's Quick Open or GitHub's file finder. **This
+revisits a shape PRODUCT_SPEC.md records as already tried and explicitly rejected once**
+(2026-07-05 round 1: a bare selectbox "read as a dropdown-first interaction, not a search box,"
+which is why round 2 built the text_input + selectbox combo this pass just removed) — flagged that
+history to Guilherme directly rather than silently reverting it. Two things differ from round 1,
+not just a straight revert: today's complaint was specifically about live-as-you-type behaviour,
+which round 1 never had either (it was live-filtering but that wasn't the feedback that killed it);
+and — the actual fix, confirmed with Guilherme via a direct question — every search box now starts
+**blank** (`index=None`, placeholder text) instead of pre-filled with an already-selected player,
+which round 1 always was. A pre-filled box reading as "a dropdown with a choice already made" is
+plausibly a bigger part of the original "doesn't feel like a search box" complaint than the
+click-to-focus mechanic itself, which is unavoidable with any combobox-shaped widget. Player
+explorer's "About & Roadmap" copy and its own "How to use" steps updated to match (no more "press
+Enter"). Leaderboard's name filter (feeds a multi-row table, not a single pick — no selectbox
+pattern applies) kept as `text_input` but its placeholder now says "then press Enter" instead of
+implying a live filter it can't deliver.
+
+**Percentile direction bug.** Every percentile display in the app (signature stat cards, "All
+per-90 stats" chart/table, Compare players table) computed `rank(pct=True)` directly on raw per-90
+rates — correct for ten of eleven stats, backwards for the one where a *smaller* number is better:
+a goalkeeper's `goals_conceded_p90`. A leaky keeper landed at the 90th+ percentile, reading as
+"elite" next to every other percentile in the app. New `similarity.goodness_percentiles`
+(+`LOWER_IS_BETTER_STATS`) flips just that column so every percentile means the same thing before
+it's ever displayed — full account in ML_LEARNING_LOG.md. Also addressed the broader "percentile
+alone doesn't convey good/bad" complaint: added `percentile_tier` (Elite/Very good/Good/Average/
+Below average/Poor — the FBref/StatsBomb scouting-report convention) next to every percentile
+number, everywhere one is shown. Found and fixed a smaller, pre-existing bug along the way while
+touching every one of these format strings: percentiles read "91th" instead of "91st" (no ordinal
+suffix logic) — new `format_percentile` helper fixes this app-wide.
+
+**Style archetype rework.** Headline sentence dropped its inline "(+1.4σ)" parentheticals — "this
+cluster does noticeably more X and less Y" now reads as plain English, with the exact z-scores one
+click away in a new collapsed expander (mirrors the "All per-90 stats" expander's own progressive-
+disclosure pattern, fixing the second complaint that the panel was "boring" — it no longer renders
+a second full-height bar chart immediately under the first one). Inside that expander, bars are now
+labelled "Much more (+1.4σ)" / "Typical (+0.1σ)" / "Somewhat less (-0.4σ)" via new
+`style_intensity_label`, not a bare number — word first, Greek letter kept but demoted to a
+secondary detail. Rounds before thresholding (not after) so two bars that display the same rounded
+value never get different words.
+
+**Verification.** Full `pytest` suite green (**89** — 86 unchanged + 3 new
+`goodness_percentiles` cases in `test_similarity.py`). Playwright-over-Edge against a freshly
+restarted local server (killed and relaunched twice mid-session to pick up on-disk changes, per
+ML_TOOLING.md's "a page reload doesn't guarantee the server has the new code" lesson) confirmed:
+live substring filtering with no Enter (typed "mess" → Messi appeared instantly at the top of the
+dropdown); Player explorer and both Compare players pickers all start blank; the reworked Style
+archetype panel renders plain-language labels with no visual duplication of the percentile chart
+below it; percentile displays show tier words and correct ordinal suffixes (e.g. "91st (Very
+good)"); a goalkeeper-relevant lower-is-better stat now reads consistently with every other stat.
+
+**Docs updated:** PRODUCT_SPEC.md (this entry's search-box history cross-reference — full detail
+lives here, not duplicated there), ML_LEARNING_LOG.md (the percentile-direction lesson, Module B).
