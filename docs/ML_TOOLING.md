@@ -320,15 +320,22 @@ traffic, so verification fails anyway. Any `certifi` upgrade also silently wipes
 Consequence at the time of writing: every Python network path was down — StatsBomb pulls,
 notebook 01 (`sb.competitions()` isn't disk-cached), the Transfermarkt download, `pip install`.
 
-**Durable fix (outside the repo, not applied by Claude):** stop editing `certifi` in place. Either
-export the *current* Avast root from the Windows store (`certmgr.msc` → Trusted Root → "Avast
-Web/Mail Shield Root" → Base-64 .cer), concatenate it with `certifi`'s bundle into a file outside
-`site-packages`, and point `SSL_CERT_FILE` + `REQUESTS_CA_BUNDLE` (user env vars) at it — survives
-`certifi` upgrades, still breaks on the next rotation; or use the OS trust store directly
-(`truststore` package / pip's `--use-feature=truststore`, available since pip 22.2), which follows
-whatever root Avast has installed; or turn off HTTPS scanning in Avast. **Quick diagnosis next
-time:** if PowerShell can fetch a URL but Python can't, it's this — check the issuer of the peer
-cert Python receives before debugging anything else.
+**Durable fix, applied 2026-10-01:** stop editing `certifi` in place and use the OS trust store,
+which Avast updates itself on every rotation.
+1. **pip:** upgraded 22.2.2 → 26.2.1, bootstrapped once with `pip install --cert <bundle>` (a
+   throwaway PEM made of `certifi`'s bundle plus the current Avast root, exported from the Windows
+   store with PowerShell's `Cert:\LocalMachine\Root`). Modern pip verifies against the OS store by
+   default (vendored `truststore`), so it has worked without `--cert` ever since.
+2. **Project code:** `src/net.py`'s `use_os_trust_store()` calls `truststore.inject_into_ssl()`
+   (`truststore` is a dev/ingestion dependency). `data_loader` calls it at import and
+   `market_value` before downloading, so statsbombpy, kloppy, urllib and the notebooks all verify
+   against Windows' store. Without `truststore` installed, as on the deployed app, it's a no-op.
+3. **Not changed:** no user environment variables were set, and `certifi` is untouched. Other
+   Python projects on this machine that use `requests` directly would still fail until they do
+   the same, or until someone sets `REQUESTS_CA_BUNDLE`, or Avast's HTTPS scanning is turned off.
+
+**Quick diagnosis next time:** if PowerShell can fetch a URL but Python can't, it's this. Check the
+issuer of the peer cert Python receives before debugging anything else.
 
 ## How to use this file
 

@@ -1,8 +1,41 @@
 # Progress Log — Recent Sessions
 
-→ [CLAUDE.md](../CLAUDE.md) | Historical (S1–S8, Phase 0–2): [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md)
+→ [CLAUDE.md](../CLAUDE.md) | Historical (S1 through 2026-07-14): [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md)
 
 Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this file exceeds 150 lines.
+
+---
+
+## 2026-10-01 — Executing the health-check plan, one commit per phase
+
+Guilherme approved the 2026-09-30 plan. Every health-check item gets fixed before any further
+model work. He asked for one commit + push per item, and for a "pin" on expanding data ingestion
+(Kaggle and other sources) and on using 360. The order was changed to put HTTPS first, because it
+unblocks pip and every data pull. Phases:
+(1) HTTPS + ingestion resilience, (2) quick wins, (3) `app.py` restructure + tests,
+(4) Python 3.12 readiness, (5) ingestion: women's tournaments + the data/360 pin, (6) docs
+restructure.
+
+**Phase 1: HTTPS + ingestion resilience.**
+- *Fixed the machine:* upgraded pip 22.2.2 → 26.2.1, bootstrapped with a throwaway CA bundle. It
+  now verifies against the Windows store by default. Also installed `truststore` 0.10.4.
+- *Fixed the project:* new `src/net.py`.
+  - `use_os_trust_store()` (`truststore.inject_into_ssl()`, a no-op when `truststore` is absent)
+    runs at `data_loader` import and before the Transfermarkt download.
+  - `with_retries()` retries 429/5xx/dropped connections with exponential backoff and honours
+    `Retry-After`. A 429 starts at 30s, a dropped connection at 2s. A 404 or a certificate error
+    fails fast.
+  - Every StatsBomb fetch (`_disk_cached`, `load_competitions`, `load_matches`) and the
+    Transfermarkt download go through both.
+- *Tests:* `tests/test_net.py` (11 tests, offline, injected `sleep`) caught a real bug while being
+  written. `urllib.error.HTTPError` proxies unknown attributes to its response file, so
+  `getattr(exc, "response", None)` raised `KeyError` instead of returning `None`; it's now
+  type-checked first.
+- *Verified live:* `load_competitions()` (80 competitions), `load_matches` for Women's EURO 2025
+  (31 matches), and a Transfermarkt GET all work from Python again. Notebook 01 re-executes clean
+  (it had failed on SSL yesterday). Full suite: 100 passed.
+- *Docs:* ML_TOOLING.md (the applied fix), ARCHITECTURE.md + CLAUDE.md layout (`net.py`). Also
+  archived the two 2026-07-14 entries to keep this file short.
 
 ---
 
@@ -58,83 +91,9 @@ entry), ML_LEARNING_LOG.md (feature change → stale qualitative claims), this f
 
 ---
 
-## 2026-07-14 (cont. 3) — Leaderboard "None" cell bug, round 2: Goals/Non-pen goals/Assists
-
-Guilherme, driving the live app himself: "player leaderboards still has multiple missing/(empty)
-values." The 2026-07-13 fix (see the archived entry, and CLAUDE.md's Current Status) only converted
-xG/G-xG/Market value to hand-formatted text columns — Goals, Non-pen goals, and Assists were left on
-`column_config.NumberColumn(format="%d")`. Those three are genuinely `NaN` for all 124 goalkeepers
-(outfield feature set doesn't cover them — documented, intentional), so every goalkeeper row hit the
-exact same Streamlit issue #7360 (`NumberColumn` renders a missing numeric cell as the literal text
-"None") the prior fix was written to kill. Confirmed via `player_per90.parquet`
-(`goals`/`non_penalty_goals`/`assists` all null for the 124-row Goalkeeper group, 0 nulls elsewhere)
-before touching code.
-
-**Fix:** same pattern as the 2026-07-13 fix, applied to the three remaining columns —
-`render_leaderboard` now hand-formats Goals/Non-pen goals/Assists to text (blank string for NaN,
-`f"{v:.0f}"` otherwise) *after* the Goals sort already ran on the numeric column, and their
-`column_config` entries switched from `NumberColumn` to `TextColumn`. Extended the existing
-"known trade-off" comment (lexical, not numeric, click-to-sort) to cover all six now-text columns,
-not just xG/G-xG.
-
-**Verification.** Full `pytest` suite still green (89, unchanged — display-only). Killed and
-restarted the local Streamlit server (on-disk change, per the standing "reload isn't enough"
-lesson), then Playwright-over-Edge: filtered the Leaderboard's in-page position filter down to
-Goalkeeper-only (124 rows, where every one of these three columns is null) and screenshotted the
-result — genuinely blank cells, no "None" text anywhere in the grid.
-
-**Docs:** none beyond this entry — no new gotcha class, just the same fix applied to columns the
-first pass missed.
-
----
-
-## 2026-07-14 (cont. 2) — Scouting-report blurb + phase-alignment check-in
-
-Two things this pass. First, a strategic check-in Guilherme raised directly: after several
-sessions in a row inside Phase 8/9 (product/UX work), are Phases 5–7 (the core ML-depth phases —
-xG uncertainty, Module B metric upgrades, 360-context xG) being quietly forgotten? Answered
-honestly: yes, that's a real drift worth naming, not a false alarm — the Phase 8 order-jump on
-2026-07-04 had a real deadline (a friend demo) that's since been satisfied, so continuing in Phase
-9 no longer has that same justification. Recommended pivoting to Phase 5a (uncertainty on
-goals−xG) next session. Before that, asked to rank the two open Phase 9 backlog items (the
-Leaderboard filter question, the "new app features" candidates) by effort and do the fastest one
-first — the **auto-generated scouting-report blurb** (reuses already-computed data, no new
-modelling), clearly faster than a deep-link feature, a new team-level view, or the Leaderboard
-filter's unresolved design question.
-
-**Scouting-report blurb.** New `app.py` function `build_scouting_blurb` stitches three
-already-rendered panels into one paragraph at the top of a player's page (new "Scouting report"
-subheader, right after the page header): the Style archetype read (top 2 cluster traits + the
-weakest one), the single best percentile stat (`percentiles.idxmax()`, using the same
-goodness-adjusted percentiles and `percentile_tier` wording the rest of the page already uses),
-and market value. A fixed template over already-verified numbers, not an LLM-generated summary —
-it literally cannot say anything the rest of the page doesn't already say, since every value comes
-from a computation that panel below it also uses. Required moving three existing computations
-(`percentiles`, the cluster/`profile_clusters` read, the market-value lookup) earlier in the script
-so the blurb has what it needs before its own panels render further down — reused, not duplicated;
-the Style archetype and signature-stat sections below now read from the same already-computed
-variables instead of recomputing them.
-
-**Verification.** Full `pytest` suite green (**89**, unchanged — this is presentation-only, no
-`src/` logic touched beyond the reordering, which changes nothing about what's computed). Playwright
--over-Edge confirmed the blurb reads sensibly for two different feature sets: a forward (Messi —
-"A Key Passes and Progressive Passes forward, light on Clearances... Stands out most for Dribbles
-Completed, ranking in the 100th percentile (Elite)... Valued at €120.0M") and a goalkeeper (Kasper
-Schmeichel — confirms `goodness_percentiles`' goals-conceded flip doesn't surface a misleadingly
-"good"-sounding stat via `idxmax()`). One honest nuance noted, not fixed: `idxmax()` can surface a
-volume/context stat (e.g. a keeper's Shots Faced) as "stands out most for," which isn't really a
-skill judgment the way Save % would be — inherited from the existing feature-set design (only
-Goals Conceded is flagged direction-sensitive), not a new bug, and the same ambiguity already
-exists in the percentile chart the blurb reads from.
-
-**Docs updated:** ROADMAP.md (Phase 9 candidate list — scouting blurb marked done).
-
----
-
 ## Commit Status
 
-Verified against `git log`/`git status` 2026-09-30. Git CLI is used directly (see CLAUDE.md's
-Session Workflow) — this section is a lightweight pointer, not a substitute for `git log`/`git
-status`. Latest commit on `origin/main`: `9d000ea` (Leaderboard "None" fix, round 2). The
-2026-09-30 health-check entry above and its ML_TOOLING/ML_LEARNING_LOG additions are **not yet
-committed**.
+Git CLI is used directly (see CLAUDE.md's Session Workflow). This section is only a pointer; check
+`git log`/`git status` for the real state. Since 2026-10-01 each phase of the health-check plan is
+committed and pushed on its own (Guilherme's request), so `origin/main` tracks the latest
+finished phase.

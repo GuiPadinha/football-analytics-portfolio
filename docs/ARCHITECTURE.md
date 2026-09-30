@@ -13,7 +13,7 @@ else in the repo shows the shape of `src/` end-to-end.
 ## The Four Layers
 
 ```
-Layer 0 — ingestion:       data_loader.py, config.py
+Layer 0 — ingestion:       data_loader.py, net.py (TLS trust store + retry/backoff), config.py
 Layer 1 — feature build:   features.py (Module A), similarity.py (Module B),
                             market_value.py (external enrichment, Phase 9)
 Layer 2 — model/analysis:  models.py                (Module A only — Module B's clustering
@@ -39,12 +39,13 @@ rebuilding every output PNG/manifest/metric.
 | Module | Imports from `src/` | Imported by |
 |---|---|---|
 | `config.py` | — | `manifest.py`, `metrics.py`, `pipeline.py` |
-| `data_loader.py` | — | `features.py`, `similarity.py`, `manifest.py` |
+| `net.py` | — | `data_loader.py`, `market_value.py` |
+| `data_loader.py` | `net` | `features.py`, `similarity.py`, `manifest.py` |
 | `features.py` | `data_loader` | `pipeline.py` (+ notebook 02) |
 | `similarity.py` | `data_loader` | `metrics.py`, `pipeline.py` (+ notebook 03) |
 | `models.py` | — | `metrics.py`, `pipeline.py` (+ notebook 02) |
 | `visualisation.py` | — | `pipeline.py` (+ notebooks 02/03) |
-| `market_value.py` | — | `app_data.py` |
+| `market_value.py` | `net` | `app_data.py` |
 | `manifest.py` | `config`, `data_loader` | `pipeline.py` |
 | `metrics.py` | `config`, `models`, `similarity` | `pipeline.py` |
 | `pipeline.py` | `config`, `features`, `manifest`, `metrics`, `models`, `similarity`, `visualisation` | — (top-level entry point, `python -m src.pipeline`) |
@@ -59,8 +60,8 @@ existence. This is why the same `plot_calibration_curve`/`plot_shot_map` functio
 whether the caller is notebook 02, `pipeline.py`, or (per [PRODUCT_SPEC.md](PRODUCT_SPEC.md)) the
 deployed Streamlit app.
 
-**`market_value.py` (Phase 9) also imports nothing from `src/`, for a different reason:** it isn't
-StatsBomb-specific at all — its only inputs are a plain DataFrame (`player`/`team`/
+**`market_value.py` (Phase 9) imports nothing from `src/` except `net.py`'s download plumbing,
+for a different reason:** it isn't StatsBomb-specific at all — its only inputs are a plain DataFrame (`player`/`team`/
 `position_group`/`competition` columns) and an external Transfermarkt CSV mirror it downloads
 itself. `app_data.py` is the only caller, and the only place that decides *which* per-90 table's
 players get matched.

@@ -13,6 +13,10 @@ season doesn't re-pull existing ones). Caching uses pickle rather than parquet
 on purpose: StatsBomb events carry nested list/dict columns (locations, freeze
 frames) and lineups is a dict of DataFrames — both round-trip cleanly through
 pickle but not through columnar parquet.
+
+Every network call goes through `src.net`: TLS is verified against the OS certificate store
+(`use_os_trust_store`, called once at import) and transient failures (429, 5xx, dropped
+connections) are retried with backoff (`with_retries`) — see that module for why.
 """
 
 import pickle
@@ -21,6 +25,10 @@ from pathlib import Path
 import pandas as pd
 from statsbombpy import sb
 from kloppy import skillcorner
+
+from src.net import use_os_trust_store, with_retries
+
+use_os_trust_store()
 
 # data/ is gitignored; the cache lives under it so cached pulls never get committed.
 CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "cache"
@@ -58,7 +66,8 @@ def _disk_cached(kind, match_id, producer, use_cache=True):
     Args:
         kind (str): cache namespace ("events", "lineups", "360"), used in the filename.
         match_id (int): StatsBomb match id, the cache key.
-        producer (callable): zero-arg function that fetches the data if not cached.
+        producer (callable): zero-arg function that fetches the data if not cached — retried
+            on transient network failures (`src.net.with_retries`).
         use_cache (bool): set False to force a fresh fetch and overwrite the cache
             (e.g. after a statsbombpy upgrade changes the schema).
 
@@ -70,7 +79,7 @@ def _disk_cached(kind, match_id, producer, use_cache=True):
         with open(path, "rb") as cache_file:
             return pickle.load(cache_file)
 
-    result = producer()
+    result = with_retries(producer, describe=f"{kind} {match_id}")
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     with open(path, "wb") as cache_file:
         pickle.dump(result, cache_file)
@@ -83,7 +92,7 @@ def load_competitions():
     Returns:
         pandas.DataFrame: one row per competition/season.
     """
-    return sb.competitions()
+    return with_retries(sb.competitions, describe="competitions")
 
 
 def load_matches(competition_id, season_id):
@@ -96,7 +105,10 @@ def load_matches(competition_id, season_id):
     Returns:
         pandas.DataFrame: one row per match.
     """
-    return sb.matches(competition_id=competition_id, season_id=season_id)
+    return with_retries(
+        lambda: sb.matches(competition_id=competition_id, season_id=season_id),
+        describe=f"matches {competition_id}/{season_id}",
+    )
 
 
 def load_events(match_id, use_cache=True):

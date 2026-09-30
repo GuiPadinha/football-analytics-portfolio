@@ -114,6 +114,7 @@ Player Evaluation Framework — two modules on StatsBomb/SkillCorner open data:
 src/
   config.py          ← named Dataset constants (competition/season IDs, has_360)
   data_loader.py     ← StatsBomb + SkillCorner ingestion, per-match pickle cache
+  net.py             ← shared download plumbing: OS trust store (truststore) + retry/backoff
   features.py        ← xG feature engineering (distance, angle, assist type, flags)
   models.py          ← logistic pipeline, CV, calibration, GBM, player xG table
   similarity.py      ← clustering, PCA, find_similar_players, resolve_season_positions

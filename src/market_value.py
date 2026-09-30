@@ -43,6 +43,8 @@ from pathlib import Path
 import pandas as pd
 import urllib.request
 
+from src.net import use_os_trust_store, with_retries
+
 TRANSFERMARKT_BASE_URL = "https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data/"
 CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "transfermarkt"
 
@@ -127,11 +129,16 @@ def _download_csv(filename, cache_dir=CACHE_DIR):
     cache_path = cache_dir / filename
 
     if not cache_path.exists():
+        use_os_trust_store()
         request = urllib.request.Request(
             TRANSFERMARKT_BASE_URL + filename, headers={"User-Agent": "Mozilla/5.0"}
         )
-        with urllib.request.urlopen(request, timeout=60) as response:
-            cache_path.write_bytes(response.read())
+
+        def fetch():
+            with urllib.request.urlopen(request, timeout=60) as response:
+                return response.read()
+
+        cache_path.write_bytes(with_retries(fetch, describe=f"Transfermarkt {filename}"))
 
     return pd.read_csv(cache_path, compression="gzip")
 
