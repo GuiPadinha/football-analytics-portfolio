@@ -11,14 +11,17 @@ on:
 
 jobs:
   pytest:
-    runs-on: ubuntu-latest
+    # Pinned rather than ubuntu-latest, which moves to Ubuntu 26 from 2026-10-19: setup-python's
+    # prebuilt interpreters for a brand-new image can lag, and this job still tests Python 3.10.
+    # Revisit once the Python 3.12 migration lands.
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7   # checkout@v4 / setup-python@v5 targeted deprecated Node 20
         with:
           fetch-depth: 0   # full history, needed by the doc-freshness check's git diff below
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.10"   # matches the version requirements.txt is pinned against
           cache: pip

@@ -62,6 +62,12 @@ restructure.
   (Alderweireld, van Dijk, Koscielny), and absorbs him into the attacking full-backs as their
   farthest member. A hard cluster label can hide an outlier as easily as reveal one (logged in
   ML_LEARNING_LOG.md).
+- *2d/2e, CI + deps housekeeping:* `actions/checkout@v7` + `actions/setup-python@v7` (both Node
+  24; CI had warned that v4/v5 target the deprecated Node 20). `runs-on` pinned to `ubuntu-24.04`,
+  because `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19 and this job still tests Python 3.10.
+  Dropped the unused `plotly`. `seaborn` stays pinned: nothing here imports it, but `mplsoccer`
+  depends on it, so the pin keeps a future release from breaking the plots. The fuller
+  requirements split (app runtime vs. dev) is Phase 4.
 
 ---
 

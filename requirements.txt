@@ -8,8 +8,9 @@ numpy==2.2.6
 scikit-learn==1.7.2
 mplsoccer==1.6.1
 matplotlib==3.10.9
+# seaborn: never imported by this project; pinned only because mplsoccer depends on it, so a
+# future seaborn release can't silently break the radar/pitch plots (and the deployed app).
 seaborn==0.13.2
-plotly==6.8.0
 jupyter==1.1.1
 
 # Added in the Hardening & Expansion initiative.
