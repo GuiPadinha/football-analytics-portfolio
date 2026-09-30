@@ -81,6 +81,24 @@ Key gotchas and lessons — most recent first:
 
 Key gotchas and lessons — most recent first:
 
+- **Adding features re-shaped the clusters, and every qualitative claim built on the old ones went
+  stale without anything failing** (found 2026-09-30, repo health check). `clearances`/`blocks`
+  joined `ACTION_COLUMNS` on 2026-07-05 (9 → 11 clustering features), but notebook 03 was last
+  executed 2026-07-01. Re-running it today against current `src/`: the silhouette peaks now match
+  `metrics.json` (0.223/0.256/0.244, where the committed notebook still shows 0.236/0.264/0.262),
+  and the qualitative story moved underneath it. Drinkwater and Fàbregas left the "destroyer" and
+  "playmaker" clusters that README names them in; the top five by minutes in Özil's cluster are now
+  Özil/Mahrez/Sigurðsson/Mané/Alli; Kanté's nearest neighbours are Tioté/Gueye/Kirchhoff/Yacob/Cork (README: Gueye/Tioté/
+  Coquelin/Fernando); Kane's are Ighalo/Vardy/Giroud/Costa/Walcott (README: Vardy/Carroll/Ighalo/
+  Defoe/Agüero). And **the Michail Antonio one-man defender cluster no longer exists** (defender
+  clusters are now n=40/38/22/19). Most plausibly, the two new defensive-action features give his
+  genuine full-back minutes enough weight to sit him among real defenders (not verified per
+  feature). Either way, the outlier Phase 6c's GMM idea was partly meant to address is gone. The doc-lint test caught none of it, because it checks *numbers* against `metrics.json`,
+  not cluster memberships or neighbour lists. Lesson: a feature-set change is a model change. Its
+  checklist is "re-run the teaching notebook, re-read every qualitative claim derived from the old
+  output", not only "tests green". Unsupervised results have no accuracy metric to flag a shift, so
+  only re-reading the narrative catches it. README's Module B section and notebook 03's markdown
+  still describe the 9-feature world as of this entry.
 - **`rank(pct=True)` on a raw column silently assumes "bigger is better" — it isn't, for every
   stat** (2026-07-14, percentile-perception pass on the app's UI). Every percentile display in
   the app (signature stat cards, the "All per-90 stats" chart, the Compare players table) computed

@@ -283,6 +283,53 @@ Confirmed by fully killing and restarting the `streamlit run` process before eac
 screenshot, which is the only way to be certain a Playwright verification is exercising the current
 file, not a cached script run from before the edit.
 
+**Correction, 2026-09-30 (health check): the "no config-level fix exists" conclusion above was
+wrong.** Issue #7360 was closed as *completed* on 2025-11-11 by PR #12968 ("Implement missing
+placeholder for `st.dataframe`") — eight months *before* the 2026-07-13 investigation — and the
+installed Streamlit 1.58 already has it: `st.dataframe(..., placeholder="")` renders missing
+values as blank cells (`inspect.signature(st.dataframe)` lists `placeholder`; its docstring:
+"If this is `None` (default), missing values are displayed as 'None'. To leave a cell empty, use
+an empty string"). So the text-column workaround — and the lexical click-sort trade-off it forced
+on six Leaderboard columns, including Goals, the one most likely to be clicked — was never
+necessary. **Lesson: before concluding a library can't do something, check the *installed*
+version's own signature/docstring (`inspect.signature`, `help()`), not a web search result or an
+issue page's apparent state** — the same direct-API check the Leaderboard name-filter note in
+ROADMAP.md does correctly ("checked directly against the installed 1.58 API").
+
+---
+
+## Python HTTPS fails with `CERTIFICATE_VERIFY_FAILED` — Avast's HTTPS scanning, and its root cert rotates
+
+Avast's Web/Mail Shield intercepts HTTPS and re-signs every certificate with its own root (the
+peer cert Python sees for `raw.githubusercontent.com` is issued by "Avast Web/Mail Shield Root").
+Windows trusts that root (Avast installs it in the Windows store), so PowerShell's
+`Invoke-WebRequest`/`Invoke-RestMethod` and browsers work — but Python's `requests`/`urllib3`/pip
+use `certifi`'s own bundled `cacert.pem`, which doesn't include it. Symptom: `statsbombpy`,
+`pip install`, and any `requests` call fail with `SSLCertVerificationError ... unable to get local
+issuer certificate`.
+
+**Original fix (2026-06-28, S1 — this entry was lost from this file at some point; two sections
+above still referred to "the earlier `certifi` gotcha" with nothing to point at, recovered from
+the scaffold commit `bf8598a`):** append Avast's root cert to both `certifi` bundles (the
+top-level `certifi` package and pip's vendored copy).
+
+**Why that fix broke again (found 2026-09-30):** Avast *rotated* its root certificate. The Windows
+store now holds thumbprint `85A39032…`; the copy appended to `certifi`'s bundle in June is
+`C153DC30…` — still present (`"avast" in cacert.pem` is `True`), just no longer the one signing
+traffic, so verification fails anyway. Any `certifi` upgrade also silently wipes an appended cert.
+Consequence at the time of writing: every Python network path was down — StatsBomb pulls,
+notebook 01 (`sb.competitions()` isn't disk-cached), the Transfermarkt download, `pip install`.
+
+**Durable fix (outside the repo, not applied by Claude):** stop editing `certifi` in place. Either
+export the *current* Avast root from the Windows store (`certmgr.msc` → Trusted Root → "Avast
+Web/Mail Shield Root" → Base-64 .cer), concatenate it with `certifi`'s bundle into a file outside
+`site-packages`, and point `SSL_CERT_FILE` + `REQUESTS_CA_BUNDLE` (user env vars) at it — survives
+`certifi` upgrades, still breaks on the next rotation; or use the OS trust store directly
+(`truststore` package / pip's `--use-feature=truststore`, available since pip 22.2), which follows
+whatever root Avast has installed; or turn off HTTPS scanning in Avast. **Quick diagnosis next
+time:** if PowerShell can fetch a URL but Python can't, it's this — check the issuer of the peer
+cert Python receives before debugging anything else.
+
 ## How to use this file
 
 - Hit a real environment/tooling obstacle this session (network, encoding, kernel, caching, a silent tool failure)? Add it here **before** the session ends, dated only if the fix might later change — most of these don't need a date, just the symptom and the fix. Don't wait for a retrospective "were there any obstacles?" question to write them down.
