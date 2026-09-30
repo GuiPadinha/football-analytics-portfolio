@@ -91,14 +91,18 @@ Key gotchas and lessons — most recent first:
   Özil/Mahrez/Sigurðsson/Mané/Alli; Kanté's nearest neighbours are Tioté/Gueye/Kirchhoff/Yacob/Cork (README: Gueye/Tioté/
   Coquelin/Fernando); Kane's are Ighalo/Vardy/Giroud/Costa/Walcott (README: Vardy/Carroll/Ighalo/
   Defoe/Agüero). And **the Michail Antonio one-man defender cluster no longer exists** (defender
-  clusters are now n=40/38/22/19). Most plausibly, the two new defensive-action features give his
-  genuine full-back minutes enough weight to sit him among real defenders (not verified per
-  feature). Either way, the outlier Phase 6c's GMM idea was partly meant to address is gone. The doc-lint test caught none of it, because it checks *numbers* against `metrics.json`,
+  clusters are now n=40/38/22/19). Verified 2026-10-01: he is *still* the most extreme defender
+  (z +6.0 non-penalty goals/90; nearest neighbour 6.3 standardised units away, 2–3× a typical
+  match) — K-means just stopped spending a cluster on him. The two new features revealed a real
+  fourth archetype (ball-playing centre-backs: progressive passes *and* clearances), and a
+  singleton only survives while one point's squared distance costs more than splitting a genuine
+  group. He's now the farthest member of the attacking full-back cluster (7.7 from its centroid,
+  next-farthest 4.7). A hard cluster label can hide an outlier as easily as reveal one. The doc-lint test caught none of it, because it checks *numbers* against `metrics.json`,
   not cluster memberships or neighbour lists. Lesson: a feature-set change is a model change. Its
   checklist is "re-run the teaching notebook, re-read every qualitative claim derived from the old
   output", not only "tests green". Unsupervised results have no accuracy metric to flag a shift, so
   only re-reading the narrative catches it. README's Module B section and notebook 03's markdown
-  still describe the 9-feature world as of this entry.
+  were rewritten for the 11-feature output on 2026-10-01.
 - **`rank(pct=True)` on a raw column silently assumes "bigger is better" — it isn't, for every
   stat** (2026-07-14, percentile-perception pass on the app's UI). Every percentile display in
   the app (signature stat cards, the "All per-90 stats" chart, the Compare players table) computed

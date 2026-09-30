@@ -134,8 +134,10 @@ The ML-depth differentiator: small → big, no new data, directly serves the val
   (shots↔goals, tackles↔interceptions); respect the covariance.
 - **6b — Possession-adjusted defensive actions:** per-100-opponent-touches so a presser at a
   possession side and one at a low block compare fairly.
-- **6c — GMM soft membership:** the ~0.25 silhouette (continuum) motivates it; also dissolves the
-  Antonio one-man-cluster.
+- **6c — GMM soft membership:** the ~0.22–0.26 silhouette (continuum) motivates it. The Antonio
+  one-man cluster already dissolved when clearances/blocks were added (he's now the far edge of the
+  attacking full-back cluster) — soft membership would express his hybrid role directly instead
+  of hiding it inside a hard label.
 - **6d — Richer creative features:** xA / progressive-pass-distance over raw key passes.
 
 ## Phase 7 — 360-context xG + xGOT  ⬜  *(was Phase 3)*

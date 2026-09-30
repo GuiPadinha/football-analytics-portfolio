@@ -61,12 +61,12 @@ still not wired in (see [DATA.md](DATA.md)).
 
 **Pipeline:**
 - `StandardScaler` → `fit_kmeans` (K=4 per group)
-- `compute_silhouette_scores`: peaked K=2 at ~0.25 (soft continuum) → K=4 kept deliberately for archetype granularity
+- `compute_silhouette_scores`: peaked K=2 at ~0.22–0.26 (soft continuum) → K=4 (~0.15–0.17) kept deliberately for archetype granularity
 - `run_pca` + `plot_pca_clusters` for 2D scatter visualisation
 - `find_similar_players` — Euclidean distance in standardised space, within position group (continuous ranking)
 - `plot_player_radar` — mplsoccer Radar, axes at 5th-95th percentile (avoids Antonio outlier distortion)
 
-**Validated against:** Kanté → Gueye/Tioté/Coquelin/Fernando; Cresswell → Brunt/Davies/Sagna/Bertrand; Kane → Vardy/Carroll/Ighalo/Defoe/Agüero
+**Validated against** (11-feature set, re-checked 2026-10-01): Kanté → Tioté/Gueye/Kirchhoff/Yacob/Cork; Cresswell → Brunt/Davies/Sagna/Bertrand/Naughton; Kane → Ighalo/Vardy/Giroud/Costa/Walcott. Michail Antonio is still the most extreme defender (nearest neighbour 6.3 standardised units away, 2–3× a typical match) but is no longer a one-man cluster — K-means now spends that cluster on ball-playing centre-backs and absorbs him into the attacking full-backs (see notebook 03).
 
 **SkillCorner physical layer:** `build_physical_per90_features` — distance/HSR/sprints per 90 from A-League tracking data. Standalone capability demo only (no player overlap with StatsBomb datasets).
 

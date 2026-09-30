@@ -124,8 +124,9 @@ def resolve_season_positions(minutes_df):
     attacking minutes are spread across several position labels (Right Wing /
     Left Wing / Centre Forward) while their occasional defensive cameos all share
     one label (Right Back), the single defensive label can win a per-match *count*
-    vote even though attacking minutes dominate the season. That is exactly what
-    put Michail Antonio — a winger — into a one-man "defender" cluster in S6.
+    vote even though attacking minutes dominate the season. It was first suspected
+    of Michail Antonio in S6 and turned out *not* to apply to him (his plurality really
+    is right-back / wing-back, see notebook 03), but it did reclassify 10 other hybrids.
 
     The fix resolves the position *group* from summed minutes: total each player's
     minutes per group across the season and take the argmax. Summing at the group
@@ -392,7 +393,7 @@ def _build_season_minutes_and_actions(competition_id, season_id, extract_match_a
     # Minutes-weighted position assignment (see resolve_season_positions): assign
     # each player to the group they logged the most season minutes in, not their
     # modal per-match position — the latter mislabels versatile players whose
-    # attacking minutes are split across several labels (the S6 Antonio case).
+    # attacking minutes are split across several labels (10 hybrids in Phase 2).
     return resolve_season_positions(minutes_df), actions_df
 
 

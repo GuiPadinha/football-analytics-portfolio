@@ -51,6 +51,17 @@ restructure.
   Its 9 PNGs (~3.1 MB, the EURO 2024 shot map alone is 2.1 MB) are now committed through a
   `!outputs/*.png` exception in `.gitignore`. README's 8 embedded charts render on GitHub for the
   first time.
+- *2c, Module B narrative:* recomputed notebook 03's clustering with the current 11 features and
+  rewrote every stale claim to match. That covered README's cluster examples and neighbour table
+  (its "all five lists" was also wrong: the table has three rows), MODULES.md's
+  "validated against" line, ROADMAP 6c, and two `src/` docstrings that still called Antonio a
+  mislabelled winger. Notebook 03 was re-executed in place and its outputs now match
+  `metrics.json` (0.223/0.256/0.244). The most interesting finding: **Antonio is still the most
+  extreme defender** (nearest neighbour 6.3 standardised units away, 2–3× typical), but K-means
+  now spends its fourth defender cluster on a real archetype, ball-playing centre-backs
+  (Alderweireld, van Dijk, Koscielny), and absorbs him into the attacking full-backs as their
+  farthest member. A hard cluster label can hide an outlier as easily as reveal one (logged in
+  ML_LEARNING_LOG.md).
 
 ---
 

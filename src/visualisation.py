@@ -180,9 +180,9 @@ def plot_player_radar(
     rebuild what the library already provides.
 
     Each axis is scaled to the *5th-95th percentile* of `population`, not the
-    true min/max. True min/max would let a single extreme outlier (e.g. the
-    one-player defender cluster dominated by Michail Antonio's attacking
-    output, see notebook 03 S6) compress every other player's radar into an
+    true min/max. True min/max would let a single extreme outlier (e.g. Michail
+    Antonio's attacking output among defenders, +6 SD non-penalty goals per 90,
+    see notebook 03) compress every other player's radar into an
     unreadable sliver near the centre — percentile bounds trade a little bit of
     range accuracy for a chart that stays legible across the whole group.
 

@@ -109,9 +109,9 @@ a target player (for budget reasons, for a like-for-like replacement, for scouti
 league) using their actual on-pitch output rather than name recognition.
 
 ### Approach
-- Per-90 event metrics (goals, shots, key passes, assists, progressive passes, dribbles,
-  pressures, interceptions, tackles) built from StatsBomb event data, **Premier League 2015/16**,
-  300 players clearing a 900-minute appearance floor.
+- Per-90 event metrics (non-penalty goals, shots, key passes, assists, progressive passes,
+  dribbles, pressures, interceptions, tackles, clearances, blocks) built from StatsBomb event data,
+  **Premier League 2015/16**, 300 players clearing a 900-minute appearance floor.
 - Clustering run **separately within each position group** (Defender / Midfielder / Forward,
   goalkeepers excluded) — clustering everyone together would mostly just rediscover position
   itself rather than find play-style differences within a position, which is the actually useful
@@ -133,13 +133,20 @@ league) using their actual on-pitch output rather than name recognition.
 
 ### Result — real football archetypes, not statistical noise
 
-- A midfielder cluster of **N'Golo Kanté, Yann M'Vila, Idrissa Gueye, Danny Drinkwater** — the
-  ball-winning destroyer role, anchored by Kanté's title-winning Leicester season.
-- A separate midfielder cluster of **Mesut Özil, Cesc Fàbregas, Adam Lallana** — the creative
-  playmaker role, anchored by Özil's record-assist season.
-- A defender cluster of **Aaron Cresswell, Ben Daniels, Héctor Bellerín, Patrick van Aanholt** —
-  attacking, overlapping full-backs, distinct from the more conventional "stopper" defender
-  cluster.
+- A midfielder cluster of **N'Golo Kanté, Idrissa Gueye, Yann M'Vila, Cheick Tioté, Eric Dier** —
+  the ball-winning destroyer role (interceptions, tackles and clearances high; shots and key passes
+  low), anchored by Kanté's title-winning Leicester season.
+- A separate midfielder cluster of **Mesut Özil, Riyad Mahrez, Kevin De Bruyne, Philippe
+  Coutinho, Adam Lallana**: the creative, goal-threat playmaker role. Its assists, non-penalty
+  goals and key passes are each ~1.6–1.8 standard deviations above other midfielders. The cluster
+  is anchored by Özil's record-assist season.
+- A defender cluster of **Aaron Cresswell, Héctor Bellerín, Charlie Daniels, Patrick van Aanholt**
+  — attacking, overlapping full-backs — distinct from both a **ball-playing centre-back** cluster
+  (Toby Alderweireld, Virgil van Dijk, Laurent Koscielny: progressive passes *and* clearances) and
+  the more conventional "stopper" cluster (Wes Morgan, Robert Huth).
+- A forward cluster of **Harry Kane, Jamie Vardy, Sergio Agüero, Olivier Giroud, Romelu Lukaku** —
+  penalty-box finishers, distinct from the creators (Christian Eriksen, Dimitri Payet, Eden Hazard)
+  and the pressing forwards (Roberto Firmino, Son Heung-min, Erik Lamela).
 
 **Radar charts** make a player's profile legible at a glance against their position group's range:
 
@@ -149,25 +156,30 @@ league) using their actual on-pitch output rather than name recognition.
 
 | Target | Nearest neighbours |
 |---|---|
-| N'Golo Kanté | Idrissa Gana Gueye, Cheick Tioté, Francis Coquelin, Fernando |
-| Aaron Cresswell | Chris Brunt, Ben Davies, Bacary Sagna, Ryan Bertrand, Ben Daniels |
-| Harry Kane | Jamie Vardy, Andy Carroll, Odion Ighalo, Jermain Defoe, Sergio Agüero |
+| N'Golo Kanté | Cheick Tioté, Idrissa Gana Gueye, Jan Kirchhoff, Claudio Yacob, Jack Cork |
+| Aaron Cresswell | Chris Brunt, Ben Davies, Bacary Sagna, Ryan Bertrand, Kyle Naughton |
+| Harry Kane | Odion Ighalo, Jamie Vardy, Olivier Giroud, Diego Costa, Theo Walcott |
 
-All five lists read as genuine stylistic matches, not statistical coincidence — the qualitative
+All three lists read as genuine stylistic matches, not statistical coincidence — the qualitative
 check used throughout this project wherever there's no ground-truth label to validate against.
 
 ### An honest data-quality caveat
 
-One defender cluster contains a single player, **Michail Antonio**, with extreme attacking output
-(goals and shots per 90 far above any real defender). The intuitive assumption is that his position
-was simply mislabelled — but checking his actual minutes disproved it: in 2015/16 he genuinely
-logged more time at right-back / wing-back (~920 minutes) than as a winger (~760), so assigning
-position by minutes played *correctly* makes him a defender. He stands alone not because of a
-labelling error but because he's a true positional hybrid — forward-level output produced from a
-full-back role. K-means is right: he is nothing like the other defenders. Resolving a case like
-this properly would need multi-position membership (one player belonging to two groups at once),
-and in practice a human in the loop — exactly the kind of edge case a real recruitment tool should
-surface rather than quietly hide.
+**Michail Antonio** is the most extreme defender in the data: +6.0 standard deviations of
+non-penalty goals per 90 and +5.1 of shots versus other defenders, with his nearest statistical
+neighbour 2–3× farther away than a typical "players like X" match. The intuitive assumption is
+that his position was simply mislabelled — but checking his actual minutes disproved it: in
+2015/16 he genuinely logged more time at right-back / wing-back (~920 minutes) than as a winger
+(~760), so assigning position by minutes played *correctly* makes him a defender. He's a true
+positional hybrid: forward-level output produced from a full-back role.
+
+How the clustering treats him is itself a lesson. An earlier 9-feature version gave him a
+defender cluster of his own. Adding clearances and blocks let K-means find a real fourth defender
+archetype (the ball-playing centre-backs above), and he was absorbed into the attacking
+full-back cluster as its farthest member. **The outlier didn't go away; the cluster label just
+stopped showing it.** The distances and his radar chart still do. Resolving a case like this
+properly needs multi-position (soft) membership, and in practice a human in the loop — exactly the
+kind of edge case a real recruitment tool should surface rather than quietly hide.
 
 ---
 
