@@ -1,30 +1,19 @@
 """Player Evaluation Framework — Streamlit product layer (Phase 8).
 
 Thin presentation shell over `src/`: every panel is powered by an already-tested backend
-function (see docs/PRODUCT_SPEC.md's Component -> Backend Map). Reads precomputed artifacts
-from `app_data/` only — no live StatsBomb pulls, no live model training (see PRODUCT_SPEC.md's
-Data Flow section for why: a hosted demo has to respond to a click, not an ~8-minute pull).
+function (see docs/PRODUCT_SPEC.md's Component -> Backend Map), and the words around the numbers
+come from `src/presentation.py`. Reads precomputed artifacts from `app_data/` only — no live
+StatsBomb pulls, no live model training: a hosted demo has to respond to a click, not a pull.
 
-The similarity pool spans every competition in `config.SIMILARITY_SETS` (Phase 4b, 2026-07-05)
-— PL/La Liga/Serie A/Ligue 1 2015/16 plus Frauen Bundesliga/FA WSL 2023/24, see src/app_data.py.
-The xG "Finishing" panel still only has data for Premier League 2015/16 + Bayer Leverkusen
-2023/24 (Module A's own training set, unchanged) — most players in the wider similarity pool
-will hit that panel's "no logged shots" fallback, which is expected, not a bug.
-
-Goalkeepers (2026-07-13) are wired in with their own feature set (saves, shots faced, goals
-conceded, claims, punches, sweeper actions, save %) — none of the outfield `PER90_FEATURE_COLUMNS`
-apply to them, so several spots below branch on `position_group == "Goalkeeper"` rather than
-assuming exactly the three outfield groups. As of a same-day follow-up pass, goalkeepers are
-K-means clustered (K=4, same silhouette-informed-but-archetype-driven call as the outfield
-groups) and share the Style archetype panel with them — see `src/app_data.py`'s
-`_cluster_position_groups`.
-
-Cross-league similarity normalisation (also this pass): clustering and "players like X" both run
-on `similarity.normalize_within_competition`'s league-adjusted (`_lz`-suffixed) features, not the
-raw per-90 rates — a player's standing is compared to their *own competition's* peers before ever
-being compared across leagues. Radar axes, percentiles, and signature stats stay on the raw,
-literal per-90 rates on purpose — those are "how good is this player, in real units" displays,
-not a similarity computation, so a fan reads an actual rate, not a z-score.
+Things worth knowing before editing a view:
+- The similarity pool spans every competition in `config.SIMILARITY_SETS` (see src/app_data.py),
+  but the xG "Finishing" panel only has data for Module A's training set (Premier League 2015/16 +
+  Bayer Leverkusen 2023/24), so most players hit its "no logged shots" fallback — expected.
+- Goalkeepers have their own, disjoint feature set (`presentation.feature_columns_for`), so views
+  branch on position group rather than assuming the three outfield groups.
+- Clustering and "players like X" run on league-normalised (`_lz`) features; radar axes,
+  percentiles and signature stats deliberately stay on raw per-90 rates, so a fan reads a real
+  rate, not a z-score.
 
 Run locally: streamlit run app.py
 """
@@ -38,13 +27,18 @@ import pandas as pd
 from cycler import cycler
 from matplotlib.colors import LinearSegmentedColormap
 
+from src.presentation import (
+    SIGNATURE_STATS_BY_POSITION,
+    STAT_LABELS,
+    build_scouting_blurb,
+    feature_columns_for,
+    format_market_value,
+    format_percentile,
+    lookup_market_value,
+    percentile_tier,
+    style_intensity_label,
+)
 from src.similarity import (
-    ACTION_COLUMNS,
-    GK_ACTION_COLUMNS,
-    GK_PER90_FEATURE_COLUMNS,
-    GK_PER90_LEAGUE_Z_COLUMNS,
-    PER90_FEATURE_COLUMNS,
-    PER90_LEAGUE_Z_COLUMNS,
     compute_silhouette_scores,
     find_similar_players,
     goodness_percentiles,
@@ -116,130 +110,6 @@ plt.rcParams.update({
     "grid.color": GRID_LINE,
 })
 
-# "Best fit" stat per position group (2026-07-05, requested: signature stats that match the
-# role, not a one-size-fits-all list) — a deliberately small, curated subset of ACTION_COLUMNS
-# per group, not a ranking of "the best 3 stats" in some absolute sense. Updated 2026-07-05 to
-# surface assists (Midfielder/Forward) and clearances (Defender) — previously only visible
-# buried in the "All per-90 stats" expander below.
-# Goalkeeper (2026-07-13) draws from GK_ACTION_COLUMNS instead — a keeper's outfield rates
-# (tackles, key passes, ...) are meaninglessly near zero, see src/similarity.py's
-# build_goalkeeper_per90_features docstring. save_pct is shown separately (a ratio, not a
-# per-90 rate with its own raw-total counterpart the way these three are), same pattern as the
-# penalty breakdown below the outfield signature stats.
-SIGNATURE_STATS_BY_POSITION = {
-    "Defender": ["tackles_p90", "interceptions_p90", "clearances_p90"],
-    "Midfielder": ["key_passes_p90", "assists_p90", "progressive_passes_p90"],
-    "Forward": ["non_penalty_goals_p90", "assists_p90", "shots_p90"],
-    "Goalkeeper": ["saves_p90", "goals_conceded_p90", "claims_p90"],
-}
-
-STAT_LABELS = {
-    col: col.replace("_p90", "").replace("_", " ").title()
-    for col in PER90_FEATURE_COLUMNS + GK_PER90_FEATURE_COLUMNS
-}
-STAT_LABELS["save_pct"] = "Save %"
-# Cluster profiling (Style archetype panel) reads the league-normalised `_lz` columns, not the
-# raw `_p90` ones (see the module docstring) — same clean label either way, so a reader sees
-# "Tackles" whether the underlying number is a per-90 rate or a league z-score.
-STAT_LABELS.update({f"{col}_lz": label for col, label in list(STAT_LABELS.items())})
-
-
-def percentile_tier(goodness_pct):
-    """Plain-language read of a 0-100 goodness percentile (`similarity.goodness_percentiles`).
-
-    A bare "72nd percentile" still asks the reader to supply their own judgment of what counts
-    as good — and for the app's one lower-is-better stat (a goalkeeper's goals conceded), the
-    raw percentile actively read backwards before `goodness_percentiles` fixed the direction.
-    These bands are the FBref/StatsBomb scouting-report convention, so the number never has to
-    carry the "is this good?" call by itself. Every caller here already passes a
-    goodness-adjusted percentile, never a raw one.
-    """
-    if goodness_pct >= 95:
-        return "Elite"
-    if goodness_pct >= 80:
-        return "Very good"
-    if goodness_pct >= 60:
-        return "Good"
-    if goodness_pct >= 40:
-        return "Average"
-    if goodness_pct >= 20:
-        return "Below average"
-    return "Poor"
-
-
-def format_percentile(goodness_pct):
-    """"72nd", not "72th" — every percentile display in the app goes through this so the ordinal
-    suffix is never wrong (11th/12th/13th are the exception to 1st/2nd/3rd, handled by the
-    `10 <= n % 100 <= 20` guard below).
-    """
-    n = round(goodness_pct)
-    suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
-    return f"{n}{suffix}"
-
-
-def style_intensity_label(z):
-    """Plain-language read of one cluster-vs-population z-score (`similarity.profile_clusters`)
-    for the Style archetype panel's bar chart — same "lead with the word, not the Greek letter"
-    fix as `percentile_tier`, prompted by exactly that feedback: "+1.4σ" reads as jargon, "Much
-    more (+1.4σ)" reads as English with the number kept for whoever wants it. Unlike a
-    percentile, a z-score here has no good/bad direction (see the panel's own "not a ranking"
-    caption) — the word describes *how unusual*, not *how good*.
-    """
-    # Round before thresholding, not after: two bars that both display "0.3σ" must always get the
-    # same word, even if their unrounded values (e.g. 0.296 and 0.304) sit on opposite sides of a
-    # threshold — a mismatch there would look like a bug, not a rounding artifact.
-    rounded = round(z, 1)
-    magnitude = abs(rounded)
-    if magnitude < 0.3:
-        return f"Typical ({magnitude:.1f}σ)"
-    strength = "far" if magnitude >= 1.5 else "much" if magnitude >= 0.8 else "somewhat"
-    direction = "more" if rounded > 0 else "less"
-    return f"{strength.capitalize()} {direction} ({rounded:+.1f}σ)"
-
-
-def build_scouting_blurb(position_group, high_traits, low_stat_col, n_clusters, percentiles, market_value_row):
-    """One-paragraph scouting-report summary for the top of a player's page (2026-07-14 Phase 9
-    feature): stitches three panels the page already renders lower down — the Style archetype
-    read, the single best percentile stat, and market value — into prose. No new modelling and no
-    new number: every value here is read straight off `profile_clusters`/`goodness_percentiles`/
-    `market_value`, the same computations the panels below already display. Deliberately not an
-    LLM-generated summary — a fixed template over already-verified numbers, so it can't say
-    anything the rest of the page doesn't already say.
-
-    Args:
-        position_group (str): the player's position group label.
-        high_traits (pandas.Series): top cluster z-scores, index=feature column, output of
-            `cluster_z.sort_values(ascending=False).head(n)` — same series the Style archetype
-            panel's own headline sentence uses.
-        low_stat_col (str): the feature column with the lowest cluster z-score.
-        n_clusters (int): how many style clusters exist for this position group.
-        percentiles (pandas.Series): this player's goodness-adjusted percentiles
-            (`similarity.goodness_percentiles`), index=feature column.
-        market_value_row (pandas.Series or None): output of `lookup_market_value`, or `None` if
-            unresolved.
-
-    Returns:
-        str: a Markdown-formatted paragraph.
-    """
-    style_text = " and ".join(f"**{STAT_LABELS[c]}**" for c in high_traits.index)
-    best_stat = percentiles.idxmax()
-    best_pct = percentiles[best_stat] * 100
-    sentences = [
-        f"A **{style_text}** {position_group.lower()}, light on **{STAT_LABELS[low_stat_col]}** — "
-        f"one of {n_clusters} style clusters found among {position_group.lower()}s in this pool.",
-        f"Stands out most for **{STAT_LABELS[best_stat]}**, ranking in the "
-        f"**{format_percentile(best_pct)} percentile ({percentile_tier(best_pct)})** among "
-        f"{position_group.lower()}s.",
-    ]
-    if market_value_row is not None:
-        sentences.append(
-            f"Valued at **{format_market_value(market_value_row['market_value_eur'])}** (Transfermarkt)."
-        )
-    else:
-        sentences.append("Market value not on record.")
-    return " ".join(sentences)
-
-
 st.set_page_config(page_title="Player Evaluation Framework", page_icon=BRAND_ICON, layout="wide")
 
 
@@ -270,25 +140,6 @@ def load_artifacts():
     with open(REPO_ROOT / "metrics.json") as metrics_file:
         metrics = json.load(metrics_file)
     return per90, xg_table, shots, market_value, metrics
-
-
-def format_market_value(eur):
-    """Human-readable market value string ("€30.0M" / "€850k"), or "" for a missing value.
-
-    Shared by every market-value display in the app (player page, "players like X" table,
-    Leaderboard, Compare players) so the same number always reads the same way.
-    """
-    if pd.isna(eur):
-        return ""
-    if eur >= 1_000_000:
-        return f"€{eur / 1_000_000:.1f}M"
-    return f"€{eur / 1_000:.0f}k"
-
-
-def lookup_market_value(market_value, player, team):
-    """Return the matched market-value row for one (player, team), or `None` if unresolved."""
-    match = market_value[(market_value["player"] == player) & (market_value["team"] == team)]
-    return match.iloc[0] if len(match) else None
 
 
 @st.cache_data
@@ -568,10 +419,7 @@ def render_compare_players(per90, xg_table, market_value):
         )
     else:
         position_group = row_a["position_group"]
-        if position_group == "Goalkeeper":
-            feature_columns = GK_PER90_FEATURE_COLUMNS
-        else:
-            feature_columns = PER90_FEATURE_COLUMNS
+        _, feature_columns, _ = feature_columns_for(position_group)
         signature_cols = SIGNATURE_STATS_BY_POSITION[position_group]
         group_df = per90[per90["position_group"] == position_group].reset_index(drop=True)
         row_a_full = group_df[(group_df["player"] == name_a) & (group_df["team"] == team_a)].iloc[0]
@@ -885,15 +733,380 @@ full-season data anywhere in this project).
         )
 
 
+def render_player_explorer(per90, searchable, xg_table, shots, market_value, position_filter, competition_filter):
+    """Render the Player explorer: search one player, then their full profile page.
+
+    Sections, top to bottom: scouting-report blurb, signature stats, penalty/save-% and market-
+    value captions, Style archetype, all per-90 stats, radar + "players like X" (click a row to
+    jump to that player), Finishing (goals vs. xG + shot map), and the position group's own
+    silhouette curve.
+
+    Args:
+        per90 (pandas.DataFrame): the full player pool (percentiles, peers and neighbours are
+            always computed against the whole position group, not the filtered subset).
+        searchable (pandas.DataFrame): `per90` narrowed by the sidebar filters — the search
+            box's options.
+        xg_table (pandas.DataFrame): flagship player xG table (`goals`, `total_xg`, `xg_diff`).
+        shots (pandas.DataFrame): flagship shots with `predicted_xg`, for the shot map.
+        market_value (pandas.DataFrame): output of `market_value.build_market_value_table`.
+        position_filter (str): sidebar position filter value (part of the search box's key).
+        competition_filter (str): sidebar competition filter value (same).
+    """
+    render_page_header("Player explorer")
+    st.markdown(
+        "One player at a time: pick anyone below to see their **signature stats**, a **radar** "
+        "against their position-group peers, a ranked **\"Players like X\"** shortlist you can click "
+        "through (a recursive drill-down, not a static list), and — for players inside the xG "
+        "training set — a **Finishing** panel comparing goals to expected goals.\n\n"
+        "Narrow the pool with the sidebar's position/competition filters, then start typing a name "
+        "below — the list filters live as you type."
+    )
+
+    if searchable.empty:
+        st.warning("No players match the current filters.")
+        return
+
+    # A single selectbox is the search box: its dropdown filters client-side as you type, whereas
+    # st.text_input only reruns on Enter/blur (typing looked broken). It starts blank
+    # (`index=None`) so it reads as "type here", not "a choice already made". This shape was
+    # rejected once and revisited deliberately; see PRODUCT_SPEC.md's search-box history before
+    # changing it again.
+    player_by_label = {
+        f"{player} ({team}) · {competition}": (player, team, position_group, competition)
+        for player, team, position_group, competition in zip(
+            searchable["player"], searchable["team"], searchable["position_group"], searchable["competition"]
+        )
+    }
+    labels = sorted(player_by_label)
+    picked_label = st.selectbox(
+        f"Search for a player ({len(labels):,} in the current filters)",
+        labels, index=None, placeholder="Start typing a name...",
+        # Keyed on the filters that change the option set, so a stale selection that's no longer a
+        # valid option can't crash the widget (ML_TOOLING.md's selectbox-with-changing-options gotcha).
+        key=f"player_pick_{position_filter}_{competition_filter}",
+    )
+    if picked_label is None:
+        st.info("Search for a player above to see their profile.")
+        return
+    player_name, team_name, position_group, competition_name = player_by_label[picked_label]
+    group_df = per90[per90["position_group"] == position_group].reset_index(drop=True)
+
+    position_action_columns, position_feature_columns, position_feature_columns_lz = (
+        feature_columns_for(position_group)
+    )
+
+    # Options depend on the position group (goalkeepers have different stats), so the widget is
+    # keyed on it: switching between an outfield player and a keeper starts fresh instead of
+    # carrying over axes that don't exist in the new option list (same crash class as above).
+    radar_axes = st.sidebar.multiselect(
+        "Radar axes", position_feature_columns, default=list(position_feature_columns),
+        key=f"radar_axes_{position_group}",
+    )
+
+    render_page_header(f"{player_name} · {team_name} · {position_group}")
+    st.caption(competition_name)
+
+    player_row_full = group_df[(group_df["player"] == player_name) & (group_df["team"] == team_name)].iloc[0]
+    # goodness_percentiles flips lower-is-better stats (goals conceded) so a bigger number always
+    # means "better than peers" — the blurb, stat cards and percentile chart all read this one.
+    percentiles = goodness_percentiles(group_df[position_feature_columns].rank(pct=True).loc[player_row_full.name])
+
+    # Computed up front because the scouting-report blurb needs them before their own panels.
+    cluster_id = int(player_row_full["cluster"])
+    cluster_profile = cached_cluster_profile(group_df, position_feature_columns_lz)
+    cluster_z = cluster_profile.loc[cluster_id]
+    cluster_peers = group_df[
+        (group_df["cluster"] == cluster_id)
+        & ~((group_df["player"] == player_name) & (group_df["team"] == team_name))
+    ]
+    high_traits = cluster_z.sort_values(ascending=False).head(2)
+    low_col = cluster_z.sort_values().index[0]
+    player_market_value = lookup_market_value(market_value, player_name, team_name)
+
+    st.subheader("Scouting report")
+    st.markdown(
+        build_scouting_blurb(
+            position_group, high_traits, low_col, cluster_profile.shape[0], percentiles, player_market_value
+        )
+    )
+    st.caption(
+        "Auto-generated from the panels below — same numbers, read as one sentence. Not a new model "
+        "or a new number."
+    )
+
+    st.subheader(f"Signature stats for a {position_group.lower()}")
+    signature_cols = SIGNATURE_STATS_BY_POSITION[position_group]
+    metric_cols = st.columns(len(signature_cols))
+    for col, stat in zip(metric_cols, signature_cols):
+        raw_col = stat.replace("_p90", "")
+        total = int(round(player_row_full[raw_col]))
+        rate = player_row_full[stat]
+        pct = percentiles[stat] * 100
+        col.metric(
+            STAT_LABELS[stat], f"{total:,}",
+            help=f"{rate:.2f} per 90 · {format_percentile(pct)} percentile among "
+            f"{position_group.lower()}s ({percentile_tier(pct)})",
+        )
+    st.caption(
+        "Season totals (not personalised to this player's strengths — a fixed set per position "
+        f"group). Hover a card for the per-90 rate and percentile vs. {len(group_df)} "
+        f"{position_group.lower()}s across {group_df['competition'].nunique()} competitions." + (
+            " Goals Conceded's percentile is flipped so fewer conceded reads as higher, not lower."
+            if position_group == "Goalkeeper" else ""
+        )
+    )
+
+    # Signature stats use non-penalty goals, which understates a penalty-taker's real total, so the
+    # display-only `goals` column (incl. penalties, never fed to a model — see
+    # DISPLAY_COUNT_COLUMNS) gets its own caption. Goalkeepers have no `goals`; save % is theirs.
+    if position_group == "Goalkeeper":
+        shots_faced = int(round(player_row_full["shots_faced"]))
+        saves = int(round(player_row_full["saves"]))
+        st.caption(f"**Save %: {player_row_full['save_pct']:.0%}** ({saves}/{shots_faced} shots faced)")
+    elif pd.notna(player_row_full.get("goals")):
+        total_goals = int(round(player_row_full["goals"]))
+        non_penalty_goals = int(round(player_row_full["non_penalty_goals"]))
+        penalty_goals = total_goals - non_penalty_goals
+        if total_goals > 0:
+            penalty_note = f" ({penalty_goals} from penalties)" if penalty_goals > 0 else ""
+            st.caption(f"**Goals (incl. penalties): {total_goals}**{penalty_note}")
+
+    # Women's-league players share the plain "not available" caption with genuine name-match
+    # misses: the Transfermarkt mirror has no women's football at all (see src/market_value.py).
+    if player_market_value is not None:
+        st.caption(
+            f"**Market value: {format_market_value(player_market_value['market_value_eur'])}** "
+            f"(Transfermarkt, as of {player_market_value['market_value_as_of']} — matched to "
+            f"\"{player_market_value['tm_name']}\")"
+        )
+    else:
+        st.caption(
+            "Market value: not available (no confident Transfermarkt name match, or a "
+            "competition outside its coverage — see \"About & Roadmap\")."
+        )
+
+    # Style archetype: the K=4 `cluster` label app_data.py computed, explained by
+    # `profile_clusters`' z-score readout (no new model — the notebooks name clusters the same way).
+    st.subheader("Style archetype")
+    # Plain language first; the exact σ values live one click away in the expander below.
+    high_text = " and ".join(f"**{STAT_LABELS[c]}**" for c in high_traits.index)
+    st.markdown(
+        f"One of **{cluster_profile.shape[0]}** style clusters found among {position_group.lower()}s "
+        "in this pool (K-means on league-normalised per-90 stats — the grouping came from the "
+        f"numbers alone, no role label was given to the model). This cluster does noticeably more "
+        f"{high_text} and noticeably less **{STAT_LABELS[low_col]}** than other "
+        f"{position_group.lower()}s — a style shared with **{len(cluster_peers)}** other players "
+        "in the current pool."
+    )
+    with st.expander("See the full style breakdown"):
+        fig, ax = plt.subplots(figsize=(7, 0.5 * len(cluster_z) + 1))
+        plot_diverging_bar(
+            labels=[STAT_LABELS[c] for c in cluster_z.index], values=cluster_z.values, reference=0,
+            label_format=style_intensity_label,
+            above_color=ACCENT_ORANGE, below_color=ACCENT_BLUE, grid_color=GRID_LINE,
+            xlabel="Cluster average vs. position-group average", ax=ax,
+        )
+        st.pyplot(fig)
+        plt.close(fig)
+        st.caption(
+            "Each stat first expressed relative to its own competition's peers (so a Bundesliga "
+            "cluster isn't just describing 'more actions than a WSL team'), then this cluster's "
+            "average measured in standard deviations (σ) from the whole position group's average — "
+            "the same z-score reading the project notebooks use to name clusters (e.g. high "
+            "Tackles/Interceptions + low Clearances reads as a ball-winning full-back). **Not a "
+            "ranking** — a low value here is a different style, not a worse one (unlike the "
+            "percentile chart further down the page, which is a ranking)."
+        )
+    if len(cluster_peers):
+        with st.expander(f"Browse this archetype ({len(cluster_peers)} other players)"):
+            archetype_board = cluster_peers.sort_values("minutes_played", ascending=False).head(8)
+            st.caption(
+                f"Top {len(archetype_board)} by minutes played, of {len(cluster_peers)} total "
+                "sharing this cluster. Click a row to jump to that player."
+            )
+            # Same click-to-jump mechanism as the "Players like X" table below (see its comment
+            # for why the key must be scoped to the current player/team, not fixed).
+            archetype_selection = st.dataframe(
+                archetype_board[["player", "team", "competition", "minutes_played"]].rename(
+                    columns={
+                        "player": "Player", "team": "Team",
+                        "competition": "Competition", "minutes_played": "Minutes",
+                    }
+                ),
+                hide_index=True, width="stretch", on_select="rerun", selection_mode="single-row",
+                key=f"archetype_table_{player_name}_{team_name}",
+            )
+            archetype_rows = archetype_selection.selection["rows"] if archetype_selection else []
+            if archetype_rows:
+                picked = archetype_board.iloc[archetype_rows[0]]
+                st.session_state["jump_to_player"] = (picked["player"], picked["team"])
+                st.rerun()
+
+    with st.expander(
+        f"All per-90 stats ({len(position_feature_columns)} metrics, vs. {position_group.lower()} peers)"
+    ):
+        fig, ax = plt.subplots(figsize=(7, 0.5 * len(position_feature_columns) + 1))
+        plot_diverging_bar(
+            labels=[STAT_LABELS[c] for c in position_feature_columns],
+            values=[percentiles[c] * 100 for c in position_feature_columns],
+            # The tier word carries the "is this good?" judgment a bare "72nd" leaves to the reader.
+            reference=50, label_format=lambda v: f"{format_percentile(v)} ({percentile_tier(v)})",
+            above_color=ACCENT_ORANGE, below_color=ACCENT_BLUE, grid_color=GRID_LINE,
+            xlabel=f"Percentile within position group (n={len(group_df)}) — higher is always better",
+            ax=ax,
+        )
+        st.pyplot(fig)
+        plt.close(fig)
+        if position_group == "Goalkeeper":
+            st.caption(
+                "Counts are from StatsBomb's `Goal Keeper` event sub-types (Shot Faced, Shot Saved, "
+                "Goal Conceded, Collected, Punch, Keeper Sweeper) — save % isn't shown here since "
+                "it's already above, as a ratio rather than a per-90 rate. Goals Conceded's "
+                "percentile is flipped so fewer conceded reads as higher, not lower."
+            )
+        else:
+            st.caption(
+                "No pass-completion % yet, since that needs a new feature (passes attempted, not "
+                "just completed) from raw events, not just a different chart. Flagged as a "
+                "follow-up, not faked here. Clearances are StatsBomb's general Clearance event "
+                "count, not a 'last-ditch/goal-line' sub-type — StatsBomb's schema doesn't "
+                "distinguish those, so this is the closest available proxy."
+            )
+        with st.expander("Table view", expanded=False):
+            stat_table = pd.DataFrame({
+                "Stat": [STAT_LABELS[c] for c in position_feature_columns],
+                "Total": [int(round(player_row_full[c])) for c in position_action_columns],
+                "Per 90": [player_row_full[c] for c in position_feature_columns],
+                "Percentile (numeric)": [percentiles[c] * 100 for c in position_feature_columns],
+            }).sort_values("Percentile (numeric)", ascending=False)
+            stat_table["Percentile"] = stat_table["Percentile (numeric)"].map(
+                lambda p: f"{format_percentile(p)} ({percentile_tier(p)})"
+            )
+            st.dataframe(
+                stat_table.drop(columns="Percentile (numeric)"), hide_index=True, width="stretch"
+            )
+
+    col_radar, col_similar = st.columns(2)
+
+    with col_radar:
+        st.subheader(f"Radar vs. {position_group.lower()} peers")
+        if radar_axes:
+            fig, ax = plt.subplots(figsize=(6, 6))
+            plot_player_radar(
+                player_row_full, population=group_df, feature_columns=radar_axes, ax=ax,
+                circle_facecolor=DARK_PANEL, circle_edgecolor=GRID_LINE, radar_facecolor=ACCENT_BLUE,
+            )
+            st.pyplot(fig)
+            plt.close(fig)
+        else:
+            st.info("Pick at least one radar axis in the sidebar.")
+
+    with col_similar:
+        st.subheader(f"Players like {player_name}")
+        similar = find_similar_players(
+            per90, position_feature_columns_lz, player=player_name, team=team_name, n=5
+        ).reset_index(drop=True)
+        # A left merge preserves row order, which the click handler below relies on
+        # (`selection.rows` positions index back into `similar`).
+        similar = similar.merge(
+            market_value[["player", "team", "market_value_eur"]], on=["player", "team"], how="left"
+        )
+        fig, ax = plt.subplots(figsize=(7, 0.7 * len(similar) + 1))
+        plot_similar_players_bar(similar, accent_color=ACCENT_ORANGE, grid_color=GRID_LINE, ax=ax)
+        st.pyplot(fig)
+        plt.close(fig)
+        st.caption(
+            "Distance = Euclidean, standardised per-90 features — league-normalised (each stat "
+            "expressed as standard deviations above/below this player's own competition's average) "
+            "before comparing, so a cross-league match is judged on relative standing, not a raw "
+            "rate compared across leagues of different competitiveness. Still an approximation, not "
+            "a true competitiveness adjustment — see \"About & Roadmap\" in the sidebar."
+        )
+        with st.expander("Table view — click a row to jump to that player", expanded=False):
+            # A click sets `jump_to_player` and reruns; the top-of-script block turns that into a
+            # pre-seeded search-box value. The `key` MUST be scoped to the current player: selection
+            # state persists by key, so a fixed key left "row 0 selected" true on the new page and
+            # cascaded into an endless player-to-player jump (caught by driving it in a browser).
+            similar_display = similar[["player", "team", "competition", "distance"]].rename(
+                columns={
+                    "player": "Player", "team": "Team",
+                    "competition": "Competition", "distance": "Distance (standardised)",
+                }
+            )
+            similar_display["Market value"] = similar["market_value_eur"].map(format_market_value)
+            selection_event = st.dataframe(
+                similar_display,
+                hide_index=True,
+                width="stretch",
+                on_select="rerun",
+                selection_mode="single-row",
+                key=f"similar_table_{player_name}_{team_name}",
+            )
+            selected_rows = selection_event.selection["rows"] if selection_event else []
+            if selected_rows:
+                picked = similar.iloc[selected_rows[0]]
+                st.session_state["jump_to_player"] = (picked["player"], picked["team"])
+                st.rerun()
+
+    st.subheader("Finishing — is the output real?")
+    xg_row = xg_table[(xg_table["player"] == player_name) & (xg_table["team"] == team_name)]
+
+    if xg_row.empty:
+        if position_group == "Goalkeeper":
+            st.info(f"{player_name} has no logged shots — goalkeepers don't take them.")
+        else:
+            st.info(
+                f"{player_name} ({competition_name}) has no logged shots in the xG training set "
+                "(Premier League 2015/16 + Bayer Leverkusen 2023/24). The similarity pool is wider "
+                "than the xG training set (see \"About & Roadmap\" in the sidebar), so this is "
+                "expected for most players outside those two competitions, not a bug."
+            )
+    else:
+        row = xg_row.iloc[0]
+        xg_metric_cols = st.columns(3)
+        xg_metric_cols[0].metric("Goals", int(row["goals"]))
+        xg_metric_cols[1].metric("Expected goals (xG)", f"{row['total_xg']:.1f}")
+        xg_metric_cols[2].metric(
+            "Difference",
+            f"{row['xg_diff']:+.1f}",
+            help="Positive: scoring more than the chances deserved (partly luck, expect regression). "
+            "Negative: creating good chances but not converting (possible buy-low).",
+        )
+
+        player_shots = shots[
+            (shots["player"] == player_name) & (shots["team"] == team_name)
+        ].reset_index(drop=True)
+        if len(player_shots):
+            fig, ax = plt.subplots(figsize=(9, 6))
+            plot_shot_map(player_shots, player_shots["predicted_xg"].values, ax=ax)
+            st.pyplot(fig)
+            plt.close(fig)
+
+    with st.expander("Under the hood (methodology)"):
+        # Only what's specific to this page; the full methodology lives in About & Roadmap.
+        st.caption(
+            "Full methodology, credibility numbers and roadmap: see **About & Roadmap** in the "
+            "sidebar. Below: how tightly this specific position group's players cluster."
+        )
+        st.caption(
+            f"Silhouette score by K — {position_group} (league-normalised features; peaks low, "
+            "~0.2-0.25 for every group including goalkeepers: play-styles within a position are a "
+            "soft continuum, not crisp blobs; K=4 is kept deliberately above the metric's preferred "
+            "K=2 for archetype granularity)."
+        )
+        silhouettes = cached_silhouette_scores(group_df, position_feature_columns_lz)
+        fig, ax = plt.subplots(figsize=(6, 4))
+        plot_silhouette_curve(silhouettes, ax=ax)
+        st.pyplot(fig)
+        plt.close(fig)
+
+
 per90, xg_table, shots, market_value, metrics = load_artifacts()
 
-# "Similar player" row-click drill-down (2026-07-09 backlog item): clicking a row in the
-# "Players like X" table (near the bottom of this script) stashes a (player, team) pair in
-# session_state and calls st.rerun(). This block is what that rerun lands on — it runs before
-# any widget below is created, which is the only point Streamlit allows a script to set a
-# widget's value programmatically (by pre-seeding st.session_state[key] ahead of the matching
-# st.xxx(key=...) call). Resets position/competition filters and the search box so the target
-# player can't be hidden by whatever the user had filtered/typed before the click.
+# Row-click drill-down: a click in a "Players like X"/archetype table stores (player, team) in
+# session_state and reruns. This block runs before any widget exists — the only point Streamlit
+# lets a script set a widget's value (by pre-seeding st.session_state[key]) — and resets the
+# filters so the target player can't be hidden by whatever was filtered before the click.
 if "jump_to_player" in st.session_state:
     jump_player, jump_team = st.session_state.pop("jump_to_player")
     jump_match = per90[(per90["player"] == jump_player) & (per90["team"] == jump_team)]
@@ -904,10 +1117,7 @@ if "jump_to_player" in st.session_state:
         jump_competition = jump_match.iloc[0]["competition"]
         st.session_state["player_pick_All_All"] = f"{jump_player} ({jump_team}) · {jump_competition}"
 
-# Brand header (2026-07-13 visual pass): icon + name + slogan, then a few live quick-facts so the
-# sidebar carries more than just filter widgets — the same "what's this app made of" numbers as
-# the About & Roadmap page's headline tiles, computed live rather than hardcoded so they can't
-# drift from the data the way a copy-pasted number in a doc can.
+# Brand header + live quick-facts, computed from the data rather than hardcoded so they can't drift.
 st.sidebar.markdown(f"## {BRAND_ICON} Player Evaluation Framework")
 st.sidebar.caption(f"*{SLOGAN}*")
 st.sidebar.divider()
@@ -974,412 +1184,6 @@ if view == "Compare players":
     render_compare_players(per90, xg_table, market_value)
     st.stop()
 
-render_page_header("Player explorer")
-st.markdown(
-    "One player at a time: pick anyone below to see their **signature stats**, a **radar** "
-    "against their position-group peers, a ranked **\"Players like X\"** shortlist you can click "
-    "through (a recursive drill-down, not a static list), and — for players inside the xG "
-    "training set — a **Finishing** panel comparing goals to expected goals.\n\n"
-    "Narrow the pool with the sidebar's position/competition filters, then start typing a name "
-    "below — the list filters live as you type."
+render_player_explorer(
+    per90, searchable, xg_table, shots, market_value, position_filter, competition_filter
 )
-
-if searchable.empty:
-    st.warning("No players match the current filters.")
-    st.stop()
-
-# Live-filtering search (2026-07-14 pass, replacing a two-widget text_input + selectbox combo):
-# driving the *running* app with Playwright showed that combo felt broken — st.text_input only
-# reruns the script on Enter/blur, so typing produced no visible change (the match count and the
-# selectbox below both sat frozen on the old query) even though the box looked like a live search
-# field. st.selectbox's own dropdown already does instant client-side type-to-filter, no server
-# roundtrip needed to narrow the list — the same interaction VS Code's Quick Open or GitHub's
-# file finder use — so one widget now does the whole job.
-#
-# This does revisit a shape PRODUCT_SPEC.md records as explicitly rejected once already
-# (2026-07-05, round 1: a bare selectbox "read as a dropdown-first interaction, not a search
-# box," which is why round 2 replaced it with the text_input + selectbox combo this pass just
-# removed). Two things are different this time, not just a straight revert: (a) today's complaint
-# was specifically about live-as-you-type behaviour, which a selectbox's built-in filtering
-# actually delivers and text_input never did; (b) `index=None` below means the box starts empty
-# with placeholder text, never pre-filled with a value the way round 1's did — round 1 always
-# showed some already-selected player, which is a large part of what made it read as "a dropdown
-# with a choice already made" rather than "an empty box waiting for input." Confirmed with the
-# user before making this change, given the documented history.
-player_by_label = {
-    f"{player} ({team}) · {competition}": (player, team, position_group, competition)
-    for player, team, position_group, competition in zip(
-        searchable["player"], searchable["team"], searchable["position_group"], searchable["competition"]
-    )
-}
-labels = sorted(player_by_label)
-picked_label = st.selectbox(
-    f"Search for a player ({len(labels):,} in the current filters)",
-    labels, index=None, placeholder="Start typing a name...",
-    # Keyed on the sidebar filters that change the option set (position/competition), so the
-    # widget always resets to a fresh default instead of Streamlit trying to preserve a prior
-    # selection that may no longer be a valid option (ML_TOOLING.md's selectbox-with-changing-
-    # options gotcha). No query in the key anymore — there's no separate query state to track.
-    key=f"player_pick_{position_filter}_{competition_filter}",
-)
-if picked_label is None:
-    st.info("Search for a player above to see their profile.")
-    st.stop()
-player_name, team_name, position_group, competition_name = player_by_label[picked_label]
-group_df = per90[per90["position_group"] == position_group].reset_index(drop=True)
-
-# Goalkeepers use a completely disjoint feature set from the three outfield groups (see the
-# module docstring) — everything below that used to hardcode PER90_FEATURE_COLUMNS/ACTION_COLUMNS
-# now branches on position_group instead.
-if position_group == "Goalkeeper":
-    position_action_columns = GK_ACTION_COLUMNS
-    position_feature_columns = GK_PER90_FEATURE_COLUMNS
-    position_feature_columns_lz = GK_PER90_LEAGUE_Z_COLUMNS
-else:
-    position_action_columns = ACTION_COLUMNS
-    position_feature_columns = PER90_FEATURE_COLUMNS
-    position_feature_columns_lz = PER90_LEAGUE_Z_COLUMNS
-
-# Radar axes (moved here 2026-07-13, was a fixed-options sidebar widget declared before the
-# player was even picked — worked only because all three outfield groups shared one feature
-# set). Options now depend on position_group, so this has to render after it's known; `key`
-# scoped to position_group so switching between an outfield player and a goalkeeper resets the
-# widget to a fresh default instead of Streamlit trying to carry over a selection that may not
-# exist in the new options list (same crash class as the player-picker's own key, see
-# ML_TOOLING.md).
-radar_axes = st.sidebar.multiselect(
-    "Radar axes", position_feature_columns, default=list(position_feature_columns),
-    key=f"radar_axes_{position_group}",
-)
-
-render_page_header(f"{player_name} · {team_name} · {position_group}")
-st.caption(competition_name)
-
-player_row_full = group_df[(group_df["player"] == player_name) & (group_df["team"] == team_name)].iloc[0]
-# goodness_percentiles flips goals_conceded_p90 so a bigger number always means "better than
-# peers" — shared by the scouting-report blurb, the signature-stat cards, and the "All per-90
-# stats" percentile chart further down the page, all of which read from this one `percentiles`
-# variable.
-percentiles = goodness_percentiles(group_df[position_feature_columns].rank(pct=True).loc[player_row_full.name])
-
-# Style-cluster read and market value are both computed here, ahead of their own panels further
-# down the page (Style archetype, the Market value caption), because the scouting-report blurb
-# right below needs both — moved up rather than duplicated (2026-07-14 Phase 9 feature).
-cluster_id = int(player_row_full["cluster"])
-cluster_profile = cached_cluster_profile(group_df, position_feature_columns_lz)
-cluster_z = cluster_profile.loc[cluster_id]
-cluster_peers = group_df[
-    (group_df["cluster"] == cluster_id)
-    & ~((group_df["player"] == player_name) & (group_df["team"] == team_name))
-]
-high_traits = cluster_z.sort_values(ascending=False).head(2)
-low_col = cluster_z.sort_values().index[0]
-player_market_value = lookup_market_value(market_value, player_name, team_name)
-
-st.subheader("Scouting report")
-st.markdown(
-    build_scouting_blurb(
-        position_group, high_traits, low_col, cluster_profile.shape[0], percentiles, player_market_value
-    )
-)
-st.caption(
-    "Auto-generated from the panels below — same numbers, read as one sentence. Not a new model "
-    "or a new number."
-)
-
-st.subheader(f"Signature stats for a {position_group.lower()}")
-signature_cols = SIGNATURE_STATS_BY_POSITION[position_group]
-metric_cols = st.columns(len(signature_cols))
-for col, stat in zip(metric_cols, signature_cols):
-    raw_col = stat.replace("_p90", "")
-    total = int(round(player_row_full[raw_col]))
-    rate = player_row_full[stat]
-    pct = percentiles[stat] * 100
-    col.metric(
-        STAT_LABELS[stat], f"{total:,}",
-        help=f"{rate:.2f} per 90 · {format_percentile(pct)} percentile among "
-        f"{position_group.lower()}s ({percentile_tier(pct)})",
-    )
-st.caption(
-    "Season totals (not personalised to this player's strengths — a fixed set per position "
-    f"group). Hover a card for the per-90 rate and percentile vs. {len(group_df)} "
-    f"{position_group.lower()}s across {group_df['competition'].nunique()} competitions." + (
-        " Goals Conceded's percentile is flipped so fewer conceded reads as higher, not lower."
-        if position_group == "Goalkeeper" else ""
-    )
-)
-
-# Penalty breakdown (2026-07-09 backlog item): signature stats show non_penalty_goals only, so a
-# penalty-taker's card understates their real total. `goals` (incl. penalties) already ships in
-# app_data/player_per90.parquet — display-only, computed by src/similarity.py, never fed to
-# clustering/xG (see DISPLAY_COUNT_COLUMNS). Skipped for zero-goal players to avoid a "0 goals, 0
-# from penalties" line cluttering every non-scorer's page. Goalkeepers have no "goals" column at
-# all (NaN post-concat, see app_data.py) — `save_pct` is their equivalent extra headline number.
-if position_group == "Goalkeeper":
-    shots_faced = int(round(player_row_full["shots_faced"]))
-    saves = int(round(player_row_full["saves"]))
-    st.caption(f"**Save %: {player_row_full['save_pct']:.0%}** ({saves}/{shots_faced} shots faced)")
-elif pd.notna(player_row_full.get("goals")):
-    total_goals = int(round(player_row_full["goals"]))
-    non_penalty_goals = int(round(player_row_full["non_penalty_goals"]))
-    penalty_goals = total_goals - non_penalty_goals
-    if total_goals > 0:
-        penalty_note = f" ({penalty_goals} from penalties)" if penalty_goals > 0 else ""
-        st.caption(f"**Goals (incl. penalties): {total_goals}**{penalty_note}")
-
-# Market value (Phase 9): a Transfermarkt valuation, matched by name (see src/market_value.py)
-# and only ever resolved for the four men's competitions in MARKET_VALUE_AS_OF_DATES - that
-# mirror has no women's-football coverage at all (verified against the real data, not assumed),
-# so Frauen Bundesliga/FA WSL players fall into the same "not resolved" caption as any player a
-# name match genuinely failed for, rather than a separate, more alarming-sounding message.
-# (`player_market_value` itself is computed earlier, alongside the scouting-report blurb.)
-if player_market_value is not None:
-    st.caption(
-        f"**Market value: {format_market_value(player_market_value['market_value_eur'])}** "
-        f"(Transfermarkt, as of {player_market_value['market_value_as_of']} — matched to "
-        f"\"{player_market_value['tm_name']}\")"
-    )
-else:
-    st.caption(
-        "Market value: not available (no confident Transfermarkt name match, or a "
-        "competition outside its coverage — see \"About & Roadmap\")."
-    )
-
-# Style archetype (2026-07-13 visual/feature pass, extended to goalkeepers + league-normalised
-# in a same-day follow-up): app_data.py's build step computes a K=4 style-archetype `cluster`
-# label per player — outfield and goalkeeper alike, on league-normalised features (see the module
-# docstring) — but nothing in the app surfaced it until this pass. No new model here:
-# `profile_clusters` (src/similarity.py, already used to name clusters in the notebooks) is a
-# pure z-score readout of stats the clustering already ran on. (`cluster_id`/`cluster_profile`/
-# `cluster_z`/`cluster_peers`/`high_traits`/`low_col` are all computed earlier, alongside the
-# scouting-report blurb, which needs them too.)
-st.subheader("Style archetype")
-# Headline sentence is plain language only (2026-07-14 pass, dropped the inline "(+1.4σ)"
-# parentheticals) — feedback was that leading with a Greek letter made a genuinely simple idea
-# ("this group does more of X, less of Y") read as jargon. The exact numbers still exist, just
-# one click away in the expander below, for whoever wants them.
-high_text = " and ".join(f"**{STAT_LABELS[c]}**" for c in high_traits.index)
-st.markdown(
-    f"One of **{cluster_profile.shape[0]}** style clusters found among {position_group.lower()}s "
-    "in this pool (K-means on league-normalised per-90 stats — the grouping came from the "
-    f"numbers alone, no role label was given to the model). This cluster does noticeably more "
-    f"{high_text} and noticeably less **{STAT_LABELS[low_col]}** than other "
-    f"{position_group.lower()}s — a style shared with **{len(cluster_peers)}** other players "
-    "in the current pool."
-)
-with st.expander("See the full style breakdown"):
-    fig, ax = plt.subplots(figsize=(7, 0.5 * len(cluster_z) + 1))
-    plot_diverging_bar(
-        labels=[STAT_LABELS[c] for c in cluster_z.index], values=cluster_z.values, reference=0,
-        label_format=style_intensity_label,
-        above_color=ACCENT_ORANGE, below_color=ACCENT_BLUE, grid_color=GRID_LINE,
-        xlabel="Cluster average vs. position-group average", ax=ax,
-    )
-    st.pyplot(fig)
-    plt.close(fig)
-    st.caption(
-        "Each stat first expressed relative to its own competition's peers (so a Bundesliga "
-        "cluster isn't just describing 'more actions than a WSL team'), then this cluster's "
-        "average measured in standard deviations (σ) from the whole position group's average — "
-        "the same z-score reading the project notebooks use to name clusters (e.g. high "
-        "Tackles/Interceptions + low Clearances reads as a ball-winning full-back). **Not a "
-        "ranking** — a low value here is a different style, not a worse one (unlike the "
-        "percentile chart further down the page, which is a ranking)."
-    )
-if len(cluster_peers):
-    with st.expander(f"Browse this archetype ({len(cluster_peers)} other players)"):
-        archetype_board = cluster_peers.sort_values("minutes_played", ascending=False).head(8)
-        st.caption(
-            f"Top {len(archetype_board)} by minutes played, of {len(cluster_peers)} total "
-            "sharing this cluster. Click a row to jump to that player."
-        )
-        # Same click-to-jump mechanism as the "Players like X" table below (see its comment
-        # for why the key must be scoped to the current player/team, not fixed).
-        archetype_selection = st.dataframe(
-            archetype_board[["player", "team", "competition", "minutes_played"]].rename(
-                columns={
-                    "player": "Player", "team": "Team",
-                    "competition": "Competition", "minutes_played": "Minutes",
-                }
-            ),
-            hide_index=True, width="stretch", on_select="rerun", selection_mode="single-row",
-            key=f"archetype_table_{player_name}_{team_name}",
-        )
-        archetype_rows = archetype_selection.selection["rows"] if archetype_selection else []
-        if archetype_rows:
-            picked = archetype_board.iloc[archetype_rows[0]]
-            st.session_state["jump_to_player"] = (picked["player"], picked["team"])
-            st.rerun()
-
-with st.expander(
-    f"All per-90 stats ({len(position_feature_columns)} metrics, vs. {position_group.lower()} peers)"
-):
-    fig, ax = plt.subplots(figsize=(7, 0.5 * len(position_feature_columns) + 1))
-    plot_diverging_bar(
-        labels=[STAT_LABELS[c] for c in position_feature_columns],
-        values=[percentiles[c] * 100 for c in position_feature_columns],
-        # label_format carries the tier word, not just the ordinal number — a bare "72nd" still
-        # asks the reader to judge whether that's good; "72nd (Good)" doesn't (see
-        # percentile_tier's own docstring for why this app leads with the word).
-        reference=50, label_format=lambda v: f"{format_percentile(v)} ({percentile_tier(v)})",
-        above_color=ACCENT_ORANGE, below_color=ACCENT_BLUE, grid_color=GRID_LINE,
-        xlabel=f"Percentile within position group (n={len(group_df)}) — higher is always better",
-        ax=ax,
-    )
-    st.pyplot(fig)
-    plt.close(fig)
-    if position_group == "Goalkeeper":
-        st.caption(
-            "Counts are from StatsBomb's `Goal Keeper` event sub-types (Shot Faced, Shot Saved, "
-            "Goal Conceded, Collected, Punch, Keeper Sweeper) — save % isn't shown here since "
-            "it's already above, as a ratio rather than a per-90 rate. Goals Conceded's "
-            "percentile is flipped so fewer conceded reads as higher, not lower."
-        )
-    else:
-        st.caption(
-            "No pass-completion % yet, since that needs a new feature (passes attempted, not "
-            "just completed) from raw events, not just a different chart. Flagged as a "
-            "follow-up, not faked here. Clearances are StatsBomb's general Clearance event "
-            "count, not a 'last-ditch/goal-line' sub-type — StatsBomb's schema doesn't "
-            "distinguish those, so this is the closest available proxy."
-        )
-    with st.expander("Table view", expanded=False):
-        stat_table = pd.DataFrame({
-            "Stat": [STAT_LABELS[c] for c in position_feature_columns],
-            "Total": [int(round(player_row_full[c])) for c in position_action_columns],
-            "Per 90": [player_row_full[c] for c in position_feature_columns],
-            "Percentile (numeric)": [percentiles[c] * 100 for c in position_feature_columns],
-        }).sort_values("Percentile (numeric)", ascending=False)
-        stat_table["Percentile"] = stat_table["Percentile (numeric)"].map(
-            lambda p: f"{format_percentile(p)} ({percentile_tier(p)})"
-        )
-        st.dataframe(
-            stat_table.drop(columns="Percentile (numeric)"), hide_index=True, width="stretch"
-        )
-
-col_radar, col_similar = st.columns(2)
-
-with col_radar:
-    st.subheader(f"Radar vs. {position_group.lower()} peers")
-    if radar_axes:
-        fig, ax = plt.subplots(figsize=(6, 6))
-        plot_player_radar(
-            player_row_full, population=group_df, feature_columns=radar_axes, ax=ax,
-            circle_facecolor=DARK_PANEL, circle_edgecolor=GRID_LINE, radar_facecolor=ACCENT_BLUE,
-        )
-        st.pyplot(fig)
-        plt.close(fig)
-    else:
-        st.info("Pick at least one radar axis in the sidebar.")
-
-with col_similar:
-    st.subheader(f"Players like {player_name}")
-    similar = find_similar_players(
-        per90, position_feature_columns_lz, player=player_name, team=team_name, n=5
-    ).reset_index(drop=True)
-    # Left merge preserves `similar`'s row order (needed below: `selection.rows` positions index
-    # back into this same frame via `similar.iloc[...]`) - "similar profile, cheaper" is Module
-    # B's original market-value pitch (see DATA.md), so this is exactly where it belongs.
-    similar = similar.merge(
-        market_value[["player", "team", "market_value_eur"]], on=["player", "team"], how="left"
-    )
-    fig, ax = plt.subplots(figsize=(7, 0.7 * len(similar) + 1))
-    plot_similar_players_bar(similar, accent_color=ACCENT_ORANGE, grid_color=GRID_LINE, ax=ax)
-    st.pyplot(fig)
-    plt.close(fig)
-    st.caption(
-        "Distance = Euclidean, standardised per-90 features — league-normalised (each stat "
-        "expressed as standard deviations above/below this player's own competition's average) "
-        "before comparing, so a cross-league match is judged on relative standing, not a raw "
-        "rate compared across leagues of different competitiveness. Still an approximation, not "
-        "a true competitiveness adjustment — see \"About & Roadmap\" in the sidebar."
-    )
-    with st.expander("Table view — click a row to jump to that player", expanded=False):
-        # `similar` was reset_index(drop=True) above so its positions line up 1:1 with the
-        # rendered rows Streamlit reports in `selection.rows`. A click sets `jump_to_player` and
-        # reruns; the block at the very top of the script (before any widget is created) turns
-        # that into a pre-seeded selectbox value — see its comment for why a rerun is needed
-        # instead of just overwriting `player_name` in place.
-        #
-        # `key` is scoped to the current player/team, not a fixed string: `st.dataframe`
-        # selection state persists in session_state by key across reruns, so a fixed key would
-        # leave "row 0 selected" true after landing on the new page, since it renders a table
-        # under the very same key — immediately re-triggering another jump, and cascading into
-        # an infinite chain through each player's own most-similar match. Caught by actually
-        # driving the click via Playwright, not by reasoning about it in the abstract: the app
-        # visibly kept jumping player-to-player instead of settling on one page.
-        similar_display = similar[["player", "team", "competition", "distance"]].rename(
-            columns={
-                "player": "Player", "team": "Team",
-                "competition": "Competition", "distance": "Distance (standardised)",
-            }
-        )
-        similar_display["Market value"] = similar["market_value_eur"].map(format_market_value)
-        selection_event = st.dataframe(
-            similar_display,
-            hide_index=True,
-            width="stretch",
-            on_select="rerun",
-            selection_mode="single-row",
-            key=f"similar_table_{player_name}_{team_name}",
-        )
-        selected_rows = selection_event.selection["rows"] if selection_event else []
-        if selected_rows:
-            picked = similar.iloc[selected_rows[0]]
-            st.session_state["jump_to_player"] = (picked["player"], picked["team"])
-            st.rerun()
-
-st.subheader("Finishing — is the output real?")
-xg_row = xg_table[(xg_table["player"] == player_name) & (xg_table["team"] == team_name)]
-
-if xg_row.empty:
-    if position_group == "Goalkeeper":
-        st.info(f"{player_name} has no logged shots — goalkeepers don't take them.")
-    else:
-        st.info(
-            f"{player_name} ({competition_name}) has no logged shots in the xG training set "
-            "(Premier League 2015/16 + Bayer Leverkusen 2023/24). The similarity pool is wider "
-            "than the xG training set (see \"About & Roadmap\" in the sidebar), so this is "
-            "expected for most players outside those two competitions, not a bug."
-        )
-else:
-    row = xg_row.iloc[0]
-    xg_metric_cols = st.columns(3)
-    xg_metric_cols[0].metric("Goals", int(row["goals"]))
-    xg_metric_cols[1].metric("Expected goals (xG)", f"{row['total_xg']:.1f}")
-    xg_metric_cols[2].metric(
-        "Difference",
-        f"{row['xg_diff']:+.1f}",
-        help="Positive: scoring more than the chances deserved (partly luck, expect regression). "
-        "Negative: creating good chances but not converting (possible buy-low).",
-    )
-
-    player_shots = shots[
-        (shots["player"] == player_name) & (shots["team"] == team_name)
-    ].reset_index(drop=True)
-    if len(player_shots):
-        fig, ax = plt.subplots(figsize=(9, 6))
-        plot_shot_map(player_shots, player_shots["predicted_xg"].values, ax=ax)
-        st.pyplot(fig)
-        plt.close(fig)
-
-with st.expander("Under the hood (methodology)"):
-    # Slimmed 2026-07-13 (pitch-prep pass): this used to repeat the whole headline-metrics
-    # writeup on every single player's page. That's now one place — the "About & Roadmap" view's
-    # "Methodology" expander — so this stays scoped to what's genuinely specific to *this*
-    # player's page: how tightly their own position group's players cluster.
-    st.caption(
-        "Full methodology, credibility numbers and roadmap: see **About & Roadmap** in the "
-        "sidebar. Below: how tightly this specific position group's players cluster."
-    )
-    st.caption(
-        f"Silhouette score by K — {position_group} (league-normalised features; peaks low, "
-        "~0.2-0.25 for every group including goalkeepers: play-styles within a position are a "
-        "soft continuum, not crisp blobs; K=4 is kept deliberately above the metric's preferred "
-        "K=2 for archetype granularity)."
-    )
-    silhouettes = cached_silhouette_scores(group_df, position_feature_columns_lz)
-    fig, ax = plt.subplots(figsize=(6, 4))
-    plot_silhouette_curve(silhouettes, ax=ax)
-    st.pyplot(fig)
-    plt.close(fig)

@@ -69,6 +69,31 @@ restructure.
   depends on it, so the pin keeps a future release from breaking the plots. The fuller
   requirements split (app runtime vs. dev) is Phase 4.
 
+**Phase 3: `app.py` restructure + tests.**
+- Pure presentation helpers moved to a new `src/presentation.py`: `percentile_tier`,
+  `format_percentile`, `style_intensity_label`, `build_scouting_blurb`, `format_market_value`,
+  `lookup_market_value`, `STAT_LABELS`, `SIGNATURE_STATS_BY_POSITION`. There is also a new
+  `feature_columns_for(position_group)` that replaces two copies of the goalkeeper-vs-outfield
+  branching.
+- The Player explorer was ~430 lines of top-level script; it is now `render_player_explorer()`,
+  like the other three views.
+- Dated history narration in comments was trimmed to the "why" (the 18-line search-box saga is
+  now 5 lines pointing at PRODUCT_SPEC.md). `app.py` went from 1,406 to ~1,190 lines.
+- New `tests/test_presentation.py` (34 cases) and `tests/test_app_smoke.py` (9 `AppTest` runs:
+  every view, an outfield player in and outside the xG set, a goalkeeper, the row-click jump,
+  same- and cross-position Compare). These are the checks earlier sessions ran by hand and never
+  committed. Full suite: 143 passed.
+- *A test caught a markup bug:* `build_scouting_blurb` wrapped already-bolded traits in another
+  `**…**`. It turned out to be invisible, because Streamlit's renderer nests the `<strong>` tags
+  (checked in Edge), but it relied on renderer leniency. Fixed; each trait is now bold on its own,
+  like the Style archetype sentence.
+- Verified in a real browser after a clean server restart: Harry Kane's full page renders the
+  same as before (blurb, stats, archetype, radar, neighbours, Finishing 25 / 20.8 / +4.2, shot
+  map).
+- *Docs:* ARCHITECTURE.md import graph. It had also drifted: `app.py` was missing entirely, and
+  `config`/`models`/`pipeline`/`similarity` didn't list `app_data.py` as a consumer. Also the
+  CLAUDE.md layout, and the ROADMAP.md pointer to the blurb.
+
 ---
 
 ## 2026-09-30 — Repo health check after a 2.5-month gap

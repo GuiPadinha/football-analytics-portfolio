@@ -205,7 +205,7 @@ the cloud by Guilherme directly.
   data" order:
   - ~~**Auto-generated scouting-report blurb**~~ — flagged 2026-07-14 (cont.), built same day
     (chosen first as the fastest of this list's candidates): a new **"Scouting report"** section at
-    the top of a player's page (`app.py`'s `build_scouting_blurb`), one paragraph combining the
+    the top of a player's page (`build_scouting_blurb`, since 2026-10-01 in `src/presentation.py`), one paragraph combining the
     Style archetype read, the single best percentile stat, and market value into prose — the same
     "synthesize already-computed numbers into a sentence" move the Style archetype panel and
     signature-stat cards already make. No new modelling, no new data; a fixed template over

@@ -119,6 +119,7 @@ src/
   models.py          ← logistic pipeline, CV, calibration, GBM, player xG table
   similarity.py      ← clustering, PCA, find_similar_players, resolve_season_positions
   visualisation.py   ← shot map, calibration curve, elbow, PCA, radar, xG ranking
+  presentation.py    ← the app's words around numbers: percentile tiers, blurb, labels (tested)
   market_value.py    ← Transfermarkt entity resolution + valuation lookup (Phase 9, 2026-07-14)
   manifest.py        ← data provenance manifest (`python -m src.manifest`)
   metrics.py         ← metrics.json single source (`python -m src.metrics`)
@@ -149,7 +150,7 @@ docs/
   ML_THEORY.md           ← ML/stats theory reference (textbook-level)
   ML_TOOLING.md          ← Windows/environment gotchas
 ML_LEARNING_LOG.md       ← ML gotchas and decisions log (pointers to above docs)
-tests/                   ← 86 pytest unit tests, all green
+tests/                   ← pytest unit tests + an AppTest smoke test of every app view (count: see CI)
 outputs/                 ← pipeline PNGs, committed (README embeds them)
 data/                    ← per-match cache + Parquet feature tables (gitignored)
 ```
