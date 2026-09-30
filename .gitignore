@@ -8,6 +8,11 @@ data/*
 !data/manifest.json
 outputs/*
 !outputs/.gitkeep
+# The pipeline's PNGs ARE committed: README.md embeds them, and while they were ignored every
+# README image rendered broken on GitHub (found 2026-09-30 — nothing under outputs/ had ever
+# been committed). `python -m src.pipeline` regenerates them; a diff here means a model or plot
+# output actually changed.
+!outputs/*.png
 
 # Jupyter
 .ipynb_checkpoints/

@@ -46,6 +46,11 @@ restructure.
   1987 and born 1997), so the matcher correctly leaves him unmatched. But DATA.md claims he was
   one of the spot-checked stars that resolved. That claim is fixed in the docs phase, and a
   birth-date/club tiebreak goes to the backlog.
+- *2b, README images:* the full pipeline re-run (89s, from cache) left `metrics.json` and
+  `data/manifest.json` **byte-identical**, so the rebuild is still reproducible after 2.5 months.
+  Its 9 PNGs (~3.1 MB, the EURO 2024 shot map alone is 2.1 MB) are now committed through a
+  `!outputs/*.png` exception in `.gitignore`. README's 8 embedded charts render on GitHub for the
+  first time.
 
 ---
 

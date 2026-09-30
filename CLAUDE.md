@@ -150,7 +150,7 @@ docs/
   ML_TOOLING.md          ← Windows/environment gotchas
 ML_LEARNING_LOG.md       ← ML gotchas and decisions log (pointers to above docs)
 tests/                   ← 86 pytest unit tests, all green
-outputs/                 ← saved PNGs (gitignored)
+outputs/                 ← pipeline PNGs, committed (README embeds them)
 data/                    ← per-match cache + Parquet feature tables (gitignored)
 ```
 
