@@ -85,8 +85,8 @@ DIVERGING_CMAP = LinearSegmentedColormap.from_list(
 
 def _diverging_css(value, span):
     """CSS `background-color` for one G-xG cell, replicating `Styler.background_gradient`
-    manually (see `render_leaderboard`'s None-cell fix for why it can't use that helper
-    directly): `DIVERGING_CMAP` sampled at `value`'s position between `-span` and `+span`.
+    manually so a missing cell gets no colour at all (the built-in helper paints NaN black):
+    `DIVERGING_CMAP` sampled at `value`'s position between `-span` and `+span`.
     """
     normalized = 0.5 if span == 0 else (value + span) / (2 * span)
     r, g, b, a = DIVERGING_CMAP(min(max(normalized, 0.0), 1.0))
@@ -426,68 +426,47 @@ def render_leaderboard(pool, xg_table, market_value):
         "total_xg": "xG", "xg_diff": "G-xG", "market_value_eur": "Market value",
     }).sort_values("Goals", ascending=False)
 
-    # Blank xG/G-xG cells (2026-07-13, fixed this pass): `column_config.NumberColumn` renders a
-    # missing *numeric* cell as the literal text "None" no matter what a Styler's `na_rep` or its
-    # own `format=` says — confirmed as a real, still-open Streamlit limitation (GitHub issue
-    # #7360: "Allow configuration of missing value placeholder in st.dataframe"), not something
-    # three previous fix attempts (nullable Float64, Styler na_rep, dropping column_config's
-    # `format=`) got wrong — see docs/ML_TOOLING.md for that full account. The only real fix is
-    # at the data layer: xG/G-xG become hand-formatted **text** columns (blank string for
-    # missing, not NaN) instead of numeric ones, so there is no null numeric cell for the grid to
-    # special-case. The diverging background colour is computed manually (`_diverging_css`) from
-    # the still-numeric `xg_diff` values *before* they're overwritten by the display strings, so
-    # the colour survives the dtype change even though `Styler.background_gradient` itself needs
-    # numeric input and can no longer be used directly on the (now text) G-xG column.
-    #
-    # Known trade-off, stated plainly: Streamlit's interactive "click a header to sort" now sorts
-    # these columns lexically (text), not numerically — e.g. "+10.5" sorts before "+4.2", and (once
-    # Goals/Non-pen goals/Assists get the same treatment below) "9" sorts after "10". There is no
-    # column_config option to declare "sort column A, display column B" in this Streamlit version,
-    # so a perfectly numeric click-sort and a blank-for-missing cell are not simultaneously
-    # achievable here; the default row order (sorted by Goals, below) is unaffected, and this is a
-    # materially smaller issue than every blank cell reading "None".
+    # Missing values stay genuinely missing (NaN) in numeric columns: `placeholder=""` below
+    # renders them as blank cells, so every column keeps a *numeric* click-to-sort. Blanks are
+    # expected here — xG/G-xG exist only for the xG training set, Goals/Assists don't apply to
+    # goalkeepers, market value only resolves for men's competitions. (Between 2026-07-13 and
+    # 2026-10-01 these were hand-formatted text columns to dodge Streamlit's literal "None"
+    # rendering, on the mistaken belief no config fix existed; see docs/ML_TOOLING.md.)
+    # G-xG's diverging background is still computed by hand (`_diverging_css`) so missing cells
+    # get no colour at all; `Styler.background_gradient` would paint them black.
+    # Millions, so the column can stay numeric and sort correctly (a formatted "€9.0M" string
+    # sorts after "€10.0M" lexically); the player page keeps the finer "€850k" wording.
+    board["Market value"] = board["Market value"] / 1_000_000
     gxg_raw = board["G-xG"]
+    board_style = board.style
     if gxg_raw.notna().any():
         gxg_span = gxg_raw.abs().max() or 1.0
         gxg_colors = gxg_raw.map(lambda v: "" if pd.isna(v) else _diverging_css(v, gxg_span))
-    else:
-        gxg_colors = None
-
-    board["xG"] = board["xG"].map(lambda v: "" if pd.isna(v) else f"{v:.1f}")
-    board["G-xG"] = gxg_raw.map(lambda v: "" if pd.isna(v) else f"{v:+.1f}")
-    # Same "hand-format to text, never a null numeric cell" fix as xG/G-xG above — market value
-    # is blank just as often (men's competitions only, and only where name-matching resolved).
-    board["Market value"] = board["Market value"].map(format_market_value)
-    # Same fix again, same root cause (Streamlit issue #7360): Goals/Non-pen goals/Assists come
-    # from the outfield feature set and are genuinely NaN for all 124 goalkeepers (blank Goals/
-    # Assists is the documented, intentional behaviour — see this function's docstring and the
-    # caption below) — but until now those three columns still used `column_config.NumberColumn`,
-    # so every goalkeeper row rendered the literal text "None" three times over. Hand-format to
-    # text the same way xG/G-xG/Market value already are.
-    for count_col in ("Goals", "Non-pen goals", "Assists"):
-        board[count_col] = board[count_col].map(lambda v: "" if pd.isna(v) else f"{v:.0f}")
-
-    board_style = board.style
-    if gxg_colors is not None:
         board_style = board_style.apply(lambda _: gxg_colors, subset=["G-xG"])
 
     st.dataframe(
         board_style,
         hide_index=True,
         width="stretch",
+        placeholder="",
         column_config={
             "Minutes": st.column_config.NumberColumn(format="%d"),
-            "Goals": st.column_config.TextColumn(help="Includes penalties. Blank for goalkeepers."),
-            "Non-pen goals": st.column_config.TextColumn(help="Blank for goalkeepers."),
-            "Assists": st.column_config.TextColumn(help="Blank for goalkeepers."),
-            "xG": st.column_config.TextColumn(help="Flagship xG set only"),
-            "G-xG": st.column_config.TextColumn(
+            "Goals": st.column_config.NumberColumn(
+                format="%d", help="Includes penalties. Blank for goalkeepers."
+            ),
+            "Non-pen goals": st.column_config.NumberColumn(format="%d", help="Blank for goalkeepers."),
+            "Assists": st.column_config.NumberColumn(format="%d", help="Blank for goalkeepers."),
+            "xG": st.column_config.NumberColumn(format="%.1f", help="Flagship xG set only"),
+            "G-xG": st.column_config.NumberColumn(
+                format="%+.1f",
                 help="Goals minus xG. Positive = outscoring chance quality (expect regression); "
                 "negative = under-converting good chances (possible buy-low). Flagship set only.",
             ),
-            "Market value": st.column_config.TextColumn(
-                help="Transfermarkt valuation, roughly as of this season (see \"About & Roadmap\" "
-                "for the matching caveats). Men's competitions only; blank where unmatched.",
+            "Market value": st.column_config.NumberColumn(
+                format="€%.1fM",
+                help="Transfermarkt valuation in € millions, roughly as of this season (see "
+                "\"About & Roadmap\" for the matching caveats). Men's competitions only; blank "
+                "where unmatched.",
             ),
         },
     )

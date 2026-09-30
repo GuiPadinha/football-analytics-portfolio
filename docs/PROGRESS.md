@@ -37,6 +37,16 @@ restructure.
 - *Docs:* ML_TOOLING.md (the applied fix), ARCHITECTURE.md + CLAUDE.md layout (`net.py`). Also
   archived the two 2026-07-14 entries to keep this file short.
 
+**Phase 2: quick wins.**
+- *2a, Leaderboard back to numeric columns:* `placeholder=""` replaces the six hand-formatted
+  text columns, so click-to-sort is numeric again (verified in Edge: "Non-pen goals" descending
+  reads 37, 33, 31, 29 …). Goalkeeper rows stay blank rather than "None". Market value is now a
+  numeric € millions column. Side finding while checking the output: **Luis Suárez (Barcelona) has
+  no market value.** Transfermarkt has two "Luis Suárez" profiles with the same position (born
+  1987 and born 1997), so the matcher correctly leaves him unmatched. But DATA.md claims he was
+  one of the spot-checked stars that resolved. That claim is fixed in the docs phase, and a
+  birth-date/club tiebreak goes to the backlog.
+
 ---
 
 ## 2026-09-30 — Repo health check after a 2.5-month gap

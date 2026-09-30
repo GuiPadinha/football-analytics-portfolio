@@ -296,6 +296,13 @@ version's own signature/docstring (`inspect.signature`, `help()`), not a web sea
 issue page's apparent state** — the same direct-API check the Leaderboard name-filter note in
 ROADMAP.md does correctly ("checked directly against the installed 1.58 API").
 
+**Applied 2026-10-01:** every Leaderboard column is numeric again, rendered via
+`st.dataframe(..., placeholder="")`, and market value is shown in € millions (`format="€%.1fM"`)
+so it sorts as a number too. Verified in a real browser (Playwright over Edge): goalkeeper rows
+show blank Goals/Assists/xG cells, and clicking "Non-pen goals" twice sorts 37, 33, 31, 29 … —
+numeric, not lexical. G-xG's colour stays hand-computed (`_diverging_css`), because
+`Styler.background_gradient` paints NaN cells `#000000` (checked via `Styler.ctx`).
+
 ---
 
 ## Python HTTPS fails with `CERTIFICATE_VERIFY_FAILED` — Avast's HTTPS scanning, and its root cert rotates
