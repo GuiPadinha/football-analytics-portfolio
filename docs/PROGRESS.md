@@ -129,6 +129,30 @@ restructure.
   `_cache_matches_datasets` compares the cached `competition_id`s with the config list and
   rebuilds on any mismatch. Two new tests cover the cases: a config that gained a tournament, and
   a legacy cache with no competition ids.
+- *5b, women's tournaments pulled and scored:* new `Dataset.gender` field, plus
+  `WOMENS_WORLD_CUP_2023`. Both women's tournaments are in `GENERALISATION_TEST_SETS`. The new
+  staleness check rebuilt the table on its own; there was no 429 this time. 7,215 held-out shots
+  across 6 tournaments.
+  - ROC-AUC: WWC 2023 **0.777**, Women's EURO 2025 **0.763**, inside the men's 0.763–0.808 band.
+  - Goals ÷ xG: 0.98 and 0.83, so no women's-specific under-prediction. The Women's EURO Brier
+    (0.092, worst) reflects its higher base goal rate (logged in ML_LEARNING_LOG.md).
+  - **Correction:** "EURO 2024 is the floor" had been false since July, because Copa América's
+    0.763 is lower. Fixed in README, MODULES, PITCH, CLAUDE.md and the app's copy (whose
+    hardcoded "4 tournaments" now reads from `metrics.json`).
+  - The headline 0.765 and `metrics.json`'s `xg` block are unchanged.
+- *5c, a non-deterministic PNG:* `euro2024_shot_map.png` changed on every pipeline run. mplsoccer
+  paints the "grass" pitch from the *global* `np.random`. `plot_shot_map` now seeds just that draw
+  and restores the caller's RNG state. Two runs now give identical hashes, and
+  `tests/test_visualisation.py` guards both properties.
+- *5d, the pin* (ROADMAP.md Phase 4e):
+  - New StatsBomb leagues checked: Liga F, Serie A Women and NWSL are full seasons; MLS 2023 is
+    Inter Miami only (6 matches).
+  - 360 probe on one match: 100% of shots have a freeze frame, 2.7 MB/match, ~800 MB for all six
+    360 datasets. `config.SETS_WITH_360` now derives from a new `ALL_DATASETS` (it used to skip
+    WC 2022/AFCON).
+  - External sources ranked: Understat, then the Wyscout public set, then PFF WC 2022 tracking.
+  - Two more backlog items in Phase 9: the Suárez market-value tiebreak (DATA.md's
+    spot-check claim was false), and the live demo sleeping.
 
 ---
 

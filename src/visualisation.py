@@ -5,8 +5,12 @@ Session S7 (radar charts, PCA scatter plot).
 """
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from mplsoccer import Pitch, Radar
+
+# Fixed seed for mplsoccer's random grass texture, so the same shots always render the same PNG.
+GRASS_TEXTURE_SEED = 0
 
 OUTCOME_COLORS = {"Goal": "gold", "No Goal": "dimgrey"}
 
@@ -27,12 +31,20 @@ def plot_shot_map(shots, predicted_xg, title=None, ax=None):
         matplotlib.axes.Axes: the axes the shots were drawn on.
     """
     pitch = Pitch(pitch_type="statsbomb", pitch_color="grass", line_color="white")
-    if ax is None:
-        _, ax = pitch.draw(figsize=(10, 7))
-    else:
-        # Draw the pitch markings onto the caller's axes too — otherwise a passed-in
-        # ax that wasn't already a pitch would get bare scatter points on blank axes.
-        pitch.draw(ax=ax)
+    # mplsoccer paints the "grass" texture from the *global* np.random.normal, so every render
+    # came out with different pixels — the committed outputs/euro2024_shot_map.png changed on
+    # every pipeline run with no data change. Seed just this draw, then restore the caller's RNG.
+    rng_state = np.random.get_state()
+    np.random.seed(GRASS_TEXTURE_SEED)
+    try:
+        if ax is None:
+            _, ax = pitch.draw(figsize=(10, 7))
+        else:
+            # Draw the pitch markings onto the caller's axes too — otherwise a passed-in
+            # ax that wasn't already a pitch would get bare scatter points on blank axes.
+            pitch.draw(ax=ax)
+    finally:
+        np.random.set_state(rng_state)
 
     outcomes = shots["is_goal"].map({True: "Goal", False: "No Goal"})
     sizes = 100 + predicted_xg * 1500
