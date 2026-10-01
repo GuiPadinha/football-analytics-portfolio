@@ -1,24 +1,17 @@
-# Pinned to the versions this project was developed and verified against (Python 3.10).
-# Open-data libraries (statsbombpy, kloppy) in particular ship breaking changes between
-# releases; left unpinned, a future clone off the CV/LinkedIn link silently rots.
-statsbombpy==1.19.0
-kloppy==3.19.0
+# Runtime dependencies of the Streamlit app (app.py) — exactly what Streamlit Community Cloud
+# installs for the live demo. Everything needed to *rebuild* the data, models and notebooks, and
+# to run the tests, lives in requirements-dev.txt (which includes this file).
+#
+# Pinned to the versions this project was verified against (Python 3.10 and 3.12): left
+# unpinned, a future clone off the CV/LinkedIn link silently rots.
+streamlit==1.58.0
 pandas==2.3.3
 numpy==2.2.6
 scikit-learn==1.7.2
-mplsoccer==1.6.1
 matplotlib==3.10.9
+mplsoccer==1.6.1
 # seaborn: never imported by this project; pinned only because mplsoccer depends on it, so a
 # future seaborn release can't silently break the radar/pitch plots (and the deployed app).
 seaborn==0.13.2
-jupyter==1.1.1
-
-# Added in the Hardening & Expansion initiative.
-# pyarrow: Parquet for the flat processed shot/per-90 tables cached in notebooks.
-#   (The raw per-match StatsBomb cache in data_loader stays pickle on purpose — events
-#    carry nested list/dict columns that don't round-trip through columnar parquet.)
+# pyarrow: Parquet for app_data/ (and the processed tables under data/).
 pyarrow==24.0.0
-# pytest: unit tests in tests/.
-pytest==9.1.1
-# streamlit: Phase 8 product layer (app.py) — reads precomputed app_data/, no live StatsBomb pulls.
-streamlit==1.58.0

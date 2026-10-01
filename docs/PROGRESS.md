@@ -94,6 +94,29 @@ restructure.
   `config`/`models`/`pipeline`/`similarity` didn't list `app_data.py` as a consumer. Also the
   CLAUDE.md layout, and the ROADMAP.md pointer to the blurb.
 
+**Phase 4: Python 3.12 readiness.**
+- *The app no longer needs the ingestion libraries.* `data_loader` imports `statsbombpy`/`kloppy`
+  lazily (`_statsbomb()`), so importing `similarity` (and through it `app.py`) loads neither.
+- *Requirements split.* `requirements.txt` is now the app's runtime only: streamlit, pandas,
+  numpy, scikit-learn, matplotlib, mplsoccer, seaborn, pyarrow. That's what Streamlit Cloud
+  installs; it no longer pulls jupyter/pytest/statsbombpy/kloppy. `requirements-dev.txt`
+  (`-r requirements.txt` + ingestion, truststore, jupyter, pytest) is for development.
+- *Verified on 3.12 before touching CI.* Two isolated `uv` envs on CPython 3.12.14, short path
+  under `%TEMP%`, deleted afterwards:
+  - runtime-only + pytest: full suite **143 passed**, with statsbombpy/kloppy not even installed;
+  - full dev env: installs cleanly, `load_competitions()` works through `truststore`, and a
+    pickled events cache written by 3.10 reads fine on 3.12.
+
+  The same pins work on both versions; no version bumps were needed.
+- *CI:* the `pytest` job is now a 3.10/3.12 matrix on `requirements-dev.txt`. A new
+  `app-runtime` job installs only `requirements.txt` on 3.12 and runs the app smoke tests, which
+  catches the app depending on a dev-only package before the live deployment does.
+- *Left for Guilherme,* both in ROADMAP.md's Phase 9 item: redeploy the Cloud app on 3.12
+  (delete + redeploy, same subdomain) and switch the local interpreter. Then drop 3.10 from CI.
+- *Docs:* README "Running it", CLAUDE.md layout, ROADMAP.md, ML_TOOLING.md (a venv under the
+  ~180-character scratchpad path fails with `0xc0000106` = STATUS_NAME_TOO_LONG; uv needs
+  `UV_SYSTEM_CERTS=1` behind Avast).
+
 ---
 
 ## 2026-09-30 — Repo health check after a 2.5-month gap

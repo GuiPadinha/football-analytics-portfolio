@@ -23,8 +23,6 @@ import pickle
 from pathlib import Path
 
 import pandas as pd
-from statsbombpy import sb
-from kloppy import skillcorner
 
 from src.net import use_os_trust_store, with_retries
 
@@ -32,6 +30,18 @@ use_os_trust_store()
 
 # data/ is gitignored; the cache lives under it so cached pulls never get committed.
 CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "cache"
+
+
+def _statsbomb():
+    """statsbombpy's `sb` API, imported on first use rather than at module import.
+
+    Lazy on purpose: `similarity` (and through it the deployed app) imports this module for the
+    sparse-column helpers below but never downloads anything, so the app's runtime requirements
+    don't need statsbombpy or kloppy at all (requirements.txt vs. requirements-dev.txt).
+    """
+    from statsbombpy import sb
+
+    return sb
 
 
 def safe_bool_column(df, column):
@@ -92,7 +102,7 @@ def load_competitions():
     Returns:
         pandas.DataFrame: one row per competition/season.
     """
-    return with_retries(sb.competitions, describe="competitions")
+    return with_retries(_statsbomb().competitions, describe="competitions")
 
 
 def load_matches(competition_id, season_id):
@@ -106,7 +116,7 @@ def load_matches(competition_id, season_id):
         pandas.DataFrame: one row per match.
     """
     return with_retries(
-        lambda: sb.matches(competition_id=competition_id, season_id=season_id),
+        lambda: _statsbomb().matches(competition_id=competition_id, season_id=season_id),
         describe=f"matches {competition_id}/{season_id}",
     )
 
@@ -121,7 +131,7 @@ def load_events(match_id, use_cache=True):
     Returns:
         pandas.DataFrame: one row per event.
     """
-    return _disk_cached("events", match_id, lambda: sb.events(match_id=match_id), use_cache)
+    return _disk_cached("events", match_id, lambda: _statsbomb().events(match_id=match_id), use_cache)
 
 
 def load_lineups(match_id, use_cache=True):
@@ -134,7 +144,7 @@ def load_lineups(match_id, use_cache=True):
     Returns:
         dict[str, pandas.DataFrame]: lineup per team, keyed by team name.
     """
-    return _disk_cached("lineups", match_id, lambda: sb.lineups(match_id=match_id), use_cache)
+    return _disk_cached("lineups", match_id, lambda: _statsbomb().lineups(match_id=match_id), use_cache)
 
 
 def load_360_frames(match_id, use_cache=True):
@@ -149,7 +159,7 @@ def load_360_frames(match_id, use_cache=True):
     Returns:
         pandas.DataFrame: one row per freeze frame.
     """
-    return _disk_cached("360", match_id, lambda: sb.frames(match_id=match_id), use_cache)
+    return _disk_cached("360", match_id, lambda: _statsbomb().frames(match_id=match_id), use_cache)
 
 
 def load_skillcorner_tracking(match_id):
@@ -164,4 +174,6 @@ def load_skillcorner_tracking(match_id):
     Returns:
         kloppy.domain.TrackingDataset: tracking frames for the match.
     """
+    from kloppy import skillcorner  # lazy for the same reason as `_statsbomb`
+
     return skillcorner.load_open_data(match_id=match_id)

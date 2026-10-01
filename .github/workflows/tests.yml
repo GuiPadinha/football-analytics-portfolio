@@ -13,23 +13,29 @@ jobs:
   pytest:
     # Pinned rather than ubuntu-latest, which moves to Ubuntu 26 from 2026-10-19: setup-python's
     # prebuilt interpreters for a brand-new image can lag, and this job still tests Python 3.10.
-    # Revisit once the Python 3.12 migration lands.
+    # Revisit once 3.10 is dropped from the matrix.
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.10: what the live app is deployed on today (EOL 2026-10-31).
+        # 3.12: the migration target. Drop 3.10 once the Streamlit Cloud app is redeployed on 3.12.
+        python-version: ["3.10", "3.12"]
     steps:
       - uses: actions/checkout@v7   # checkout@v4 / setup-python@v5 targeted deprecated Node 20
         with:
           fetch-depth: 0   # full history, needed by the doc-freshness check's git diff below
 
-      - name: Set up Python 3.10
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v7
         with:
-          python-version: "3.10"   # matches the version requirements.txt is pinned against
+          python-version: ${{ matrix.python-version }}
           cache: pip
 
-      - name: Install pinned dependencies
+      - name: Install pinned dependencies (app + development)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
       - name: Run tests
         env:
@@ -37,6 +43,7 @@ jobs:
         run: pytest -q
 
       - name: Check evolving docs were touched
+        if: matrix.python-version == '3.12'   # a repo check, not a Python one — run it once
         # Backstop for the local .githooks/pre-commit check (which only fires if that hook is
         # actually enabled via `git config core.hooksPath .githooks` - not automatic on a fresh
         # clone). Non-blocking: annotates the run with a warning rather than failing the build,
@@ -57,3 +64,27 @@ jobs:
           if [ -n "$touches_code" ] && [ -z "$touches_log" ]; then
             echo "::warning::Code/tests changed without touching docs/PROGRESS.md, docs/ML_TOOLING.md, or ML_LEARNING_LOG.md. If this represents a real behaviour/finding/obstacle, add a log entry (see CLAUDE.md's Session Workflow)."
           fi
+
+  app-runtime:
+    # Mirrors Streamlit Community Cloud: ONLY requirements.txt (+ pytest to drive the check), no
+    # ingestion/dev packages. Catches the app importing something that only requirements-dev.txt
+    # provides — which would pass the job above and still break the live deployment.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install the app's runtime dependencies only
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest==9.1.1
+
+      - name: Smoke-test every app view
+        env:
+          MPLBACKEND: Agg
+        run: pytest -q tests/test_app_smoke.py tests/test_presentation.py

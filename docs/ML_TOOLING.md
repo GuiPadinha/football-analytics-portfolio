@@ -344,6 +344,19 @@ which Avast updates itself on every rotation.
 **Quick diagnosis next time:** if PowerShell can fetch a URL but Python can't, it's this. Check the
 issuer of the peer cert Python receives before debugging anything else.
 
+## A Python venv under a very long path fails with exit code `0xc0000106`
+
+Hit 2026-10-01 while testing the Python 3.12 migration in an isolated `uv` environment. The venv
+was created fine inside the session scratchpad (already ~180 characters deep). But its
+`python.exe` refused to start: uv reported `exit code: 0xc0000106`, which is Windows'
+`STATUS_NAME_TOO_LONG`. The venv's internal paths pushed past the classic 260-character
+`MAX_PATH` limit. Fix: put throwaway environments under a short path (e.g.
+`%TEMP%ap312\`), or enable Windows long-path support. **Related uv detail:** behind Avast's
+HTTPS scanning, uv needs `UV_SYSTEM_CERTS=1` (the older `UV_NATIVE_TLS` still works but prints a
+deprecation warning) to download interpreters and wheels, for the same reason as the Python cert
+entry above. And `UV_PYTHON_INSTALL_DIR` / `UV_CACHE_DIR` keep the downloaded interpreter out of
+`%APPDATA%`, so a test environment leaves nothing behind once its folder is deleted.
+
 ## How to use this file
 
 - Hit a real environment/tooling obstacle this session (network, encoding, kernel, caching, a silent tool failure)? Add it here **before** the session ends, dated only if the fix might later change — most of these don't need a date, just the symptom and the fix. Don't wait for a retrospective "were there any obstacles?" question to write them down.

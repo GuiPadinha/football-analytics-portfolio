@@ -234,12 +234,18 @@ the cloud by Guilherme directly.
   PROGRESS.md's "cont. 4" entry). Guilherme wants to go further on both fronts next session;
   scope (which pages, which docs, how deep — e.g. a doc consolidation pass vs. a full app redesign)
   wasn't decided yet, so treat this as an open discussion, not a fixed task list.
-- **Modernize the pinned Python target (3.10 → a newer stable, e.g. 3.14)** — flagged 2026-07-09
-  during the Phase 8 Streamlit Cloud deploy (Cloud's dropdown defaulted to 3.14; deployed on 3.10
-  instead to match `requirements.txt`). No functional upside and a real risk: `kloppy`, `pyarrow`,
-  and `statsbombpy` would all need re-checking for wheel availability and behaviour on a newer
-  interpreter, which is unplanned rework for zero model/product gain. Pure housekeeping — pick up
-  only when there's no deadline pressure, not opportunistically mid-demo-prep.
+- **Python 3.10 → 3.12** — flagged 2026-07-09 (the Streamlit Cloud deploy chose 3.10 to match the
+  pinned requirements), deferred as housekeeping until the 2026-09-30 health check found a real
+  deadline: **3.10 reaches end-of-life on 2026-10-31**. *Repo side done 2026-10-01:* the same
+  pins install on 3.12 (all have wheels). The full suite passes on 3.12 locally (an isolated `uv`
+  env) and CI now runs a 3.10/3.12 matrix. A new `app-runtime` CI job installs only
+  `requirements.txt`, mirroring the Cloud. The app no longer needs `statsbombpy`/`kloppy` at all
+  (lazy imports; requirements split into runtime vs. `requirements-dev.txt`). *Still open, both
+  need Guilherme:* (1) **redeploy the Streamlit Cloud app on 3.12** — the Python version can't
+  be changed on an existing app: delete it, then deploy again from the same repo/branch/`app.py`
+  with the same subdomain `gpfootball-analytics-portfolio` and Python 3.12 in Advanced settings;
+  (2) switch the local interpreter to 3.12. Then drop 3.10 from the CI matrix and unpin the runner
+  from `ubuntu-24.04`.
 - ~~**Side-by-side player comparison view**~~ — flagged 2026-07-13 during pitch-prep, built
   2026-07-14: a new "Compare players" view, any two players (radar overlay when they share a
   position group, market value and Finishing always compare directly). See MODULES.md's Module B

@@ -127,6 +127,7 @@ src/
   app_data.py        ← Phase 8 build step: writes app_data/*.parquet (`python -m src.app_data`)
 Makefile               ← thin wrapper around src/pipeline.py
 app.py                 ← Phase 8 Streamlit app (`streamlit run app.py`) — reads app_data/, no live pulls
+requirements.txt       ← app runtime deps only (Streamlit Cloud); requirements-dev.txt adds the rest
 app_data/              ← precomputed Parquet artifacts the app reads (small, committed — not gitignored)
 .streamlit/config.toml ← Streamlit theme
 .githooks/pre-commit    ← enforces the "End of session" doc-log rule below (see Session Workflow)

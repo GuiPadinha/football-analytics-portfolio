@@ -208,7 +208,8 @@ football-analytics-portfolio/
 ├── app.py                      ← Streamlit app (streamlit run app.py) — reads app_data/, no live pulls
 ├── app_data/                   ← precomputed Parquet artifacts for the app (small, committed)
 ├── .streamlit/config.toml      ← Streamlit theme
-├── requirements.txt
+├── requirements.txt            ← the app's runtime dependencies (what Streamlit Cloud installs)
+├── requirements-dev.txt        ← + ingestion, notebooks, tests (includes requirements.txt)
 ├── docs/                        ← full doc set (framework, architecture, modules, data, roadmap,
 │                                  product spec, progress log — see CLAUDE.md for the complete index)
 ├── notebooks/
@@ -238,8 +239,10 @@ Python · `statsbombpy` · `kloppy` · pandas · numpy · scikit-learn · `mplso
 
 ## Running it
 
+Python 3.10 or 3.12 (both tested in CI).
+
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt     # everything: ingestion, notebooks, pipeline, tests
 jupyter notebook notebooks/01_data_exploration.ipynb
 ```
 
@@ -261,8 +264,9 @@ Notebooks stay the teaching surface (narrated decisions, S1–S8 + Phase 2 rigor
 **Interactive app** (pick a player, see the model output live — see `docs/PRODUCT_SPEC.md`):
 
 ```bash
-python -m src.app_data    # one-time: builds app_data/*.parquet for the app's player pool
-streamlit run app.py
+pip install -r requirements.txt    # the app alone needs only its runtime dependencies
+streamlit run app.py               # app_data/ is committed, so this works straight away
+python -m src.app_data             # only to rebuild app_data/ (needs requirements-dev.txt)
 ```
 
 **Live and deployed** at

@@ -1,0 +1,15 @@
+# Development: rebuild the data, models, notebooks and app_data/, and run the tests.
+#   pip install -r requirements-dev.txt
+# The app's own runtime dependencies come in via the line below (see requirements.txt).
+-r requirements.txt
+
+# Open-data ingestion (src/data_loader.py). These libraries ship breaking changes between
+# releases, so they stay pinned.
+statsbombpy==1.19.0
+kloppy==3.19.0
+# truststore: verify TLS against the operating system's certificate store (src/net.py) — needed
+# wherever something re-signs HTTPS traffic (antivirus scanning, a corporate proxy).
+truststore==0.10.4
+
+jupyter==1.1.1
+pytest==9.1.1
