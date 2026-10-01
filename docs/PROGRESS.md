@@ -122,6 +122,14 @@ restructure.
   now display their figures inline only. A comment names `python -m src.pipeline` as the one
   producer. Both were re-executed (0 errors) and `outputs/` stayed untouched.
 
+**Phase 5: ingestion.**
+- *5a, latent stale-cache bug fixed first:* `pipeline.py`'s three shot-table caches were keyed only
+  on "the file exists". So adding a tournament to `GENERALISATION_TEST_SETS` would have silently
+  reused the old table, and the new tournament would never have reached `metrics.json`. New
+  `_cache_matches_datasets` compares the cached `competition_id`s with the config list and
+  rebuilds on any mismatch. Two new tests cover the cases: a config that gained a tournament, and
+  a legacy cache with no competition ids.
+
 ---
 
 ## 2026-09-30 — Repo health check after a 2.5-month gap

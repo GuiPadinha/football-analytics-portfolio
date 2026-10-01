@@ -76,12 +76,46 @@ RADAR_EXAMPLES = [
 ]
 
 
+def _cache_matches_datasets(path, datasets):
+    """True if the shot table at `path` exists and holds exactly `datasets`' competitions.
+
+    "The file exists" used to be the whole cache key, so adding a dataset to a config list (a new
+    held-out tournament in `GENERALISATION_TEST_SETS`, say) silently reused the old table and the
+    new tournament never reached metrics.json. Comparing the cached table's `competition_id`s
+    against the config catches that without anyone remembering `--force`. Competition id is
+    enough for the lists this guards (none mixes two seasons of one competition); a season swap
+    within one competition would still need `--force`.
+
+    Args:
+        path (Path): a cached shots parquet (with a `competition_id` column).
+        datasets (list[config.Dataset]): the config list it is supposed to contain.
+
+    Returns:
+        bool: False when missing, when the column is absent, or when the competitions differ.
+    """
+    if not path.exists():
+        return False
+    cached = pd.read_parquet(path)
+    if "competition_id" not in cached.columns:
+        return False
+    cached_ids = set(cached["competition_id"].unique())
+    expected_ids = {ds.comp_id for ds in datasets}
+    if cached_ids != expected_ids:
+        print(
+            f"      {path.name} holds competitions {sorted(cached_ids)}, config expects "
+            f"{sorted(expected_ids)} — rebuilding"
+        )
+        return False
+    return True
+
+
 def build_shot_tables(force=False, data_dir=DATA_DIR):
     """Rebuild (or load) the processed xG shot tables.
 
     Mirrors notebook 02's REBUILD cell: pulls and engineers from raw StatsBomb data
-    only when a parquet cache is missing or `force=True`; otherwise reloads instantly
-    from `data/shots_{train,test}.parquet`.
+    only when a parquet cache is missing, stale (its competitions no longer match the config
+    list, see `_cache_matches_datasets`) or `force=True`; otherwise reloads instantly from
+    `data/shots_{train,test}.parquet`.
 
     Returns:
         tuple[pandas.DataFrame, pandas.DataFrame]: (shots_train, shots_test).
@@ -90,9 +124,9 @@ def build_shot_tables(force=False, data_dir=DATA_DIR):
     train_path = data_dir / "shots_train.parquet"
     test_path = data_dir / "shots_test.parquet"
 
-    if force or not train_path.exists():
+    if force or not _cache_matches_datasets(train_path, config.TRAIN_SETS):
         build_training_dataset(config.TRAIN_SETS).to_parquet(train_path)
-    if force or not test_path.exists():
+    if force or not _cache_matches_datasets(test_path, config.TEST_SETS):
         build_training_dataset(config.TEST_SETS).to_parquet(test_path)
 
     return pd.read_parquet(train_path), pd.read_parquet(test_path)
@@ -111,7 +145,7 @@ def build_generalisation_table(force=False, data_dir=DATA_DIR):
     data_dir = Path(data_dir)
     path = data_dir / "shots_generalisation.parquet"
 
-    if force or not path.exists():
+    if force or not _cache_matches_datasets(path, config.GENERALISATION_TEST_SETS):
         build_training_dataset(config.GENERALISATION_TEST_SETS).to_parquet(path)
     return pd.read_parquet(path)
 

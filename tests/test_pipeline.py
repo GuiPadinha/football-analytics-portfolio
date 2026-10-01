@@ -19,14 +19,23 @@ def _fake_builder(calls, marker):
 
     def builder(datasets):
         calls.append(datasets)
-        return pd.DataFrame({"marker": [marker]})
+        return _shots_frame(datasets, marker)
 
     return builder
 
 
+def _shots_frame(datasets, marker):
+    """A tiny shot table holding one row per dataset's competition — what a real cache of that
+    config list looks like to the pipeline's staleness check."""
+    return pd.DataFrame({
+        "marker": [marker] * len(datasets),
+        "competition_id": [ds.comp_id for ds in datasets],
+    })
+
+
 def test_build_shot_tables_reuses_existing_cache(tmp_path, monkeypatch):
-    pd.DataFrame({"marker": ["cached"]}).to_parquet(tmp_path / "shots_train.parquet")
-    pd.DataFrame({"marker": ["cached"]}).to_parquet(tmp_path / "shots_test.parquet")
+    _shots_frame(config.TRAIN_SETS, "cached").to_parquet(tmp_path / "shots_train.parquet")
+    _shots_frame(config.TEST_SETS, "cached").to_parquet(tmp_path / "shots_test.parquet")
 
     calls = []
     monkeypatch.setattr("src.pipeline.build_training_dataset", _fake_builder(calls, "rebuilt"))
@@ -50,8 +59,8 @@ def test_build_shot_tables_missing_cache_triggers_build(tmp_path, monkeypatch):
 
 
 def test_build_shot_tables_force_ignores_existing_cache(tmp_path, monkeypatch):
-    pd.DataFrame({"marker": ["cached"]}).to_parquet(tmp_path / "shots_train.parquet")
-    pd.DataFrame({"marker": ["cached"]}).to_parquet(tmp_path / "shots_test.parquet")
+    _shots_frame(config.TRAIN_SETS, "cached").to_parquet(tmp_path / "shots_train.parquet")
+    _shots_frame(config.TEST_SETS, "cached").to_parquet(tmp_path / "shots_test.parquet")
 
     calls = []
     monkeypatch.setattr("src.pipeline.build_training_dataset", _fake_builder(calls, "rebuilt"))
@@ -64,7 +73,9 @@ def test_build_shot_tables_force_ignores_existing_cache(tmp_path, monkeypatch):
 
 
 def test_build_generalisation_table_reuses_existing_cache(tmp_path, monkeypatch):
-    pd.DataFrame({"marker": ["cached"]}).to_parquet(tmp_path / "shots_generalisation.parquet")
+    _shots_frame(config.GENERALISATION_TEST_SETS, "cached").to_parquet(
+        tmp_path / "shots_generalisation.parquet"
+    )
 
     calls = []
     monkeypatch.setattr("src.pipeline.build_training_dataset", _fake_builder(calls, "rebuilt"))
@@ -84,6 +95,34 @@ def test_build_generalisation_table_missing_cache_triggers_build(tmp_path, monke
     assert len(calls) == 1
     assert calls[0] == config.GENERALISATION_TEST_SETS
     assert shots["marker"].iloc[0] == "rebuilt"
+
+
+def test_build_generalisation_table_rebuilds_when_config_gained_a_tournament(tmp_path, monkeypatch):
+    # A cache built before the newest tournament was added to the config must not be reused —
+    # this is exactly how a new held-out tournament could silently miss metrics.json.
+    _shots_frame(config.GENERALISATION_TEST_SETS[:-1], "stale").to_parquet(
+        tmp_path / "shots_generalisation.parquet"
+    )
+    calls = []
+    monkeypatch.setattr("src.pipeline.build_training_dataset", _fake_builder(calls, "rebuilt"))
+
+    shots = build_generalisation_table(force=False, data_dir=tmp_path)
+
+    assert calls == [config.GENERALISATION_TEST_SETS]
+    assert set(shots["marker"]) == {"rebuilt"}
+
+
+def test_build_shot_tables_rebuilds_a_cache_without_competition_ids(tmp_path, monkeypatch):
+    pd.DataFrame({"marker": ["legacy"]}).to_parquet(tmp_path / "shots_train.parquet")
+    _shots_frame(config.TEST_SETS, "cached").to_parquet(tmp_path / "shots_test.parquet")
+    calls = []
+    monkeypatch.setattr("src.pipeline.build_training_dataset", _fake_builder(calls, "rebuilt"))
+
+    train, test = build_shot_tables(force=False, data_dir=tmp_path)
+
+    assert calls == [config.TRAIN_SETS]
+    assert train["marker"].iloc[0] == "rebuilt"
+    assert test["marker"].iloc[0] == "cached"
 
 
 def test_build_similarity_table_reuses_existing_cache(tmp_path, monkeypatch):
