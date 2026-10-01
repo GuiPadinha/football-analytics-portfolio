@@ -116,6 +116,11 @@ restructure.
 - *Docs:* README "Running it", CLAUDE.md layout, ROADMAP.md, ML_TOOLING.md (a venv under the
   ~180-character scratchpad path fails with `0xc0000106` = STATUS_NAME_TOO_LONG; uv needs
   `UV_SYSTEM_CERTS=1` behind Avast).
+- *A loose end from 2b:* notebooks 02/03 also `savefig`'d the same eight PNGs the pipeline writes.
+  Re-running notebook 03 (item 2c) rewrote `player_radar_examples.png` with slightly different
+  bytes, which would have caused committed-file churn depending on which ran last. The notebooks
+  now display their figures inline only. A comment names `python -m src.pipeline` as the one
+  producer. Both were re-executed (0 errors) and `outputs/` stayed untouched.
 
 ---
 
