@@ -8,9 +8,15 @@ Windows-specific friction hit while building this project. Written so they don't
 
 ## Python / pip not recognized in a fresh terminal
 
-Real Python 3.10 lives at `C:\Users\guilh\AppData\Local\Programs\Python\Python310\`. The Windows Store "App execution alias" stub can shadow it. Fix: call by full path when bare `python` fails:
+**Since 2026-10-02 the project interpreter is Python 3.12**, at
+`C:\Users\guilh\AppData\Local\Programs\Python\Python312\`. It was installed per-user with
+`winget install --id Python.Python.3.12 -e --source winget --scope user`; `--source winget` is
+needed because the ID also matches the msstore source. It sits first on the user PATH, so new
+terminals get it as `python`. Python 3.10 stays installed (`...\Python310\`) as a rollback, and the
+`py` launcher lists both. The Windows Store "App execution alias" stub can shadow either. Fix:
+call by full path when bare `python` fails:
 ```
-& "C:\Users\guilh\AppData\Local\Programs\Python\Python310\python.exe" script.py
+& "C:\Users\guilh\AppData\Local\Programs\Python\Python312\python.exe" script.py
 ```
 Original PATH fix in `docs/PROGRESS_ARCHIVE.md` (2026-06-28 entry) if this needs revisiting.
 
@@ -55,7 +61,7 @@ Two-part fix:
 1. `jupyter.kernels.filter` in `.vscode/settings.json` to hide the conda-base interpreter
 2. Normalize every notebook's `metadata.kernelspec` to the portable `python3`
 
-For headless `nbconvert`: register the 3.10 env (`python -m ipykernel install --user --name fap310`) and pass `--ExecutePreprocessor.kernel_name=fap310`.
+For headless `nbconvert`: register the env (`python -m ipykernel install --user --name fap312` — 3.12, registered 2026-10-02; the older `fap310` kernel still exists) and pass `--ExecutePreprocessor.kernel_name=fap310`.
 
 ---
 

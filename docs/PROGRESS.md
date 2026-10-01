@@ -154,6 +154,23 @@ restructure.
   - Two more backlog items in Phase 9: the Suárez market-value tiebreak (DATA.md's
     spot-check claim was false), and the live demo sleeping.
 
+**2026-10-02 follow-ups (Guilherme's requests, Phase 6 paused):**
+- *Local Python → 3.12.10:* installed per-user via winget, first on the user PATH (3.10 kept as a
+  rollback). Dev requirements installed, `fap312` Jupyter kernel registered, and
+  `.vscode/settings.json` points at it. Full suite on 3.12: 147 passed. A full `python -m
+  src.pipeline` on 3.12 reproduced `metrics.json`, `data/manifest.json` and all 9 PNGs
+  **byte-for-byte**, so changing the interpreter changed no number and no pixel.
+- *Streamlit Cloud → 3.12: not done, needs Guilherme's account.* The Python version can't be
+  changed on a deployed app; it has to be deleted and redeployed. Exact steps are in ROADMAP.md's
+  Python item.
+- *World Cup 2026:* still not in StatsBomb open data (newest update 2026-05-26). A CC0 dataset
+  (mominullptr) has all 104 matches with lineups and match-level xG, but no shot coordinates.
+  It's usable for a team-level model only. Logged in ROADMAP.md's Phase 9 WC item.
+- *LinkedIn post → paolomagni/football-platform* (GCP Cloud Run → BigQuery → dbt → Looker,
+  Terraform, OIDC CI) logged as a future data-engineering showcase idea in ROADMAP.md Phase 9.
+- *Phase 6 declutter, prepared but parked* in `git stash` ("phase6-declutter-wip") until
+  Guilherme resumes it.
+
 ---
 
 ## 2026-09-30 — Repo health check after a 2.5-month gap

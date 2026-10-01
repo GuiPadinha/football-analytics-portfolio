@@ -296,12 +296,15 @@ the cloud by Guilherme directly.
   pins install on 3.12 (all have wheels). The full suite passes on 3.12 locally (an isolated `uv`
   env) and CI now runs a 3.10/3.12 matrix. A new `app-runtime` CI job installs only
   `requirements.txt`, mirroring the Cloud. The app no longer needs `statsbombpy`/`kloppy` at all
-  (lazy imports; requirements split into runtime vs. `requirements-dev.txt`). *Still open, both
-  need Guilherme:* (1) **redeploy the Streamlit Cloud app on 3.12** — the Python version can't
-  be changed on an existing app: delete it, then deploy again from the same repo/branch/`app.py`
-  with the same subdomain `gpfootball-analytics-portfolio` and Python 3.12 in Advanced settings;
-  (2) switch the local interpreter to 3.12. Then drop 3.10 from the CI matrix and unpin the runner
-  from `ubuntu-24.04`.
+  (lazy imports; requirements split into runtime vs. `requirements-dev.txt`). *Local switch done 2026-10-02:* Python 3.12.10 installed per-user and put first on PATH (3.10
+  kept as rollback). `requirements-dev.txt` is installed into it, the full suite passes, and a
+  `fap312` Jupyter kernel and the VS Code interpreter point at it (see ML_TOOLING.md). *Still
+  open, needs Guilherme's Streamlit account:* **redeploy the Cloud app on 3.12**. Per
+  [Streamlit's docs](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app/upgrade-python),
+  the Python version can't be changed on a deployed app. Delete it, then deploy again from
+  `GuiPadinha/football-analytics-portfolio`, branch `main`, entrypoint `app.py`, with the custom
+  subdomain `gpfootball-analytics-portfolio` and Python 3.12 under Advanced settings. The app has
+  no secrets. Then drop 3.10 from the CI matrix and unpin the runner from `ubuntu-24.04`.
 - ~~**Side-by-side player comparison view**~~ — flagged 2026-07-13 during pitch-prep, built
   2026-07-14: a new "Compare players" view, any two players (radar overlay when they share a
   position group, market value and Finishing always compare directly). See MODULES.md's Module B
@@ -338,3 +341,25 @@ the cloud by Guilherme directly.
   may simply have no open data yet, which would make this a "wait" item, not a "no data exists"
   item. Scope (prediction target, features, train set) deliberately left undefined until that
   availability check happens.
+  **Availability check done 2026-10-02.** The tournament ended 2026-07-19, but **StatsBomb open
+  data still has no World Cup 2026**: its newest update anywhere is 2026-05-26. Keep checking; past
+  tournaments arrived months after the final. The best free source found instead is the
+  [FIFA World Cup 2026 Dataset](https://github.com/mominullptr/FIFA-World-Cup-2026-Dataset) (CC0;
+  also on Kaggle, Zenodo and Hugging Face). It has all 104 matches, 48 squads, 1,248 players with
+  market values, lineups with minutes, goal/card/VAR events, per-team shots/possession, and
+  match-level xG. Sources: FIFA, Sofascore, Transfermarkt. **It has no shot coordinates**, so it
+  can't feed Module A's shot-level model or Module B's per-90 event features. It does fit a
+  *match/team-level* model (Elo + team xG → results) and could serve as a held-out check for one.
+  That reframes this item: "predict the tournament" becomes a retrospective team-strength model,
+  not a shot model. Also seen: [openfootball/worldcup.json](https://github.com/openfootball/worldcup.json)
+  (public-domain fixtures/results only).
+- **Data-engineering showcase: a cloud ELT layer** (flagged 2026-10-02 from a LinkedIn post
+  Guilherme shared): [paolomagni/football-platform](https://github.com/paolomagni/football-platform)
+  ingests football-data.org into GCP. The stack is Cloud Run ingestion → Cloud Storage → BigQuery →
+  dbt (staging/intermediate/marts, with tests) → Looker Studio, orchestrated by Cloud
+  Scheduler/Workflows. It uses Terraform (dev/prod), GitHub Actions with OIDC (Workload Identity
+  Federation, no service-account keys), and images tagged by commit SHA. Relevant here because this
+  project's ML layer has no warehouse or scheduled ingestion. A small version of that pattern, e.g.
+  a scheduled job landing StatsBomb/Understat pulls in BigQuery with dbt models feeding
+  `app_data/`, would show Guilherme's data-engineering background next to the ML. Not started;
+  scope undecided.
