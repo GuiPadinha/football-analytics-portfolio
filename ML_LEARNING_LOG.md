@@ -10,6 +10,19 @@ Companion to CLAUDE.md. Running record of ML/stats concepts exercised, gotchas h
 
 Key gotchas and lessons — most recent first:
 
+- **Brier score isn't comparable across populations with different base rates; use
+  calibration-in-the-large to ask "is the model biased here?"** (2026-10-01, women's tournaments
+  wired into Phase 4c). Women's EURO 2025 got the worst Brier of six held-out tournaments
+  (0.092, vs. 0.065–0.083). The tempting read is "a men's-trained model is miscalibrated on
+  women's football". But its goal rate is also the highest (11.8%), and Brier's floor rises with
+  p(1−p), so a harder-to-be-certain population scores worse even for a perfect model. The direct
+  test is goals ÷ summed xG: 0.98 for Women's EURO 2025, i.e. no under-prediction at all.
+  (The Women's World Cup 2023 is 0.83, the same as men's EURO 2024's 0.84.) The higher raw
+  conversion DATA.md noted for women's football turned out to be *explained by shot quality* the
+  features already capture, not a gap the model misses. Ranking held too (ROC-AUC 0.763/0.777 vs.
+  men's 0.763–0.808). Same session, a wording correction: docs called EURO 2024's 0.765 "the floor
+  of the four", but Copa América's 0.763 was lower all along. A superlative needs re-checking
+  against the very table it summarises.
 - **A shapeless empty Series can corrupt a `pd.concat` even when every other column is fine**
   (2026-07-05, `similarity.py`'s `extract_player_match_actions`). Adding `clearances`/`blocks`
   columns (for defender-facing stats requested in the app) meant writing a zero-Pass-events

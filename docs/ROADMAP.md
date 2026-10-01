@@ -114,6 +114,60 @@ from n=2 contexts" into a defensible claim and fixes Module B's single-season th
   [DATA.md](DATA.md#candidate-alternative--supplementary-data-sources-not-yet-used) (match-level
   stats + standings, not a per-shot xG source).
 
+## Phase 4e — Data expansion: new sources + 360 (📌 pinned 2026-10-01, not started)
+
+Guilherme's ask: "a pin for strengthening ingestion of more data (Kaggle may have something), and
+for using 360". Every item below was checked on 2026-10-01, not assumed. The prerequisites are
+done: HTTPS works through the OS trust store, downloads retry with backoff, and stale caches
+rebuild themselves (`src/net.py`, `pipeline._cache_matches_datasets`).
+
+**More StatsBomb open data (same schema, so "a config line, not code"):**
+- *Liga F 2023/24* (240 matches, 16 teams), *Serie A Women 2023/24* (130 matches, 10 teams) and
+  *NWSL 2023* (137 matches, 12 teams). All three are genuine full seasons, women's football, no
+  360. They would roughly double the women's similarity pool (needs lineups pulls).
+- *Not* usable as leagues: MLS 2023 (6 matches, Inter Miami only) and Ligue 1 2022/23 (32
+  matches, PSG only). These are the same single-club trap as La Liga = Barcelona.
+- Women's EURO 2025 + Women's World Cup 2023: wired into Phase 4c on 2026-10-01.
+
+**360 freeze frames (feeds Phase 7):** six datasets have them: Leverkusen 2023/24, EURO 2024,
+World Cup 2022, AFCON 2023, Women's EURO 2025, Women's World Cup 2023. A one-match probe (EURO
+2024, match 3930166) gave:
+- 52,558 rows (one per visible player per event), 7 columns (`id`, `visible_area`, `match_id`,
+  `teammate`, `actor`, `keeper`, `location`), 2.7 MB pickled, fetched in 4s;
+- **100% of its shots had a freeze frame**, joinable on the event `id`.
+
+Estimate for all six datasets: ~296 matches, ~800 MB of cache, ~20 min to pull.
+`load_360_frames` already exists and caches per match. `config.SETS_WITH_360` now derives from
+every dataset (it used to skip WC 2022/AFCON 2023).
+
+**External sources, ranked by unlock vs. engineering cost (each one is new ingestion code):**
+1. **Understat** shots (Big 5 + RFPL, 2014/15 → current, x/y + xG + situation/body part). This is
+   the only free route to *current* men's league seasons; there are several Kaggle mirrors, e.g.
+   [Understat database](https://www.kaggle.com/datasets/mexwell/understat-database) and
+   [player stats per game](https://www.kaggle.com/datasets/codytipton/player-stats-per-game-understat).
+   Cost: a schema adapter in front of `features.extract_shot_features` (normalised 0–1
+   coordinates, no freeze frames, no lineups). The Kaggle route needs an API token. Already
+   flagged in DATA.md as the biggest unlock.
+2. **Wyscout public dataset** (Pappalardo et al., *Sci Data* 2019, CC BY 4.0): every 2017/18
+   top-5-league match + World Cup 2018 + EURO 2016, with full events.
+   [figshare](https://figshare.com/collections/Soccer_match_event_dataset/4415000),
+   [Kaggle mirror](https://www.kaggle.com/datasets/aleespinosa/soccer-match-event-dataset).
+   **kloppy already reads it**, so it's the cheapest *new provider*. It would give a second
+   season of full men's leagues for Module B, but provider-specific event definitions mean
+   per-90 features need re-deriving and checking, not reusing.
+3. **PFF FC World Cup 2022** (free on request): broadcast tracking + events for all 64 matches,
+   [PFF FC blog](https://www.blog.fc.pff.com/blog/pff-fc-release-2022-world-cup-data). kloppy
+   supports it. The same tournament StatsBomb covers, so it's a cross-provider check, and full
+   tracking (not just 360 snapshots) for Phase 7/Module C ideas.
+4. Index for later browsing: [withqwerty/open-football](https://github.com/withqwerty/open-football)
+   (a curated map of open football data + tooling).
+
+**Ingestion-robustness follow-ups (only if a bulk pull needs them):** a persistent
+`raw.githubusercontent.com` 429 (as in July) can't be waited out in-process. The fallback would be
+a sparse `git clone` of `statsbomb/open-data` read from local JSON, which avoids per-file HTTP
+altogether. Also, `CACHE_DIR` lives inside OneDrive (8.2 GB); making it configurable would let the
+cache sit outside sync.
+
 ## Phase 5 — xG uncertainty + hierarchical finishing model  ⬜
 
 The ML-depth differentiator: small → big, no new data, directly serves the valuation lens.
@@ -142,7 +196,7 @@ The ML-depth differentiator: small → big, no new data, directly serves the val
 
 ## Phase 7 — 360-context xG + xGOT  ⬜  *(was Phase 3)*
 
-StatsBomb `three-sixty` data gives freeze-frames (every visible player's position at the moment of each event). Leverkusen 2023/24 and EURO 2024 both have 360 — the two datasets already in use.
+StatsBomb `three-sixty` data gives freeze-frames (every visible player's position at the moment of each event). Six datasets have it: Leverkusen 2023/24 and EURO 2024 (the original pair), plus World Cup 2022, AFCON 2023, Women's EURO 2025 and Women's World Cup 2023 (see Phase 4e for the 2026-10-01 probe: 100% shot coverage, ~2.7 MB/match).
 
 **Candidate 360 features:**
 - Number of defenders between shot and goal (direct block probability)
@@ -155,9 +209,11 @@ StatsBomb `three-sixty` data gives freeze-frames (every visible player's positio
 **Recommended approach:** keep the existing pre-shot logistic model as the baseline. Build 360-feature extension as a second model. Compare honestly — if the 360 features don't clearly add discrimination, say so.
 
 **Entry checklist:**
-- [ ] Confirm Phase 3–6 work committed via GitHub Desktop
-- [ ] Verify `data/cache/` has Leverkusen 2023/24 360 frames (should already be pulled)
-- [ ] Check StatsBomb `three-sixty` schema: `statsbombpy.sb.three_sixty(match_id=X)`
+- [ ] Confirm Phase 5–6 work is committed (`git status`)
+- [ ] Pull 360 frames: **none were cached before 2026-10-01** (only the one probe match since).
+  Loop `data_loader.load_360_frames` over `config.SETS_WITH_360` (~296 matches, ~800 MB)
+- [x] Schema checked 2026-10-01: `sb.frames(match_id)` gives `id` (joins to event `id`),
+  `visible_area`, `teammate`, `actor`, `keeper`, `location`
 
 ## Phase 8 — Product layer build (Streamlit)  ✅ Done  *(was Phase 5)*
 
@@ -256,6 +312,15 @@ the cloud by Guilherme directly.
   ML_LEARNING_LOG.md for two real matching bugs found and fixed against actual data), ~90% match
   rate on the four men's competitions. See [DATA.md](DATA.md#transfermarkt-market-value-data-phase-9-built-2026-07-14)
   for the full account.
+- **Market-value tiebreak for same-name players** (found 2026-10-01): Luis Suárez (Barcelona) is
+  unmatched because Transfermarkt has two same-position "Luis Suárez" profiles (born 1987/1997).
+  `players.csv` has `date_of_birth`, and `player_valuations` has the club at each date. Either one
+  breaks the tie deterministically: drop candidates too young for the season, or pick the one
+  valued at the StatsBomb team on the as-of date.
+- **The live demo sleeps** (found 2026-10-01): Streamlit Community Cloud hibernates an app with no
+  traffic, so the first visitor from a CV/LinkedIn link sees a "wake this app up" screen and waits
+  ~1 min. Options: a scheduled GitHub Action that opens the app in a headless browser (a plain
+  HTTP GET doesn't wake it), or a line in README warning that the first load is slow.
 - **xA / chance-creation model** — sibling to xG on the same pipeline; also upgrades 6d.
 - **Module C (PUP)** — only if desired; carries a selection-bias confound + label-acquisition cost,
   and Phase 5 already delivers most of its payoff. Spec:

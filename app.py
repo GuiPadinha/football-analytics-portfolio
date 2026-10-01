@@ -542,8 +542,9 @@ def render_about_and_roadmap(per90, metrics):
     )
     built_cols[3].metric(
         "Tournaments tested on", f"{n_tournaments}",
-        help="The trained xG model is checked against 4 held-out tournaments it never saw during "
-        "training, not just one — see Methodology below for the per-tournament breakdown.",
+        help=f"The trained xG model is checked against {n_tournaments} held-out tournaments it never "
+        "saw during training (men's and women's), not just one — see Methodology below for the "
+        "per-tournament breakdown.",
     )
     st.caption(
         "Also: a live deployed app (no local setup needed), a reproducible one-command pipeline, "
@@ -597,8 +598,9 @@ def render_about_and_roadmap(per90, metrics):
         "full season StatsBomb's free tier has for each league.\n"
         "- **xG training set:** Premier League 2015/16 + Bayer Leverkusen 2023/24 — a different "
         "league and country from the test set below, on purpose.\n"
-        "- **xG generalisation tests, 4 tournaments never trained on:** UEFA EURO 2024 (the "
-        "headline test), FIFA World Cup 2022, Africa Cup of Nations 2023, Copa América 2024.\n"
+        "- **xG generalisation tests, 6 tournaments never trained on:** UEFA EURO 2024 (the "
+        "headline test), FIFA World Cup 2022, Africa Cup of Nations 2023, Copa América 2024, and "
+        "two women's tournaments — FIFA Women's World Cup 2023 and UEFA Women's EURO 2025.\n"
         "- **Market value:** Transfermarkt valuations for the four men's competitions above (that "
         "mirror has no women's-football coverage at all), matched to a StatsBomb player by name — "
         "there's no shared ID between the two sources, so an unresolved or ambiguous name is left "
@@ -706,8 +708,10 @@ the full model (adds body part, assist type, game state) reaches
         st.pyplot(fig)
         plt.close(fig)
         st.caption(
-            "EURO 2024 is the *floor* of the four, not a fluke — the model holds up as well or "
-            "better on every other tournament it's been checked against."
+            "The ranking holds on every tournament checked (ROC-AUC 0.76–0.81), including two "
+            "women's tournaments — a men's-trained model meeting a second distribution shift. The "
+            "higher Brier on Women's EURO 2025 mostly reflects its higher goal rate, not a bias: it "
+            "scored 98% of its expected goals."
         )
 
         st.markdown(

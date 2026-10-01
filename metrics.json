@@ -48,6 +48,7 @@
   "xg_generalisation": {
     "1267": {
       "brier_score": 0.071,
+      "gender": "male",
       "goal_rate": 0.097,
       "label": "Africa Cup of Nations 2023",
       "n_shots": 1184,
@@ -55,6 +56,7 @@
     },
     "223": {
       "brier_score": 0.075,
+      "gender": "male",
       "goal_rate": 0.092,
       "label": "Copa Am\u00e9rica 2024",
       "n_shots": 751,
@@ -62,17 +64,35 @@
     },
     "43": {
       "brier_score": 0.083,
+      "gender": "male",
       "goal_rate": 0.116,
       "label": "FIFA World Cup 2022",
       "n_shots": 1453,
       "roc_auc": 0.808
     },
+    "53": {
+      "brier_score": 0.092,
+      "gender": "female",
+      "goal_rate": 0.118,
+      "label": "UEFA Women's EURO 2025",
+      "n_shots": 876,
+      "roc_auc": 0.763
+    },
     "55": {
       "brier_score": 0.065,
+      "gender": "male",
       "goal_rate": 0.081,
       "label": "UEFA EURO 2024",
       "n_shots": 1316,
       "roc_auc": 0.765
+    },
+    "72": {
+      "brier_score": 0.072,
+      "gender": "female",
+      "goal_rate": 0.095,
+      "label": "FIFA Women's World Cup 2023",
+      "n_shots": 1635,
+      "roc_auc": 0.777
     }
   }
 }

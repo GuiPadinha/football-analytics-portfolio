@@ -25,15 +25,23 @@
 
 **Output:** xG per shot/player/team; overperformer/underperformer table (`build_player_xg_table`); shot maps; calibration curves.
 
-**Generalisation beyond EURO 2024 (Phase 4c, 2026-07-09):** the same `TRAIN_SETS`-fitted logistic
-model, scored separately (not pooled) against three more held-out tournaments via
-`config.GENERALISATION_TEST_SETS`/`models.evaluate_by_competition` — FIFA World Cup 2022 (0.808),
-Africa Cup of Nations 2023 (0.807), Copa América 2024 (0.763, smallest sample at 751 shots).
-**EURO 2024's 0.765 is the floor of the four, not a fluke** — the model generalises as well or
-better everywhere else tested. See `metrics.json`'s `xg_generalisation` section and
-`outputs/xg_generalisation_by_tournament.png`. `config.TEST_SETS` (`[EURO_2024]`) is unchanged —
-this is additional evidence, not a replacement for the headline test set. Women's EURO 2025 is
-still not wired in (see [DATA.md](DATA.md)).
+**Generalisation beyond EURO 2024 (Phase 4c, men's 2026-07-09, women's 2026-10-01):** the same
+`TRAIN_SETS`-fitted logistic model is scored separately (not pooled) against five more held-out
+tournaments via `config.GENERALISATION_TEST_SETS`/`models.evaluate_by_competition`:
+
+- men's: FIFA World Cup 2022 (0.808), Africa Cup of Nations 2023 (0.807), Copa América 2024
+  (0.763, smallest men's sample at 751 shots);
+- women's (`gender="female"`): FIFA Women's World Cup 2023 (0.777), UEFA Women's EURO 2025 (0.763).
+
+The ranking holds across all six (0.76–0.81). **Correction (2026-10-01):** docs had called EURO 2024's
+0.765 "the floor of the four". Copa América's 0.763 was always lower, so EURO 2024 is near the
+bottom, not the floor, and the 0.002 gap is noise. Calibration-in-the-large (goals ÷ summed xG)
+ranges 0.83–1.04. Women's EURO 2025 is 0.98, so there is no women's-specific under-prediction.
+Its Brier (0.092) is the worst of the six mostly because its base goal rate is the highest
+(11.8%): Brier isn't comparable across populations with different base rates (see
+ML_LEARNING_LOG.md). See `metrics.json`'s `xg_generalisation` section and
+`outputs/xg_generalisation_by_tournament.png`. `config.TEST_SETS` (`[EURO_2024]`) is unchanged.
+This is additional evidence, not a replacement for the headline test set.
 
 **Planned upgrades** (see [ROADMAP.md](ROADMAP.md)): uncertainty on goals−xG + hierarchical/empirical-Bayes finishing model, header/foot interaction, calibration by stratum → **Phase 5**; 360-context features + post-shot xGOT → **Phase 7**.
 

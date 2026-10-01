@@ -72,10 +72,23 @@ probabilities hold up even where ranking is marginally harder.
 > and removing that flaw is exactly the kind of rigour this project is meant to demonstrate.
 
 **Is EURO 2024 a fluke, or does this hold up elsewhere?** The same trained model, scored
-separately (not pooled) against three more held-out tournaments it never trained on: FIFA World Cup
-2022 (0.808), Africa Cup of Nations 2023 (0.807), and Copa América 2024 (0.763, on the smallest
-sample of the four at 751 shots). **EURO 2024's 0.765 turns out to be the floor of the four, not a
-fluke** — the model generalises as well or better everywhere else tested.
+separately (not pooled) against five more held-out tournaments it never trained on:
+
+| Tournament | ROC-AUC | Goals ÷ xG |
+|---|---|---|
+| FIFA World Cup 2022 | 0.808 | 1.04 |
+| Africa Cup of Nations 2023 | 0.807 | 0.93 |
+| FIFA Women's World Cup 2023 | 0.777 | 0.83 |
+| UEFA EURO 2024 (headline test) | 0.765 | 0.84 |
+| Copa América 2024 | 0.763 | 0.93 |
+| UEFA Women's EURO 2025 | 0.763 | 0.98 |
+
+**The ranking holds everywhere (0.76–0.81).** EURO 2024 sits near the bottom of the men's
+tournaments; Copa América is lower, by a margin small enough to be noise. The two **women's
+tournaments** are a double distribution shift (league → tournament *and* men's → women's
+football). The model still ranks their shots as well as the men's, and it doesn't under-predict
+women's goals: Women's EURO 2025 scored 98% of its xG. That is despite women's football's higher
+raw conversion rate, which the shot-quality features already explain.
 
 ![Calibration curve](outputs/calibration_curve.png)
 ![Feature importance](outputs/feature_importance.png)

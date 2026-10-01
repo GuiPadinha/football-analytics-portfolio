@@ -29,7 +29,7 @@ was folded in — the old Phase 3 (360 xG) and Phase 5 (product) moved *later* b
 | **1** | Foundation: `config.py`, per-match cache, penalty/shootout fix, pinned deps, robustness fixes, first tests | 1 | ✅ Done |
 | **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | 2 | ✅ Done |
 | **3** | Engineering & reproducibility spine: CI, `pipeline.py`/Makefile, `metrics.json` single-source, data manifest | *new* | ✅ Done |
-| **4** | Multi-competition ingestion + data expansion: config-driven pipeline, Module A generalization, Module B cross-league | 4 (reshaped) | 🟡 4a/4b/4d done, 4c mostly done 2026-07-09 (3/4 tournaments wired; Women's EURO 2025 still rate-limited, resumable, see log) |
+| **4** | Multi-competition ingestion + data expansion: config-driven pipeline, Module A generalization, Module B cross-league | 4 (reshaped) | 🟡 4a–4d done (4c closed 2026-10-01: 5 held-out tournaments incl. 2 women's); **4e pinned** (new sources + 360, see ROADMAP.md) |
 | **5** | xG uncertainty + hierarchical/empirical-Bayes finishing model; header/foot interaction; calibration by stratum | *new* | ⬜ Not started |
 | **6** | Module B upgrades: Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features | part of old 6 | ⬜ Not started |
 | **7** | New model: 360-context xG + post-shot xG (xGOT) | **3** | ⬜ Not started |
@@ -102,6 +102,10 @@ by hand.
   players" sidebar view puts any two players side by side — market value/Finishing always compare;
   radar/signature-stats/percentiles only when both share a position group. 86 tests green (75 + 11
   new), `metrics.json` unchanged.
+- **2026-09-30 / 10-01** — Repo health check, then its plan executed phase by phase: HTTPS fixed
+  via the OS trust store + retrying downloads, Python 3.12 readiness (CI matrix), `app.py`
+  restructure + app tests, and **Phase 4c closed**. Women's EURO 2025 + Women's World Cup 2023
+  are now scored (0.763 / 0.777). **Phase 4e** (new data sources + 360) is pinned.
 
 ---
 

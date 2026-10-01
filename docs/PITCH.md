@@ -73,9 +73,11 @@ via `python -m src.metrics`).
   every shot scores 0.5 (no skill); shot geometry alone (distance + angle) already reaches 0.712;
   the full model (adds body part, assist type, game state) reaches 0.765 on the held-out EURO 2024
   test set.
-- **Generalisation, not a one-off:** the same trained model, never retrained, scores 0.808 on FIFA
-  World Cup 2022, 0.807 on Africa Cup of Nations 2023, 0.763 on Copa América 2024 (smallest sample,
-  751 shots) — EURO 2024's 0.765 turns out to be the *floor* of the four, not a fluke.
+- **Generalisation, not a one-off:** the same trained model, never retrained, ranks shots just as
+  well on five more tournaments it never saw (0.76–0.81 ROC-AUC). That includes two **women's**
+  tournaments: 0.777 at the 2023 Women's World Cup, 0.763 at Women's EURO 2025. It doesn't
+  under-predict women's goals either (Women's EURO: 98% of xG scored). Don't call EURO 2024 "the
+  floor": Copa América (0.763) is a hair lower.
 - **Similarity's honest caveat:** silhouette score (cluster tightness) peaks low, ~0.22–0.26 —
   stated plainly rather than hidden: play styles within a position are a soft continuum, not sharp
   clusters. K=4 is still used, for archetype granularity, against the metric's own preference for
@@ -106,9 +108,6 @@ Full phase-by-phase detail: [INITIATIVE.md](INITIATIVE.md) (status table + log) 
 
 ## If asked "why isn't X done yet"
 
-- **Women's EURO 2025 (Phase 4c, 1 of 4 tournaments):** genuinely rate-limited by StatsBomb's raw
-  data host across several retries, not a shelved decision — resumable for free once the limit
-  clears (per-match cache is already in place).
 - **Cross-league normalisation (Phase 4b):** resolved 2026-07-13 — per-90 rates are now
   league-adjusted (z-scored within each competition) before comparing across the 6-competition
   pool. Still a relative, data-only fix, not a true competitiveness rating — flagged honestly

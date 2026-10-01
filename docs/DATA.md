@@ -7,7 +7,7 @@
 ## StatsBomb Open Data (primary)
 
 - Library: `statsbombpy` — no API key required; pulls programmatically
-- Data volume: ~1–2 GB uncompressed locally (gitignored, per-match pickle cache in `data/cache/`)
+- Data volume: ~8 GB locally as of 2026-10 (~4,300 per-match pickles in `data/cache/`, gitignored)
 
 **Key data objects:**
 - `competitions` — available competitions list
@@ -41,7 +41,8 @@ tournaments are additional, separately-reported evidence, not folded into the he
 | Ligue 1 2015/16 | 377 matches, events + lineups (lineups pulled 2026-07-05) | In `SIMILARITY_SETS` — same-era full league as PL 2015/16 |
 | Frauen Bundesliga 2023/24 | 132 matches, events + lineups | In `SIMILARITY_SETS` — women's-football expansion, newest full-season data in this project |
 | FA Women's Super League 2023/24 | 132 matches, events + lineups | In `SIMILARITY_SETS` — women's-football expansion, newest full-season data in this project |
-| Women's EURO 2025 | 31 matches, events + 360 | xG test — women's-football held-out tournament; **not wired**. Not yet cached at all: a pull attempt (2026-07-09) hit a persistent GitHub raw-content rate limit (`429`) across several retries — see [ML_TOOLING.md](ML_TOOLING.md) |
+| Women's EURO 2025 | 31 matches, events + 360 | xG test — women's held-out tournament; **wired 2026-10-01** (the July 429 had cleared): ROC-AUC 0.763, goals ÷ xG 0.98 |
+| FIFA Women's World Cup 2023 | 64 matches, events + 360 | xG test — women's held-out tournament; **wired 2026-10-01**: ROC-AUC 0.777, goals ÷ xG 0.83 |
 | Copa América 2024 | 32 matches, events | xG test — additional held-out tournament; **wired 2026-07-09** (Phase 4c), scored separately in `metrics.json`'s `xg_generalisation`: ROC-AUC 0.763 |
 | FIFA World Cup 2022 | 64 matches, events + 360 | xG test — additional held-out tournament; **wired 2026-07-09** (Phase 4c): ROC-AUC 0.808 |
 | Africa Cup of Nations 2023 | 52 matches, events + 360 | xG test — additional held-out tournament; **wired 2026-07-09** (Phase 4c): ROC-AUC 0.807 |
@@ -158,9 +159,12 @@ including a second real bug (a name-construction particle like "de" winning by d
 the *only* candidate, fixed by requiring at least one non-particle token). A name with zero or
 still-ambiguous candidates (e.g. two genuinely different real players who share a name and
 position) is left unmatched, never guessed — **~90% of the four men's competitions matched**
-(1,215 of ~1,344 players) on the real data, verified by spot-checking that every star player
-(Messi, Ronaldo, Neymar, Suárez, Kane, Agüero, Ibrahimović, Higuaín...) resolved to a plausible,
-era-correct valuation.
+(1,215 of ~1,344 players) on the real data, spot-checked on star players (Messi, Ronaldo, Neymar,
+Kane, Agüero, Ibrahimović, Higuaín... all resolve to plausible, era-correct valuations).
+**Correction (2026-10-01):** this list used to include Suárez, but **Luis Suárez (Barcelona) is
+unmatched**. Transfermarkt has two "Luis Suárez" profiles with the same broad position (born 1987
+and 1997), so the matcher's "ambiguous → leave blank" rule applies. A birth-date or club-at-date
+tiebreak would resolve it; see ROADMAP.md's Phase 9 list.
 
 **Valuation is dated, not one number:** uses `player_valuations`' history, picking the entry
 nearest a representative "as of" date per competition (`market_value.MARKET_VALUE_AS_OF_DATES` —

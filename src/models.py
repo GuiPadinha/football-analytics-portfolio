@@ -363,7 +363,7 @@ def evaluate_by_competition(model, shots, datasets):
 
     Returns:
         dict[str, dict]: keyed by `str(dataset.comp_id)`, each value holding `label`,
-            `n_shots`, `goal_rate`, `roc_auc`, and `brier_score` for that competition's
+            `gender`, `n_shots`, `goal_rate`, `roc_auc`, and `brier_score` for that competition's
             shots scored by `model`.
     """
     out = {}
@@ -375,6 +375,7 @@ def evaluate_by_competition(model, shots, datasets):
         eval_ = evaluate_model(model, X, y)
         out[str(dataset.comp_id)] = {
             "label": dataset.label,
+            "gender": getattr(dataset, "gender", "male"),
             "n_shots": int(len(y)),
             "goal_rate": round(float(y.mean()), 3),
             "roc_auc": round(float(eval_["roc_auc"]), 3),

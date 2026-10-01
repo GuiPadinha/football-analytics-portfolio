@@ -25,6 +25,9 @@ class Dataset:
             shot profile; see CLAUDE.md).
         label: human-readable name for charts, logs, and tables.
         has_360: whether StatsBomb publishes 360 freeze-frame data for this competition/season.
+        gender: StatsBomb's `competition_gender` ("male"/"female"). The xG model trains on men's
+            football only, so a women's tournament is a second distribution shift on top of
+            league -> tournament, and results are reported apart.
     """
 
     comp_id: int
@@ -32,6 +35,7 @@ class Dataset:
     context: str
     label: str
     has_360: bool = False
+    gender: str = "male"
 
 
 # --- League context (xG training) ---
@@ -41,10 +45,15 @@ PL_2015_16 = Dataset(2, 27, "league", "Premier League 2015/16", has_360=False)
 # --- Tournament context (xG test / out-of-distribution) ---
 EURO_2024 = Dataset(55, 282, "tournament", "UEFA EURO 2024", has_360=True)
 
-# --- Phase 4 candidate (freshly released free data with events + 360) ---
-WOMENS_EURO_2025 = Dataset(53, 315, "tournament", "UEFA Women's EURO 2025", has_360=True)
+# --- Women's tournaments (held-out xG tests, Phase 4c; both have 360 too) ---
+WOMENS_EURO_2025 = Dataset(
+    53, 315, "tournament", "UEFA Women's EURO 2025", has_360=True, gender="female"
+)
+WOMENS_WORLD_CUP_2023 = Dataset(
+    72, 107, "tournament", "FIFA Women's World Cup 2023", has_360=True, gender="female"
+)
 
-# --- Phase 4 data expansion (2026-07-04, cached not yet wired into TRAIN_SETS/SIMILARITY_SET) ---
+# --- Phase 4 data expansion (pulled 2026-07-04; see SIMILARITY_SETS / GENERALISATION_TEST_SETS) ---
 # StatsBomb's "La Liga" competition entry is misleading: verified by match/team count (not
 # assumed from the name — see the Bundesliga/Ligue 1 single-team gotcha below), every season here
 # except 2015/16 is actually Barcelona's own fixtures only — their well-known Messi-era open-data
@@ -87,8 +96,12 @@ LIGUE_1_2015_16 = Dataset(7, 27, "league", "Ligue 1 2015/16", has_360=False)
 
 # Women's football: full-season training data pairs with WOMENS_EURO_2025 as held-out test,
 # mirroring the existing league-train/tournament-test structure for a fresh generalisation angle.
-FRAUEN_BUNDESLIGA_2023_24 = Dataset(135, 281, "league", "Frauen Bundesliga 2023/24", has_360=False)
-FA_WSL_2023_24 = Dataset(37, 281, "league", "FA Women's Super League 2023/24", has_360=False)
+FRAUEN_BUNDESLIGA_2023_24 = Dataset(
+    135, 281, "league", "Frauen Bundesliga 2023/24", has_360=False, gender="female"
+)
+FA_WSL_2023_24 = Dataset(
+    37, 281, "league", "FA Women's Super League 2023/24", has_360=False, gender="female"
+)
 
 # Additional held-out tournament test contexts for Module A generalisation (Phase 4c).
 COPA_AMERICA_2024 = Dataset(223, 282, "tournament", "Copa América 2024", has_360=False)
@@ -116,10 +129,22 @@ TEST_SETS = [EURO_2024]
 # women's football)? `metrics.py`/`pipeline.py` score each of these against the model trained on
 # TRAIN_SETS and report per-tournament numbers, leaving EURO_2024/TEST_SETS as the one, unchanged
 # headline test set every doc already quotes (see `tests/test_metrics.py`'s doc-lint test).
-GENERALISATION_TEST_SETS = [EURO_2024, COPA_AMERICA_2024, WORLD_CUP_2022, AFCON_2023]
+# The two women's tournaments (wired 2026-10-01) carry gender="female": they measure a
+# men's-trained model meeting women's football, a separate question from "another tournament".
+GENERALISATION_TEST_SETS = [
+    EURO_2024, COPA_AMERICA_2024, WORLD_CUP_2022, AFCON_2023,
+    WOMENS_EURO_2025, WOMENS_WORLD_CUP_2023,
+]
 
 # Datasets usable by the 360-context xG model (Phase 7) — only those with freeze-frame coverage.
-SETS_WITH_360 = [ds for ds in (LEVERKUSEN_2023_24, PL_2015_16, EURO_2024) if ds.has_360]
+# Every named dataset, so derived lists like SETS_WITH_360 can't silently miss a new one (the
+# hand-written list this replaced skipped World Cup 2022 and AFCON 2023, both with 360 data).
+ALL_DATASETS = [
+    LEVERKUSEN_2023_24, PL_2015_16, EURO_2024, WOMENS_EURO_2025, WOMENS_WORLD_CUP_2023,
+    *BARCELONA_SEASONS, LA_LIGA_2015_16_FULL, SERIE_A_2015_16, LIGUE_1_2015_16,
+    FRAUEN_BUNDESLIGA_2023_24, FA_WSL_2023_24, COPA_AMERICA_2024, WORLD_CUP_2022, AFCON_2023,
+]
+SETS_WITH_360 = [ds for ds in ALL_DATASETS if ds.has_360]
 
 # Primary similarity pool (Module B). Used to scope the xG "flagship" shots/ranking that ships
 # alongside the app's similarity pool (Module A's TRAIN_SETS is deliberately untouched by Phase
@@ -139,9 +164,9 @@ SIMILARITY_SET = PL_2015_16
 # data this project has anywhere; a live/current-season pool isn't possible on this data source
 # without a paid StatsBomb license.
 #
-# No cross-league normalisation applied yet (still the Phase 4b open item) — per-90 rates are
-# compared directly across leagues of different competitiveness/style. Treat cross-league
-# "players like X" matches as a coarser signal than within-league ones until that's designed.
+# Cross-league comparison runs on league-normalised features (similarity.normalize_within_competition,
+# 2026-07-13): each per-90 stat is z-scored within its own competition first. A relative fix, not
+# a competitiveness rating — there is no external league-strength data in this project.
 SIMILARITY_SETS = [
     PL_2015_16, LA_LIGA_2015_16_FULL, SERIE_A_2015_16, LIGUE_1_2015_16,
     FRAUEN_BUNDESLIGA_2023_24, FA_WSL_2023_24,
