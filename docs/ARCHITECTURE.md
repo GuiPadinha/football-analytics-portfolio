@@ -1,6 +1,6 @@
 # Architecture — how the pieces fit together
 
-→ [CLAUDE.md](../CLAUDE.md) | Module specs: [MODULES.md](MODULES.md) | Future app's panel→function
+→ [CLAUDE.md](../CLAUDE.md) | Module specs: [MODULES.md](MODULES.md) | The app's panel→function
 map: [PRODUCT_SPEC.md](PRODUCT_SPEC.md)
 
 CLAUDE.md's Repository Layout tells you *what each file is*, one line each. This doc tells you
@@ -59,8 +59,7 @@ Two things worth noticing, because they're deliberate design choices, not accide
 `models.py` trains/evaluates on whatever `X`/`y` a caller hands it, `visualisation.py` plots
 whatever arrays/DataFrames a caller hands it. Neither knows StatsBomb, `config.py`, or the other's
 existence. This is why the same `plot_calibration_curve`/`plot_shot_map` functions work unchanged
-whether the caller is notebook 02, `pipeline.py`, or (per [PRODUCT_SPEC.md](PRODUCT_SPEC.md)) the
-deployed Streamlit app.
+whether the caller is notebook 02, `pipeline.py`, or the deployed Streamlit app.
 
 **`market_value.py` (Phase 9) imports nothing from `src/` except `net.py`'s download plumbing,
 for a different reason:** it isn't StatsBomb-specific at all — its only inputs are a plain DataFrame (`player`/`team`/
@@ -192,7 +191,7 @@ instead verified by actually running the pipeline end-to-end (see Phase 3d's PRO
 
 ## Related Documentation
 
-This doc covers the engineering shape (modules, imports, data flow). For the product shape — which
-UI panel a future Streamlit app would power with which function, and the precomputed-artifact data
-flow that app would need — see [PRODUCT_SPEC.md](PRODUCT_SPEC.md)'s component→backend map. The two
-docs describe the same `src/` from different angles; neither duplicates the other's table.
+This doc covers the engineering shape (modules, imports, data flow). For the product shape —
+which app panel is powered by which function, and the precomputed-artifact data flow the app
+reads — see [PRODUCT_SPEC.md](PRODUCT_SPEC.md)'s component→backend map. The two docs describe the
+same `src/` from different angles; neither duplicates the other's table.

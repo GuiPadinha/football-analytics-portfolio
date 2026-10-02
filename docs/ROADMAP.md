@@ -295,10 +295,9 @@ StatsBomb `three-sixty` data gives freeze-frames (every visible player's positio
 ## Phase 8 — Product layer build (Streamlit)  ✅ Done  *(was Phase 5)*
 
 Minimal v1 built 2026-07-04, ahead of strict phase order — a friend demo (~2026-07-11) made
-"something clickable" more valuable than finishing 4–6 first this time; see
-[PRODUCT_SPEC.md](PRODUCT_SPEC.md)'s Build Checklist for exactly what's done vs. left. Scoped to
-Premier League 2015/16 (the one dataset with a full similarity + xG pool already computed) — a
-later pass can widen this once Phase 4b/4c pick a wider training/similarity set to showcase.
+"something clickable" more valuable than finishing 4–6 first. Since then it has grown to four
+views over a 6-competition pool (1,635 players incl. goalkeepers). What the app does today, and
+the UX decisions behind it, are in [PRODUCT_SPEC.md](PRODUCT_SPEC.md).
 
 **Deployed 2026-07-09** to Streamlit Community Cloud:
 [gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app)

@@ -182,6 +182,14 @@ restructure.
   phases. The original S1–S9 session table moved to PROGRESS_ARCHIVE.md, where it stops looking
   like a second, conflicting 0–9 numbering. Every link was repointed, including the app's About
   page.
+- *6c, PRODUCT_SPEC.md rewritten as the spec of the app that exists* (458 → ~180 lines). It
+  covers the four views, a component→backend map by function name (4 of the 8 old `#L` anchors
+  were wrong), data flow/runtime and the tech choice. It keeps a **UX decision log** (search box
+  rounds 1–3, blanks via `placeholder`, percentile direction + tier words, drill-down key scoping,
+  …) so a rejected design isn't silently reintroduced, plus a known-gaps list. The dated build
+  logs it used to carry were already duplicated in PROGRESS/ARCHIVE. FRAMEWORK.md's "Product
+  Layer (Planned)", ARCHITECTURE.md's "future app" and ROADMAP Phase 8's "scoped to PL 2015/16"
+  were updated to match.
 
 ---
 

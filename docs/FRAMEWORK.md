@@ -103,24 +103,14 @@ answer to "cheaper," not just a manual budget filter left to the human.
 
 ---
 
-## Product Layer (Planned)
+## Product Layer (live)
 
-Today this lives in notebooks: run cells, read tables. The intended experience is a single screen:
-
-```
-[ pick a player ▾ ]  →   ┌─────────────────────────────────────────┐
-                         │  Radar (vs. position peers)              │
-                         │  "Players like X"  (ranked, with dist.)  │
-                         │  xG over/underperformance (is it real?)  │
-                         └─────────────────────────────────────────┘
-```
-
-That interactive layer (Phase 8 of the hardening initiative) turns a set of analyses into a tool,
-and its absence is the main reason the project can currently feel abstract.
-
-The full interface design — screens, interaction model, the map from each panel to the existing
-`src/` function that powers it, tech choice (Streamlit), and mockups — is specified in
-[PRODUCT_SPEC.md](PRODUCT_SPEC.md). Spec is done; the build is a later session.
+The framework is usable as a tool, not just as notebooks:
+**[gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app)**.
+Pick a player and see their radar against position peers, a ranked "players like X" list with
+market values, their style archetype and, where shot data exists, goals vs. xG. A leaderboard and
+a two-player comparison sit alongside. What each view shows, which `src/` function powers each
+panel, and the UX decisions behind them are in [PRODUCT_SPEC.md](PRODUCT_SPEC.md).
 
 ---
 

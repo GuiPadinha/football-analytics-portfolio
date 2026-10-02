@@ -1,458 +1,168 @@
-# Product Layer — Interface Spec (Phase 8)
+# Product Layer — the Streamlit App (Phase 8)
 
-→ [CLAUDE.md](../CLAUDE.md) | Framing: [FRAMEWORK.md](FRAMEWORK.md) | Phase tracker: [ROADMAP.md](ROADMAP.md)
+→ [CLAUDE.md](../CLAUDE.md) | Framing: [FRAMEWORK.md](FRAMEWORK.md) | Phases: [ROADMAP.md](ROADMAP.md#phases)
 
-**Status:** spec expanded 2026-07-01; minimal v1 built 2026-07-04; two rounds of first-use
-feedback on 2026-07-05 (see "Post-v1 additions" below) added real-time player search, per-position
-"signature stats," a full per-90 stat table, a widened multi-competition player pool, a dark theme,
-and defender-facing clearances/blocks stats; a 2026-07-06 fix-up pass corrected a real dark-theme
-rendering bug (radar chart) and added whole-number season totals; a later 2026-07-06 pass shipped
-the all-players **leaderboard** (goals incl. penalties + xG where available) — the first item off
-the evening-feedback backlog below. **Deployed to Streamlit Community Cloud 2026-07-09** —
+**Status:** live at
 [gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app)
-(Python 3.10 pinned in the deploy settings, see ROADMAP.md's Phase 9 backlog note). Phase 8 is now
-fully done; the remaining backlog items (goalkeepers, clickable drill-down, methodology-expander
-rework, penalty info) below are app-polish, not Phase 8 build items.
-
-### Post-v1 additions (2026-07-05)
-
-Guilherme's first real use of v1 surfaced three asks: real-time player search, more/better stats
-per player, and a general "I expect a lot more, we'll iterate" expectation-setting.
-
-- **Search:** the sidebar's two-step "position → player" flow became one global, prominent
-  `st.selectbox` at the top of the main pane — Streamlit's selectbox already filters live as you
-  type (a real combobox), so this needed no new dependency. Position is now an *optional* narrowing
-  filter in the sidebar, not a prerequisite. (Superseded same day — see round 2 below: this still
-  read as a dropdown-first interaction rather than a search box.)
-- **Signature stats:** a `SIGNATURE_STATS_BY_POSITION` mapping in `app.py` surfaces 3 role-relevant
-  per-90 metrics per position group (defender → tackles/interceptions/pressures, midfielder → key
-  passes/progressive passes/pressures, forward → goals/shots/key passes) as headline metric cards,
-  each with a percentile rank within the player's position group.
-- **Full stat table:** an expander lists all 9 per-90 `ACTION_COLUMNS` with value + percentile,
-  sortable — the "way more stats" ask, achievable entirely from data already in `app_data/`.
-- **Named limitation, not silently skipped:** true SofaScore-depth stats (pass completion %, duels
-  won %, aerial win %) need *new* features from raw StatsBomb events — rates need a denominator
-  (attempts), and the current per-90 table only has completed-action counts. Flagged in the app's
-  own "All per-90 stats" expander and here, not faked with the data we have today.
-
-### Post-v1 additions, round 2 (2026-07-05)
-
-A follow-up pass on the same day: round 1's selectbox-based search didn't read as "typing search,"
-the player pool was locked to one 2015/16 league with no explanation of why, the app inherited
-Streamlit's stock light theme, and assists/defensive-contribution stats were still buried in an
-expander rather than surfaced.
-
-- **Real typing search:** replaced the dropdown-first `st.selectbox` with an `st.text_input`
-  ("Search for a player") that narrows a match list once committed (Enter or clicking away —
-  `st.text_input` does not rerun per keystroke; corrected 2026-07-06 after actually driving the
-  app with Playwright, see ML_TOOLING.md), feeding a selectbox of current matches with the top
-  one pre-selected — the text
-  box is now the obvious first thing to type into, not a combobox you click open before typing.
-  (**Superseded again, 2026-07-14 (cont.):** this exact text_input + selectbox combo turned out to
-  have the opposite problem round 1 didn't — `st.text_input` never reruns until Enter/blur, so
-  typing produced no visible change, which read as broken under live use. Round 3 went back to a
-  bare `st.selectbox` (its own dropdown filters instantly, client-side, no roundtrip needed) but
-  changed the one thing that plausibly caused round 1's "reads as a dropdown" complaint in the
-  first place: it now starts blank (`index=None`, placeholder text) instead of pre-filled with an
-  already-selected player. Full account, including the direct confirmation this reversal was
-  checked against before shipping, in docs/PROGRESS.md's 2026-07-14 (cont.) entry.)
-- **Widened player pool (Phase 4b real wiring):** the similarity pool now spans
-  `config.SIMILARITY_SETS` — PL/La Liga/Serie A/Ligue 1 2015/16 plus Frauen Bundesliga/FA WSL
-  2023/24 (6 competitions total), clustered together per position group, not per league. Named
-  honestly in-app: StatsBomb's free data has no recent men's top-flight season at all (2015/16 is
-  the ceiling for all four men's leagues here), so this is "wider," not "newer," for the men's
-  side — the women's leagues are the newest full-season data anywhere in this project. No
-  cross-league normalisation yet — flagged as a coarser signal in the "players like X" panel.
-- **Dark theme:** `.streamlit/config.toml` repainted dark teal/gray with an orange primary accent;
-  `app.py` mirrors the same palette in matplotlib rcParams (figure/axes backgrounds, text, grid,
-  a custom orange/blue property cycle) so the charts match the surrounding chrome instead of
-  rendering on a leftover white background. `plot_player_radar` gained optional dark-friendly
-  colour parameters (default unchanged, so notebooks/pipeline PNGs are unaffected).
-- **Assists + defender stats surfaced:** `assists_p90` promoted into the Midfielder/Forward
-  signature stats (was already computed, just buried in the full-stat expander); new `clearances`
-  and `blocks` action columns added to `ACTION_COLUMNS` for defender-facing "sofascore-like" stats
-  — StatsBomb has no last-ditch/goal-line clearance sub-type, so a plain clearance count is the
-  honest available proxy, stated as such in the app.
-- **A real bug found along the way:** the pre-existing "zero completed passes" fallback in
-  `extract_player_match_actions` produced a shapeless empty Series that could corrupt the whole
-  function's output shape — surfaced by the new clearances/blocks test, not by production data
-  (see ML_LEARNING_LOG.md). Fixed, not worked around.
-
-### Backlog from 2026-07-06 feedback
-
-Guilherme reviewed the round-2 build (actual screenshots, then live via Playwright — see
-ML_TOOLING.md) and asked for the following; agreed to save it for a later session rather than
-rush it in that night. **All five items below are now done** (last one, goalkeepers, shipped
-2026-07-13) — the only thing still open from this whole list is the minor cosmetic follow-up
-noted inside the drill-down item below (an expander's open/closed state not always carrying over
-across a jump).
-
-- **[DONE 2026-07-06] Full player leaderboard, sortable, goals *including* penalties + xG where
-  available.** Built as a sidebar `View` toggle → sortable `st.dataframe` (`render_leaderboard` in
-  `app.py`). The "goals incl. penalties" total is a new **display-only** `goals` column
-  (`similarity.DISPLAY_COUNT_COLUMNS`, kept out of `ACTION_COLUMNS` so it never touches
-  clustering/xG — exactly the "separate raw column, don't change the non-penalty modelling column"
-  fix anticipated here). xG/`xg_diff` left-joined from the flagship table, **blank (not faked)** for
-  players outside Module A's training set. Surfaces the intended outliers — e.g. Fabinho, a defender
-  with 6 goals all penalties. (Was: "browse all players to spot outliers like Sergio Ramos's
-  penalty-inflated total; needs a new multi-player table.")
-- **[DONE 2026-07-13] "Under the hood (methodology)" flagged as low-value, reworked.** Guilherme
-  didn't find it useful/understandable as-is and expected it to be reshaped once there was a
-  clearer idea of what should replace it — that idea arrived during 2026-07-13's pitch-prep
-  session (a request for a fuller "about the project" page, plus whole-number headline stats over
-  decimal ML scores). Split in two: a new **"About & Roadmap"** sidebar view
-  (`render_about_and_roadmap` in `app.py`) now carries the framework explanation, a "What's been
-  built" whole-number stat row, the FRAMEWORK.md worked example, a "how to use this app" guide, a
-  plain-language shipped/next-up summary, and a collapsed **"Methodology"** expander — the only
-  place decimal stats (ROC-AUC, Brier, silhouette, the Phase 4c per-tournament generalisation
-  table/chart) still appear, each explained inline. The old per-player `st.expander("Under the
-  hood (methodology)")` at the bottom of the Player explorer page is slimmed to a one-line pointer
-  at the new tab plus the one thing genuinely specific to that page: the current position group's
-  live silhouette curve.
-- **[DONE 2026-07-13] Goalkeepers wired into the app.** `src/app_data.py`'s new
-  `_build_combined_gk_table` runs `build_goalkeeper_per90_features` across the same
-  `config.SIMILARITY_SETS` pool and concatenates onto the outfield table (no `config.py` change
-  needed — the existing dataset registry was reusable as-is). `app.py` gained a 4th position-filter
-  option (Goalkeeper, 124 players), its own `SIGNATURE_STATS_BY_POSITION` entry, GK-specific radar
-  axes (moved the radar-axes widget to render after the player is picked, since its options now
-  depend on position group), a `save_pct` caption in place of the outfield penalty breakdown, and a
-  branch in the "All per-90 stats" expander and "players like X" call. **Deliberately not
-  clustered** — no K/silhouette decision made for goalkeepers yet, so there's no style-archetype
-  layer for them (only outfield players have one); "players like X" still works since
-  `find_similar_players` ranks by raw distance, not cluster membership. A real bug, caught by
-  Streamlit's `AppTest` harness rather than by reading the diff: `build_goalkeeper_per90_features`
-  only returned `_p90` rate columns, not the raw season totals the signature-stat cards need
-  (unlike the outfield builder) — fixed in `src/similarity.py`. See PROGRESS.md and
-  ML_LEARNING_LOG.md for the full account.
-- **[DONE 2026-07-09] Clickable "similar player" names** — jump from the "players like X" list
-  into that player's own page (and see *their* similar players — a recursive drill-down). Shipped
-  via the "Table view" `st.dataframe`'s `on_select="rerun", selection_mode="single-row"` (the
-  static `plot_similar_players_bar` chart itself stays non-interactive; the table below it is the
-  click target). Row click → `st.session_state["jump_to_player"]` → `st.rerun()` → a top-of-script
-  block pre-seeds the sidebar filters/search/selectbox before they're created, landing on the
-  target player. Recursive drill-down confirmed working (clicked twice in a row: Fallou Diagne →
-  Aïssa Mandi → back to Fallou Diagne). A real bug surfaced during verification — a fixed
-  `st.dataframe` `key` persisted row-selection state across players and caused an infinite jump
-  cascade — fixed by scoping the key to `player_name`/`team_name`. See PROGRESS.md for the full
-  account, including a minor open cosmetic follow-up (the "Table view" expander's open/closed
-  state doesn't always carry over consistently across a jump).
-- **[DONE 2026-07-09] Penalty info on the player page** (raised 2026-07-08). The single-player
-  "Player explorer" page showed only `non_penalty_goals` and nothing about penalties or total
-  goals — so the page looked like it had *no* penalty data even though the leaderboard total
-  included them. Shipped as a `st.caption` right under the existing "Season totals..." caption
-  (`app.py`, after the signature-stats metric-card loop): `"Goals (incl. penalties): {total}
-  ({n} from penalties)"`, using the `goals`/`non_penalty_goals` columns already on
-  `player_row_full` — presentation-only, no data/rebuild work, as anticipated. Only rendered when
-  `total_goals > 0`, so non-scorers' pages are unaffected. Verified live via
-  `streamlit run app.py` + the Playwright-over-Edge recipe (see PROGRESS.md).
-
-### Visual/brand pass — 2026-07-13 (cont. 4)
-
-A same-day follow-up, after the goalkeeper wiring above, asked for: Leaderboard filters (name +
-position), a stronger Player explorer intro, a more visually developed sidebar/header with a
-brand icon and slogan, and an expanded About & Roadmap covering data/methods/direction. All four
-shipped in `app.py`:
-
-- **Leaderboard filters:** `render_leaderboard` gained an in-page `st.text_input` (name) and
-  `st.multiselect` (position, defaulting to all options) above the table — additive to, not a
-  replacement for, the sidebar's existing position/competition filters, since those narrow the
-  *whole* player pool (shared with Player explorer) while these two are Leaderboard-only.
-- **Player explorer intro:** previously had no page-level title or explanation at all — a bare
-  search box. Now opens with `render_page_header("Player explorer")` plus a short markdown intro
-  naming every panel the page contains.
-- **Brand identity:** two new module constants, `BRAND_ICON = "⚽"` and
-  `SLOGAN = "Scout by data, not by reputation."`, used in the browser tab (`page_icon`), a new
-  `render_page_header()` helper (title + a top-right icon/slogan badge, used by the Leaderboard,
-  Player explorer, and per-player pages), and an enriched sidebar (brand header, two live
-  `st.metric` quick-facts computed from `per90`/`metrics.json` rather than hardcoded, a "New here?"
-  pointer to About & Roadmap, and a GitHub source link).
-- **About & Roadmap expansion:** two new visible (non-collapsed) sections, "Data used" (the actual
-  competitions/seasons behind each model, per [DATA.md](DATA.md)) and "How each model works" (a
-  qualitative K-means/Euclidean-distance/PCA description for similarity, logistic regression for
-  xG) — both prose/dataset-name content, no bare decimals, so they don't conflict with the
-  whole-number-headline rule the "Methodology" expander already follows. The "what's next" roadmap
-  paragraph was also expanded into three tiers (small/open, bigger modelling upgrades, and a new
-  "third lens, not started" paragraph naming Module C/PUP explicitly — it hadn't been mentioned
-  anywhere in the app before this pass).
-
-Verified via a scripted `AppTest` pass over all three views plus the two new Leaderboard filters
-and a goalkeeper pick (no exceptions), then Playwright-over-Edge screenshots of all three pages —
-see PROGRESS.md.
-
-### Goalkeeper clustering, cross-league normalisation, and the Leaderboard "None" fix — 2026-07-13 (cont. 6)
-
-Three items carried in as this session's explicit scope, all shipped:
-
-- **Goalkeepers K-means clustered** (K=4, silhouette-informed like the outfield groups, checked
-  against the actual 124-keeper app pool) — `src/app_data.py::_cluster_position_groups`
-  generalises the old outfield-only `_add_cluster_labels`. The Style archetype panel
-  (`app.py`) is no longer outfield-only.
-- **Cross-league normalisation** — `similarity.normalize_within_competition` league-adjusts
-  per-90 features (z-score within each competition) before clustering/`find_similar_players`
-  compare across the 6-competition pool. Applied to clustering, the archetype panel's
-  cluster-profile z-scores, and "players like X" distance; radar axes, percentiles, and
-  signature stats stay on raw per-90 rates deliberately (real-unit displays, not a similarity
-  computation). See MODULES.md/ML_LEARNING_LOG.md for the full rationale and real silhouette
-  numbers behind both K decisions.
-- **Leaderboard "None" cell-text bug fixed** — a real, still-open upstream Streamlit limitation
-  (GitHub issue #7360), not a bug in three prior fix attempts. `xG`/`G-xG` are now hand-formatted
-  `TextColumn`s (blank string for missing, not a null numeric cell) instead of `NumberColumn`s;
-  the diverging background colour is computed manually from the still-numeric values before
-  they're overwritten by the display strings. See ML_TOOLING.md for the full account, including
-  the accepted trade-off (click-to-sort on these two columns is now lexical, not numeric).
-
-Verified: 75 tests green (72 + 3 new for `normalize_within_competition`), a scripted `AppTest`
-pass over all four position groups (incl. Goalkeeper) and all three views, and Playwright-over-Edge
-screenshots confirming both the goalkeeper archetype panel and a genuinely blank (not "None")
-Leaderboard cell for a La Liga-only filter. `metrics.json` unchanged (byte-identical) — this
-pass's scope is the app's wider pool, not the notebook/pipeline's narrow single-competition one.
-
-### Market value + two-player comparison — 2026-07-14
-
-Two backlog items from the previous session's "Bigger, not scoped further" list, both built:
-
-- **Market value.** New `src/market_value.py` (see DATA.md's Transfermarkt section for the full
-  data/entity-resolution account) resolves a Transfermarkt valuation per player by name, wired
-  into `app_data.build_app_artifacts` as a new `market_value.parquet` artifact and shown in three
-  spots: a player's own page (a caption naming the matched Transfermarkt name and valuation date,
-  for transparency), the "players like X" table (directly answering the "similar profile, cheaper"
-  pitch), and the Leaderboard (a new column, using the same hand-formatted-text-column fix as
-  xG/G-xG to avoid reintroducing the "None" bug for a third nullable column). ~90% match rate on
-  the four men's competitions (1,215 of ~1,344 players) — two real entity-resolution bugs found
-  and fixed against actual Transfermarkt data before trusting the match rate, see
-  ML_LEARNING_LOG.md.
-- **Compare players.** New sidebar view, two independent player pickers (search + select, mirrors
-  the Player explorer's own pattern) pulling from the whole pool — not filtered by the sidebar's
-  position/competition selectors, since a comparison is meaningful across positions too. Market
-  value and a Finishing panel always compare directly; signature stats, an overlaid radar (new
-  `visualisation.plot_player_radar_comparison`, using mplsoccer's native `draw_radar_compare`), and
-  a percentile table only render when both picks share a position group.
-
-Verified: 86 tests green (75 + 11 new `tests/test_market_value.py` cases, several reproducing the
-real matching bugs found — see ML_LEARNING_LOG.md), a scripted `AppTest` pass covering the Compare
-players view (same-position and cross-position picks) and a market-value caption render, and
-Playwright-over-Edge screenshots confirming: zero literal "None" text anywhere in the new UI, a
-real Messi-vs-Ronaldo comparison with a correct radar overlay and "valued €X less than" caption,
-and the cross-position (Forward vs. Goalkeeper) case correctly skipping the radar section without
-an exception. One real screenshot false alarm along the way — a Leaderboard screenshot taken right
-after switching views showed stale Compare-players content underneath, the same documented
-Playwright timing artifact from a previous session (see ML_TOOLING.md); reshot with a longer wait
-and it rendered cleanly, confirming it wasn't a real bug. `metrics.json` unchanged.
+since 2026-07-09 (Streamlit Community Cloud, Python 3.10 until the 3.12 redeploy in ROADMAP.md's
+Phase 9). This file describes the app **as it is**. How it got here, session by session, is in
+[PROGRESS.md](PROGRESS.md) / [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md). The design decisions
+worth not re-litigating are in the **UX decision log** below.
 
 ---
 
-## Purpose
+## Purpose and audience
 
-Model output currently lives only inside notebooks: run cells, read tables — fine for building,
-not for showing. [FRAMEWORK.md](FRAMEWORK.md) already names the fix (a single interactive screen)
-and flags its absence as the main reason the project can currently feel abstract.
-
-This layer turns a set of analyses into a tool: one shareable URL where an interviewer or a
-football fan can click, pick a player, and immediately see the model's output. The screen stays
-simple; the payoff is a genuine "players like X" ranking and a real over/under-performance number,
-not UI chrome.
-
-## Audience
-
-Two audiences, one screen:
-- **Interviewers / recruiters** — proof the models work end-to-end and that the author can
-  ship a usable product, not just a notebook.
-- **Football fans** — the "pick your favourite player, see who's like him" hook is
-  self-explanatory and shareable.
-
-Neither reads Python, so the screen has to explain itself.
+Turn two analyses into one tool: a URL where someone can pick a player and immediately see "who
+plays like this" (Module B) and "is their output real or luck" (Module A). Two audiences, neither
+of whom reads Python: **interviewers/recruiters** (proof the models work end to end and that the
+author ships products, not notebooks) and **football fans** ("pick your favourite player" is
+self-explanatory). So the screen has to explain itself, and headline numbers are whole-number
+counts. Decimal model scores (ROC-AUC, Brier, silhouette) live only in the Methodology expander,
+next to what they mean.
 
 ---
 
-## Screen Layout
+## Views
 
-Expanded from the [FRAMEWORK.md](FRAMEWORK.md#product-layer-planned) sketch. A left **sidebar** drives
-selection; the **main pane** reacts live. Two lenses share the screen:
+A sidebar radio switches between four views. Sidebar filters (position group, competition)
+narrow the pool for Player explorer and Leaderboard; Compare players always searches everyone.
 
-- **Similarity / scouting lens** (user input) — pick a player → radar vs. position peers +
-  a ranked "players like X" list with distances.
-- **xG / valuation lens** (no input) — that player's finishing over/under-performance, plus
-  a shot map of where their chances came from.
+**Player explorer** — one player, deep dive. A live-filtering search box (starts blank), then:
+1. **Scouting report** — one templated paragraph stitched from the panels below (style traits,
+   best percentile, market value). It's not an LLM summary and adds no new number.
+2. **Signature stats** — three role-specific season totals per position group, with the per-90
+   rate and a percentile + tier word on hover. Below: goals incl. penalties (outfield) or save %
+   (goalkeepers), and the Transfermarkt market value with the matched name and date.
+3. **Style archetype** — the player's K=4 cluster in plain words ("noticeably more X and Y, less
+   Z"), with the exact σ values in an expander and a click-to-jump list of others in the archetype.
+4. **All per-90 stats** — a percentile bar chart (higher is always better, lower-is-better stats
+   flipped) plus a table view.
+5. **Radar** vs. position peers (axes chosen in the sidebar) and **Players like X**: the five
+   nearest neighbours in league-normalised feature space, with market value. Clicking a row jumps
+   to that player's page (a recursive drill-down).
+6. **Finishing** — goals, xG, goals−xG and a shot map, for players in the xG training set
+   (PL 2015/16 + Leverkusen 2023/24). Everyone else gets an explicit "no logged shots" note.
+7. A collapsed **Under the hood** expander with this position group's silhouette curve.
 
-```
-┌───────────────┬─────────────────────────────────────────────────────────┐
-│  SIDEBAR      │  Florian Wirtz   ·   Bayer Leverkusen   ·   Midfielder    │
-│               │                                                           │
-│  Competition ▾│  ┌────────────────────────┐  ┌─────────────────────────┐ │
-│   Bundesliga  │  │  RADAR vs Midfielders   │  │  PLAYERS LIKE WIRTZ     │ │
-│  Season      ▾│  │  [plot_player_radar]    │  │  1 Musiala    ####  0.41│ │
-│   2023/24     │  │        _.-''-._         │  │  2 Odegaard   ###   0.58│ │
-│  Position    ▾│  │      .'   ()   '.       │  │  3 Bellingham ##    0.73│ │
-│   Midfielder  │  │     :     ##     :      │  │  4 Rogers     ##    0.79│ │
-│  Player      ▾│  │      '._      _.'       │  │  5 Reijnders  #     0.88│ │
-│   Wirtz       │  │         '-..-'          │  │  [find_similar_players] │ │
-│               │  └────────────────────────┘  └─────────────────────────┘ │
-│  Radar axes:  │  ┌──────────────────────────────────────────────────────┐│
-│   [x] npxG    │  │  FINISHING — is the output real? [plot_player_xg_...] ││
-│   [x] key pass│  │  Wirtz   +2.4 goals vs xG  #####  (over-performing)   ││
-│   [x] prog pass  │  scored 12 · expected 9.6 · likely genuine, not noise ││
-│   [ ] tackles │  └──────────────────────────────────────────────────────┘│
-│   [ ] pressure│  ▸ Under the hood (calibration, silhouette, CV)  [expand] │
-└───────────────┴─────────────────────────────────────────────────────────┘
-```
+**Leaderboard** — every player in the current filters in one sortable table: minutes, goals (incl.
+penalties), non-penalty goals, assists, xG, G−xG (diverging colour), market value (€M). In-page
+name and position filters sit on top. Missing values are blank (goalkeepers have no goals/assists,
+most of the pool has no xG); every column sorts numerically.
 
-### Interaction model
+**Compare players** — any two players. Market value and Finishing always compare. Signature stats,
+an overlaid radar and a percentile table appear only when both share a position group (otherwise
+the stats aren't the same).
 
-1. **Competition / Season** (sidebar dropdowns) — selects which precomputed dataset is
-   loaded (see Data flow). Defaults to the flagship dataset (Leverkusen 2023/24).
-2. **Position group** — Defender / Midfielder / Forward (GKs excluded, as in the models).
-   Filters the player picker and sets the radar's peer comparison group.
-3. **Player** — the one input that drives everything in the main pane.
-4. **Radar axes** (multiselect) — the "customizable" knob: the user chooses which per-90
-   metrics form the radar spokes, from `ACTION_COLUMNS`. This is the one live-recompute
-   control that makes the screen feel dynamic without needing to re-run any model.
-5. **Under the hood** (collapsed expander) — methodology plots for the technical
-   interviewer; hidden by default so fans never hit a calibration curve.
+**About & Roadmap** — what the tool is, how to use it, whole-number "what's been built" tiles,
+the data used, how each model works, what's shipped / next, and a **Methodology** expander with
+the xG metrics, the per-tournament generalisation table + chart, and the similarity caveats.
+Every number comes from `metrics.json`, none hand-typed.
 
 ---
 
-## Component → Backend Map
+## Component → backend map
 
-Every panel is powered by a function that already exists and is unit-tested — the app is a
-thin presentation shell over `src/`, reusing rather than reimplementing chart code.
+The app is a thin shell: every panel calls an existing, tested `src/` function. The words around
+the numbers come from `src/presentation.py`.
 
-| Screen panel                | Backend function (reuse as-is)                                        | File |
-|-----------------------------|-----------------------------------------------------------------------|------|
-| Player picker options       | `build_player_per90_features` (precomputed table)                     | [src/similarity.py](../src/similarity.py#L283) |
-| Radar vs. peers             | `plot_player_radar`                                                    | [src/visualisation.py](../src/visualisation.py#L173) |
-| "Players like X" ranking    | `find_similar_players`                                                 | [src/similarity.py](../src/similarity.py#L575) |
-| Finishing over/under number | `build_player_xg_table` + `plot_player_xg_ranking`                     | [src/models.py](../src/models.py) · [src/visualisation.py](../src/visualisation.py#L58) |
-| Per-player shot map         | `plot_shot_map`                                                        | [src/visualisation.py](../src/visualisation.py#L14) |
-| (Optional) style-cluster map| `run_pca` + `plot_pca_clusters`                                        | [src/similarity.py](../src/similarity.py#L618) · [src/visualisation.py](../src/visualisation.py#L148) |
-| "Under the hood" expander   | `plot_calibration_curve`, `plot_silhouette_curve`, `plot_elbow_curve` | [src/visualisation.py](../src/visualisation.py#L87) |
+| Panel | Backend | File |
+|---|---|---|
+| Player pool, per-90 stats, clusters | `build_player_per90_features`, `build_goalkeeper_per90_features`, `normalize_within_competition`, `fit_kmeans` (precomputed by `src/app_data.py`) | [similarity.py](../src/similarity.py), [app_data.py](../src/app_data.py) |
+| Percentiles + tier words | `goodness_percentiles`, `percentile_tier`, `format_percentile` | [similarity.py](../src/similarity.py), [presentation.py](../src/presentation.py) |
+| Style archetype | `profile_clusters`, `style_intensity_label`, `plot_diverging_bar` | [similarity.py](../src/similarity.py), [presentation.py](../src/presentation.py), [visualisation.py](../src/visualisation.py) |
+| Scouting report | `build_scouting_blurb` | [presentation.py](../src/presentation.py) |
+| Radar / comparison radar | `plot_player_radar`, `plot_player_radar_comparison` | [visualisation.py](../src/visualisation.py) |
+| Players like X | `find_similar_players`, `plot_similar_players_bar` | [similarity.py](../src/similarity.py), [visualisation.py](../src/visualisation.py) |
+| Finishing + shot map | `build_player_xg_table` (precomputed), `plot_shot_map` | [models.py](../src/models.py), [visualisation.py](../src/visualisation.py) |
+| Market value | `build_market_value_table` (precomputed), `lookup_market_value`, `format_market_value` | [market_value.py](../src/market_value.py), [presentation.py](../src/presentation.py) |
+| Methodology | `metrics.json`, `plot_xg_generalisation_bar`, `compute_silhouette_scores`, `plot_silhouette_curve` | [metrics.py](../src/metrics.py), [visualisation.py](../src/visualisation.py) |
 
-The diagnostic plots stay methodology evidence, not fan-facing — surfaced only in the
-optional expander.
-
----
-
-## Data flow
-
-The app **reads precomputed artifacts, never pulls StatsBomb live.** Live pulls are slow
-and rate-limited — unacceptable for a hosted demo that must respond to a click in under a
-second. A build step (run locally, from the existing notebooks / `src`) writes flat tables
-the app loads on startup and caches with `st.cache_data`.
-
-Artifacts to precompute (one Parquet each, per competition/season):
-- **Per-90 feature table** — `build_player_per90_features` output (drives picker + radar).
-- **Player xG table** — `build_player_xg_table` output (drives the over/under panel).
-- **Shot features** — `extract_shot_features` output + predicted xG (drives the shot map).
-
-```
-notebooks / src  ──build step──►  app_data/*.parquet  ──st.cache_data──►  Streamlit app
-   (slow, offline)                (small, committed)       (instant)
-```
-
-**Open decision (flag at build time):** `data/` is gitignored, so a hosted demo needs its
-artifacts shipped some other way — either a small committed `app_data/` folder (the per-90
-and xG tables are tiny; the shot table is the only sizeable one) or Git LFS. Recommendation
-leans committed `app_data/` for simplicity unless the shot table proves too large.
+(Function names instead of `#L` line anchors: anchors drifted as files grew, and 4 of the 8 old
+ones pointed at the wrong line by 2026-09-30.)
 
 ---
 
-## Technology Choice (Streamlit)
+## Data flow and runtime
 
-**Chosen: Streamlit.** It fits the brief — "simple, but amazes because of the model output,
-dynamic and customizable" — better than the alternatives considered below:
+The app **reads precomputed artifacts and never downloads anything**. A hosted demo must respond
+to a click, not to a multi-minute StatsBomb pull.
 
-- Python-native: imports `src/similarity.py` and `src/visualisation.py` directly, zero
-  rewrite of model logic. The reuse table above is literally the app.
-- The player picker + live radar-axis recompute is Streamlit's exact sweet spot → the
-  dynamic feel, with matplotlib figures from `visualisation.py` rendered as-is.
-- Free hosting on Streamlit Community Cloud → one shareable URL for a CV / LinkedIn.
-- Trade-off, stated honestly: the default look is a touch generic. Mitigated with a custom
-  theme (`.streamlit/config.toml`) and team-colour accents — enough polish for a portfolio
-  demo without a front-end rebuild.
+```
+src/ (offline, slow)  ──python -m src.app_data──►  app_data/*.parquet  ──st.cache_data──►  app.py
+                                                   (committed, ~1 MB)        (instant)
+```
 
-**Considered and rejected:**
-- **Plotly Dash** — more layout control and a more "custom web app" feel, but materially
-  more code (callbacks, explicit layout) for a solo portfolio piece. Polish not worth the
-  build cost here.
-- **Static site + Plotly** — snappiest and most designed, but everything must be
-  precomputed with no live recompute, which kills the customizable radar-axis interaction
-  that makes the demo feel alive. Rejected on interactivity.
+- `app_data/` holds four Parquet files: the player pool with clusters, the flagship xG table, the
+  shots with predicted xG, and market values. It is committed because it is small enough not to
+  need Git LFS. The app also reads `metrics.json`.
+- `requirements.txt` is the app's runtime only, which is exactly what Streamlit Cloud installs.
+  CI's `app-runtime` job installs just that file and smoke-tests every view
+  (`tests/test_app_smoke.py`). If the app ever imported a dev-only package, CI would fail before
+  the deployment did.
+- Theme: `.streamlit/config.toml` (dark teal/orange). `app.py` mirrors the same palette in
+  matplotlib's rcParams so the charts match the chrome.
 
 ---
 
-## Out of Scope (v1)
+## Technology choice
 
-- No live model retraining or live StatsBomb pulls — precomputed artifacts only.
-- No auth, no user accounts, no saved sessions.
-- No 360-context xG or xGOT panels until Phase 7 lands (this spec targets the current
-  pre-shot xG + similarity models).
-- No SkillCorner physical panel — it shares zero players with the event data
-  ([FRAMEWORK.md](FRAMEWORK.md) scope note), so it can't slot into a per-player screen.
-  Could become a standalone "physical output" tab later; not v1.
-
----
-
-## Build Checklist (Phase 8)
-
-- [x] Add a `build step` (`src/app_data.py`, `python -m src.app_data`) that writes the three
-      artifacts to `app_data/` for the flagship dataset (Premier League 2015/16).
-- [x] Decide artifact shipping: **committed `app_data/`** — all three tables together are
-      ~520KB, nowhere near needing Git LFS.
-- [x] `app.py`: sidebar selectors → load cached artifacts (`st.cache_data`) → render the four
-      panels via the reuse-map functions.
-- [x] `.streamlit/config.toml`: theme (pitch-blue accent matching the radar chart's own colour).
-- [x] Radar-axis multiselect wired to `feature_columns` of `plot_player_radar`.
-- [x] "Under the hood" expander — reads `metrics.json` directly for the headline numbers, plus a
-      live (cached) per-group silhouette curve; the full diagnostic-plot suite (calibration curve,
-      elbow curve) stayed a v2 idea rather than shipping a fourth precomputed artifact for it.
-- [x] Add `streamlit` to `requirements.txt` (pinned, `1.58.0`).
-- [x] **Deploy to Streamlit Community Cloud; put the URL in `README.md` and the portfolio**
-      (2026-07-09) —
-      [gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app).
-      Python 3.10 pinned explicitly in the deploy's advanced settings (Cloud's newer 3.14 default
-      risked missing wheels for `kloppy`/`pyarrow`/`statsbombpy`, all pinned against 3.10 locally).
-- [x] Smoke test: verified headless via Streamlit's `AppTest` harness (no browser needed) — all 3
-      position groups, 8 different players (including one with zero logged shots, to exercise the
-      "no shot data" branch, and one with an accented name), and the zero-radar-axes edge case, all
-      ran with zero exceptions.
-- [x] Visually checked in a real browser (2026-07-08, Playwright-over-Edge screenshots) — both the
-      Player explorer and the Leaderboard views render correctly (dark theme, dark radar chart,
-      orange similar-players bars, sortable leaderboard). A locally-reported "black screen" was
-      diagnosed as an environment/WebSocket issue on the maintainer's machine, not a code bug — see
-      PROGRESS.md (2026-07-08) and ML_TOOLING.md.
+**Streamlit**, because it is Python-native: it imports `src/` directly, with zero rewrite of model
+logic, and the "pick a player → everything recomputes" interaction is its sweet spot. It also has
+free hosting with one shareable URL. The trade-off is a somewhat generic look, mitigated by the
+custom theme. Rejected: **Plotly Dash** (more layout control, materially more callback code for a
+solo project) and a **static site** (snappiest, but kills live interactions like the radar-axis
+picker and the drill-down).
 
 ---
 
-## Additional Mockups
+## UX decision log
 
-**Similarity lens close-up** — ranked neighbours with distance bars (shorter bar = closer):
+Decisions that were tried, reversed or deliberately chosen. Check here before "fixing" one of
+them again.
 
-```
-PLAYERS LIKE FLORIAN WIRTZ  (Midfielders, per-90, standardised distance)
-┌────────────────────────────────────────────────────────────┐
-│  1  Jamal Musiala        (Bayern)      ####            0.41  │
-│  2  Martin Odegaard      (Arsenal)     ######          0.58  │
-│  3  Jude Bellingham      (Real Madrid) ########        0.73  │
-│  4  Morgan Rogers        (Aston Villa) #########       0.79  │
-│  5  Tijjani Reijnders    (Milan)       ###########     0.88  │
-└────────────────────────────────────────────────────────────┘
-   distance = Euclidean in standardised per-90 space, same group only
-   [find_similar_players — src/similarity.py]
-   (illustrative names/values — real output depends on the loaded dataset)
-```
+- **Search box (three rounds).** Round 1 (2026-07-05) was a bare `st.selectbox`, pre-filled. It
+  was rejected because it "reads as a dropdown, not a search box". Round 2 was `st.text_input` +
+  selectbox. It was rejected on 2026-07-14 because `text_input` only reruns on Enter/blur, so
+  typing looked broken. Round 3 (current) is a single selectbox that **starts blank**
+  (`index=None`) and filters client-side as you type. That was confirmed with Guilherme before
+  shipping, given round 1's history.
+- **Leaderboard name filter still needs Enter.** It feeds a multi-row table, so the selectbox
+  trick doesn't apply. Three options are weighed in ROADMAP.md's Phase 9 list; none is chosen.
+- **Blank, not "None", in tables.** The fix is `st.dataframe(..., placeholder="")`, with numeric
+  columns kept numeric so header-click sorting stays numeric. From 2026-07-13 to 2026-10-01 a
+  text-column workaround was used instead, on the mistaken belief that no config fix existed (see
+  ML_TOOLING.md).
+- **Percentiles mean "better than peers", always.** Lower-is-better stats (goals conceded) are
+  flipped (`goodness_percentiles`), and every percentile carries a tier word (Elite … Poor), so a
+  bare "72nd" never has to carry the judgement alone.
+- **Style archetype leads with words, not σ.** "+1.4σ" read as jargon; the numbers are one click
+  away. A z-score has no good/bad direction, so the words describe *how unusual*, not *how good*.
+- **Drill-down tables key their selection state per player.** A fixed `key` kept "row 0 selected"
+  on the new page and cascaded into an endless jump. This was caught by clicking through in a
+  browser.
+- **Whole numbers up front, decimals in Methodology.** The headline tiles are things that can be
+  said without notes; ROC-AUC/Brier/silhouette appear only with their explanation.
+- **Market value is displayed, never modelled.** It is a matched external Transfermarkt figure,
+  blank when the name match is ambiguous or the league isn't covered (women's football). It is
+  never guessed.
+- **Goalkeepers get their own feature set**, not a branch of the outfield one (a keeper's tackles
+  are noise).
 
-**xG lens close-up** — the over/under bar + shot map for the picked player:
+---
 
-```
-FINISHING — real or variance?                    SHOT MAP  [plot_shot_map]
-┌─────────────────────────────────┐   ┌───────────────────────────────────┐
-│ scored        12                │   │            (goal)                  │
-│ expected (xG)  9.6              │   │        o   ()   O                  │
-│ difference    +2.4  #####       │   │      o    O  o     o    O = goal   │
-│ read: over-performing —         │   │         o     o        o = miss    │
-│ finishing above chance quality  │   │   o        o      o    size ~ xG   │
-└─────────────────────────────────┘   └───────────────────────────────────┘
- [build_player_xg_table + plot_player_xg_ranking]      [plot_shot_map]
-```
+## Known gaps
 
-All mockups are ASCII wireframes — the real panels render the actual matplotlib /
-mplsoccer figures from `visualisation.py`. Names and numbers here are illustrative.
+- The "Table view" expander's open/closed state doesn't always survive a drill-down jump (cosmetic).
+- No pass-completion % or duel-success %: those need *attempted*-action features from raw events,
+  not a new chart.
+- Market value: same-name collisions are left blank (e.g. Luis Suárez), and there is no women's
+  coverage (see DATA.md).
+- The live demo sleeps after inactivity, so the first visit waits about a minute (see ROADMAP.md's
+  Phase 9 list).
+- No SkillCorner physical panel: that data shares no players with the event data.
+
+## Out of scope
+
+Live StatsBomb pulls or retraining inside the app; accounts, auth or saved sessions; 360-context
+xG / xGOT panels until Phase 7 exists.
