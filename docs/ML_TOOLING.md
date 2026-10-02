@@ -396,6 +396,16 @@ Windows paths:
 git ls-files '*.md' '*.py' | xargs grep -l -P '[\x00-\x08\x0B\x0C\x0E-\x1F]'
 ```
 
+## pytest dies with "Windows fatal exception: code 0x80000003" on a subset of tests
+
+Found 2026-10-02 on Python 3.12, whose matplotlib defaults to the Tk GUI backend here. If a test
+draws a figure and the Streamlit `AppTest` smoke tests run afterwards, garbage collection frees the
+Tk object on the wrong thread and the process aborts (the dump ends in pytest's
+`collect_unraisable`). The full suite hid it: `test_visualisation.py` switched to Agg at import
+time, and pytest imports every test file before running any test. Running only some files,
+without that one, crashed. Fix: `tests/conftest.py` forces `matplotlib.use("Agg")` for every run.
+That replaced the per-file switch and CI's `MPLBACKEND` env lines.
+
 ## How to use this file
 
 - Hit a real environment/tooling obstacle this session (network, encoding, kernel, caching, a silent tool failure)? Add it here **before** the session ends, dated only if the fix might later change — most of these don't need a date, just the symptom and the fix. Don't wait for a retrospective "were there any obstacles?" question to write them down.

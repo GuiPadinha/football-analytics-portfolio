@@ -6,15 +6,11 @@ pixels for identical input creates a diff on every rebuild and hides real change
 
 import io
 
-import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
-matplotlib.use("Agg")
-
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-import pandas as pd  # noqa: E402
-
-from src.visualisation import plot_shot_map  # noqa: E402
+from src.visualisation import plot_shot_map
 
 
 def _render_shot_map():

@@ -6,6 +6,16 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-10-02 (cont. 2) — Closing the open items
+
+Guilherme asked to close every open item (asking where needed). VS Code restarted, so both shells
+now resolve `python` to 3.12.10.
+- *Test crash found while doing it:* a subset of test files crashed with `0x80000003` (Tk backend
+  plus AppTest threads). Present before any change; the full suite only passed by import-order
+  luck. `tests/conftest.py` now forces Agg (ML_TOOLING.md). 152 passed.
+
+---
+
 ## 2026-10-02 (cont.) — Re-audit of the health check
 
 Guilherme asked for a last check for loose ends before moving on. Every 2026-09-30 finding was

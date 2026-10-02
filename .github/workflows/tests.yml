@@ -37,9 +37,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      - name: Run tests
-        env:
-          MPLBACKEND: Agg   # headless: visualisation.py imports matplotlib at import time
+      - name: Run tests   # headless matplotlib is forced in tests/conftest.py
         run: pytest -q
 
       - name: Check evolving docs were touched
@@ -85,6 +83,4 @@ jobs:
           pip install -r requirements.txt pytest==9.1.1
 
       - name: Smoke-test every app view
-        env:
-          MPLBACKEND: Agg
         run: pytest -q tests/test_app_smoke.py tests/test_presentation.py
