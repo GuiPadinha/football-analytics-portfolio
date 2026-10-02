@@ -1,6 +1,6 @@
 # Pitch Cheat Sheet
 
-→ [CLAUDE.md](../CLAUDE.md) | Phase status: [INITIATIVE.md](INITIATIVE.md) | Framework: [FRAMEWORK.md](FRAMEWORK.md)
+→ [CLAUDE.md](../CLAUDE.md) | Phase status: [ROADMAP.md](ROADMAP.md) | Framework: [FRAMEWORK.md](FRAMEWORK.md)
 
 A living pre-demo cheat sheet, not enforced by the doc-freshness hook (it isn't a *current-state*
 doc the metrics.json doc-lint checks, and it isn't append-only history like PROGRESS.md — it's a
@@ -101,8 +101,8 @@ via `python -m src.metrics`).
 - **Phase 9 (opportunistic):** an xA/chance-creation model, a 2026 World Cup predictive model
   (data-availability check first).
 
-Full phase-by-phase detail: [INITIATIVE.md](INITIATIVE.md) (status table + log) and
-[ROADMAP.md](ROADMAP.md) (per-phase task lists).
+Full phase-by-phase detail: [ROADMAP.md](ROADMAP.md) (status table, milestones, per-phase task
+lists).
 
 ---
 

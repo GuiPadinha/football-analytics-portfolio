@@ -666,7 +666,6 @@ def render_about_and_roadmap(per90, metrics):
     )
     st.caption(
         "Full phase-by-phase detail: "
-        "[INITIATIVE.md](https://github.com/GuiPadinha/football-analytics-portfolio/blob/main/docs/INITIATIVE.md) · "
         "[ROADMAP.md](https://github.com/GuiPadinha/football-analytics-portfolio/blob/main/docs/ROADMAP.md)"
     )
 

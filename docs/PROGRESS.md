@@ -177,6 +177,11 @@ restructure.
   `.gitignore`). `conftest.py` moved into `tests/`, and `ML_LEARNING_LOG.md` into `docs/`, with the
   pre-commit hook, the CI check and every link updated. The root now holds only README, CLAUDE.md,
   app.py, metrics.json, the two requirements files, and the folders.
+- *6b, one roadmap file:* `docs/INITIATIVE.md` (phase table + milestone index) is merged into
+  `docs/ROADMAP.md`, ahead of the per-phase task lists. Two files had been describing the same
+  phases. The original S1–S9 session table moved to PROGRESS_ARCHIVE.md, where it stops looking
+  like a second, conflicting 0–9 numbering. Every link was repointed, including the app's About
+  page.
 
 ---
 

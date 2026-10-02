@@ -93,7 +93,7 @@ Run the app locally: `python -m src.app_data` (once, to build `app_data/`) then 
 
 Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped) — Phase 4c scores five more held-out tournaments, and the ranking holds on all (0.76–0.81): FIFA World Cup 2022 0.808, Africa Cup of Nations 2023 0.807, Women's World Cup 2023 0.777, Copa América 2024 0.763, Women's EURO 2025 0.763 (see `metrics.json`'s `xg_generalisation`, [docs/MODULES.md](docs/MODULES.md)). EURO 2024 is near the bottom, not "the floor". Similarity: K=4 per position group, silhouette ~0.24 (soft continuum) on the notebook/pipeline's single-competition (PL 2015/16) scope — the app's own player pool is wider (6 competitions, now cross-league normalised, and goalkeepers are K-means clustered too — see MODULES.md). **1,215** players matched to a Transfermarkt market value (men's competitions only, ~90% match rate — see DATA.md). 89 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
 
-→ Phase tracker: [docs/INITIATIVE.md](docs/INITIATIVE.md) | Session log: [docs/PROGRESS.md](docs/PROGRESS.md)
+→ Phase tracker: [docs/ROADMAP.md](docs/ROADMAP.md) | Session log: [docs/PROGRESS.md](docs/PROGRESS.md)
 
 ---
 
@@ -138,7 +138,7 @@ docs/
   FRAMEWORK.md           ← what the tool is for (purpose, user story, scope)
   ARCHITECTURE.md        ← module dependency graph, data flow, pure/IO-split pattern
   PRODUCT_SPEC.md        ← Streamlit app interface spec, component→backend map, build/feedback log
-  INITIATIVE.md          ← phase tracker (Phases 0–9)
+  ROADMAP.md          ← phase tracker (Phases 0–9)
   MODULES.md             ← Module A/B/C specs and current state
   DATA.md                ← data sources, datasets table, cache file index
   CONTEXT.md             ← owner, learning goals, career context, portfolio framing

@@ -1,6 +1,6 @@
 # Product Layer — Interface Spec (Phase 8)
 
-→ [CLAUDE.md](../CLAUDE.md) | Framing: [FRAMEWORK.md](FRAMEWORK.md) | Phase tracker: [INITIATIVE.md](INITIATIVE.md)
+→ [CLAUDE.md](../CLAUDE.md) | Framing: [FRAMEWORK.md](FRAMEWORK.md) | Phase tracker: [ROADMAP.md](ROADMAP.md)
 
 **Status:** spec expanded 2026-07-01; minimal v1 built 2026-07-04; two rounds of first-use
 feedback on 2026-07-05 (see "Post-v1 additions" below) added real-time player search, per-position

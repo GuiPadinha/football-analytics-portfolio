@@ -5,6 +5,30 @@ Sessions from 2026-06-28 through 2026-07-14. Committed work only.
 
 ---
 
+## Original build sessions (S1–S9)
+
+**Historical build log — a different numbering scheme from the Phase 0–9 table below, not a
+continuation of it.** S1–S9 tracked the *original* build (2026-06-28 to 2026-06-29, pre-hardening);
+the Framework Hardening & Expansion Initiative (Phase 0–9) started right after S8 and reused the
+0–9 range for a completely different set of milestones — the same numbers, two unrelated tracks.
+S9 (Module C — PUP) was never dropped: it lives on as part of the *new* Phase 9's opportunistic
+backlog (see [ROADMAP.md](ROADMAP.md#phases)), which is why it can look "unfinished"
+here while the project is already well past Phase 4 below — they're not sequential with each other.
+
+| Session | Focus | Status |
+|---|---|---|
+| S1 | Scaffold + data exploration | ✅ Done |
+| S2 | xG feature engineering | ✅ Done |
+| S3 | xG model — baseline | ✅ Done |
+| S4 | xG model — upgrade + visuals | ✅ Done |
+| S5 | Player similarity — features | ✅ Done |
+| S6 | Player similarity — clustering | ✅ Done |
+| S7 | Radar charts + visuals | ✅ Done |
+| S8 | README + polish | ✅ Done |
+| S9 (future) | Module C — PUP | 💡 Scoped only |
+
+---
+
 ## 2026-06-28 — Dev environment setup
 
 Fixed `python`/`pip` not recognized: added Python 3.10.7 (`C:\Users\guilh\AppData\Local\Programs\Python\Python310\` + its `Scripts\`) to User PATH; pinned as workspace interpreter in `.vscode/settings.json`. Fixed `CERTIFICATE_VERIFY_FAILED` from Avast intercepting HTTPS — appended Avast root cert to both `certifi` cacert.pem files. `pip install -r requirements.txt` now succeeds (new terminals only — already-open terminals won't pick up PATH change). S1 scaffold partially done (folders, `.gitignore`, `requirements.txt`, `src/data_loader.py` + module stubs) — notebook 01 still pending.

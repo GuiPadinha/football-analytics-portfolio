@@ -1,41 +1,118 @@
-# Session Roadmap & Initiative Status
+# Roadmap — Framework Hardening & Expansion
 
-→ [CLAUDE.md](../CLAUDE.md) | Initiative detail: [INITIATIVE.md](INITIATIVE.md)
+→ [CLAUDE.md](../CLAUDE.md) | Session-by-session detail: [PROGRESS.md](PROGRESS.md)
 
----
+One file for where the project is going: the phase table (status), a one-line-per-milestone
+index, and the detailed task list for each phase. (Until 2026-10-02 the table and index lived in
+a separate ROADMAP.md; merged so there's one place to look.)
 
-## Session Roadmap (S1–S9)
-
-**Historical build log — a different numbering scheme from the Phase 0–9 table below, not a
-continuation of it.** S1–S9 tracked the *original* build (2026-06-28 to 2026-06-29, pre-hardening);
-the Framework Hardening & Expansion Initiative (Phase 0–9) started right after S8 and reused the
-0–9 range for a completely different set of milestones — the same numbers, two unrelated tracks.
-S9 (Module C — PUP) was never dropped: it lives on as part of the *new* Phase 9's opportunistic
-backlog (see [INITIATIVE.md](INITIATIVE.md)'s phase table), which is why it can look "unfinished"
-here while the project is already well past Phase 4 below — they're not sequential with each other.
-
-| Session | Focus | Status |
-|---|---|---|
-| S1 | Scaffold + data exploration | ✅ Done |
-| S2 | xG feature engineering | ✅ Done |
-| S3 | xG model — baseline | ✅ Done |
-| S4 | xG model — upgrade + visuals | ✅ Done |
-| S5 | Player similarity — features | ✅ Done |
-| S6 | Player similarity — clustering | ✅ Done |
-| S7 | Radar charts + visuals | ✅ Done |
-| S8 | README + polish | ✅ Done |
-| S9 (future) | Module C — PUP | 💡 Scoped only |
+**Origin:** after the original S1–S8 build (2026-06-28/29, logged in
+[PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md)), a code review surfaced correctness, methodology,
+structure and scaling gaps, and an unclear product story. On 2026-07-02 that whole backlog was
+folded into one execution-ordered program, Phases 0–9, with an engineering & reproducibility
+spine first. Each phase is independently executable; conceptual framing lives in
+[FRAMEWORK.md](FRAMEWORK.md).
 
 ---
 
-## Framework Hardening & Expansion Initiative
+## Phases
 
-Kicked off post-S8 (2026-06-29). On 2026-07-02 the full code-review backlog was folded into one
-execution-ordered program and renumbered to Phases 0–9.
+**This table is the single source of truth for phase numbering** — don't copy it elsewhere. Phases 3–6 were renumbered on 2026-07-02 (see the "Was" column) when the review backlog
+was folded in — the old Phase 3 (360 xG) and Phase 5 (product) moved *later* behind the unblockers.
 
-**The phase table + status lives only in [INITIATIVE.md](INITIATIVE.md#phases) — do not duplicate it
-here.** This doc holds the *detailed task lists* per phase. Execution order: 0→1→2→3→4→5→6→7→8,
-with 9 opportunistic. Phases 0–3 are done.
+| Phase | Focus | Was | Status |
+|---|---|---|---|
+| **0** | Framework charter (FRAMEWORK.md, this roadmap, CLAUDE.md entry) | 0 | ✅ Done |
+| **1** | Foundation: `config.py`, per-match cache, penalty/shootout fix, pinned deps, robustness fixes, first tests | 1 | ✅ Done |
+| **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | 2 | ✅ Done |
+| **3** | Engineering & reproducibility spine: CI, `pipeline.py`/Makefile, `metrics.json` single-source, data manifest | *new* | ✅ Done |
+| **4** | Multi-competition ingestion + data expansion: config-driven pipeline, Module A generalization, Module B cross-league | 4 (reshaped) | 🟡 4a–4d done (4c closed 2026-10-01: 5 held-out tournaments incl. 2 women's); **4e pinned** (new sources + 360, see Phase 4e below) |
+| **5** | xG uncertainty + hierarchical/empirical-Bayes finishing model; header/foot interaction; calibration by stratum | *new* | ⬜ Not started |
+| **6** | Module B upgrades: Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features | part of old 6 | ⬜ Not started |
+| **7** | New model: 360-context xG + post-shot xG (xGOT) | **3** | ⬜ Not started |
+| **8** | Product layer: lightweight Streamlit app — [spec done](PRODUCT_SPEC.md) 2026-07-01, minimal v1 built 2026-07-04 | **5** | ✅ Done — [live](https://gpfootball-analytics-portfolio.streamlit.app) (deployed 2026-07-09) |
+| **9** | Opportunistic: xA/chance-creation model, Module C (PUP), remaining alt-models (hierarchical, cosine, monotonic GBM), 2026 World Cup predictive model (data-availability check first) | old 6 + Module C | 🟡 Ongoing: market value, Compare players, scouting blurb shipped (2026-07-14); Python 3.12 repo + local done (2026-10-02, Cloud redeploy pending); the rest not started — see Phase 9 below |
+
+Execution order: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8, with 9 opportunistic. Per-phase task lists
+follow further down this file.
+
+**Sequencing rationale (revised from the earlier "data expansion first" call):** the data manifest
+is a prerequisite of the config-driven ingestion pipeline, `metrics.json` should exist before we
+10× the data and the numbers, and the spine is the cheapest credibility badge that also
+structurally kills the doc drift — so every later phase writes into a clean, single-source system.
+
+---
+
+## Milestones
+
+**This is a one-line-per-milestone index, not a second history** — full narrative detail for every
+entry below (what changed, why, numbers, bugs found) lives dated the same in
+[PROGRESS.md](PROGRESS.md) / [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md). Kept short deliberately
+(trimmed 2026-07-13, previously ~150 lines duplicating that narrative) so this file stays the
+"where-are-we" tracker its intro promises, not a file that has to be kept in sync with PROGRESS.md
+by hand.
+
+- **2026-06-29** — Initiative kicked off; `FRAMEWORK.md` charter written; Phase 0 started.
+- **2026-06-29** — Phases 0 and 1 done (config/per-match cache/first tests foundation).
+- **2026-06-30** — Caches rebuilt on the fixed pipeline; penalty-shootout fix confirmed in the
+  numbers (test ROC-AUC 0.798 → 0.765).
+- **2026-06-30** — Phase 2 Module A (xG) rigor done: scaled logistic, 5-fold CV, baseline ladder,
+  calibrated GBM (still trails logistic).
+- **2026-06-30** — Phase 2 Module B (similarity) rigor done → **Phase 2 complete**: silhouette
+  score, minutes-weighted position assignment.
+- **2026-07-02** — Reprioritisation: whole review backlog folded into this Phase 0–9 table (old
+  Phase 3/360-xG → 7, old Phase 5/product → 8, old Phase 6 + Module C → 9).
+- **2026-07-03** — **Phase 3 complete**: `pipeline.py` + Makefile, a headless reproducible rebuild.
+- **2026-07-04** — Phase 4 data pulled (24 datasets), not yet wired; **Phase 8 minimal build
+  jumped ahead** of strict phase order (demo-driven).
+- **2026-07-05** — Phase 4b wired into the app (cross-league similarity pool, 1,511 players);
+  goalkeeper features built, not yet wired; app UX/theme pass.
+- **2026-07-09** — **Phase 4c mostly done**: Module A generalisation scored on 3 of 4 held-out
+  tournaments (Women's EURO 2025 rate-limited, resumable).
+- **2026-07-09 (cont.)** — **Phase 8 deployed** to Streamlit Community Cloud → **Phase 8 fully
+  done**.
+- **2026-07-13** — Pitch-prep app UX pass: a new "About & Roadmap" sidebar view, headline stats
+  refactored to whole-number counts, the Phase 4c generalisation chart wired into the app for the
+  first time.
+- **2026-07-13 (cont. 3)** — Goalkeepers wired into the app (124 keepers, own feature set, not yet
+  clustered); Leaderboard copy expanded.
+- **2026-07-13 (cont. 4)** — Visual/brand pass: Leaderboard name/position filters, a proper Player
+  explorer intro, a reusable page-header brand badge + richer sidebar, About & Roadmap expanded
+  with "Data used"/"How each model works" sections and a Module C roadmap mention.
+- **2026-07-13 (cont. 5)** — Doc-interdependency review (4 real drift fixes) + a Style archetype
+  panel, percentile bar charts, and Leaderboard diverging colour (outfield-only at this point).
+- **2026-07-13 (cont. 6)** — **Phase 4b's cross-league normalisation open item resolved** —
+  `similarity.normalize_within_competition` league-adjusts per-90 features before
+  clustering/`find_similar_players` compare across leagues; goalkeepers K-means clustered for
+  the first time (K=4, same archetype-granularity call as the outfield groups) and now share the
+  Style archetype panel; the Leaderboard's long-standing "None" cell-text cosmetic bug fixed
+  (confirmed as a real, still-open upstream Streamlit limitation, GitHub issue #7360 — fixed at
+  the data layer, not the config layer). 75 tests green (72 + 3 new for the normalisation
+  function), `metrics.json` unchanged (byte-identical — this pass's scope is the app's wider
+  pool, not the notebook's narrow one).
+- **2026-07-14** — **Phase 9 backlog: market value + Compare players view, both built.**
+  `src/market_value.py` resolves a Transfermarkt valuation per player by name (no shared ID exists
+  between StatsBomb and Transfermarkt) — a rarity-weighted token-matching approach, fixed twice
+  against real bugs found in real data (a common-surname collision that nearly mismatched Neymar;
+  a name-particle-only false match), ~90% match rate on the four men's competitions (1,215 of
+  ~1,344 players); shown on a player's page, "players like X," and the Leaderboard. New "Compare
+  players" sidebar view puts any two players side by side — market value/Finishing always compare;
+  radar/signature-stats/percentiles only when both share a position group. 86 tests green (75 + 11
+  new), `metrics.json` unchanged.
+- **2026-09-30 / 10-01** — Repo health check, then its plan executed phase by phase: HTTPS fixed
+  via the OS trust store + retrying downloads, Python 3.12 readiness (CI matrix), `app.py`
+  restructure + app tests, and **Phase 4c closed**. Women's EURO 2025 + Women's World Cup 2023
+  are now scored (0.763 / 0.777). **Phase 4e** (new data sources + 360) is pinned.
+
+---
+
+## How to resume
+
+1. Read `CLAUDE.md` and the newest [PROGRESS.md](PROGRESS.md) entry.
+2. Pick the first ⬜ phase in the table above, or a Phase 9 item.
+3. Work from that phase's task list below.
+4. Close the session per CLAUDE.md: update the Status column and Milestones here, add a PROGRESS.md
+   entry.
 
 ---
 
@@ -67,7 +144,7 @@ of Phase 4's ingestion pipeline and 3b (`metrics.json`) must exist before the da
 - **3e — Data manifest:** `data/manifest.json` pinning comp/season/match IDs + row counts + content
   hash per dataset; catches upstream StatsBomb changes; feeds Phase 4.
 
-## Phase 4 — Multi-competition ingestion + data expansion  🟡 4c mostly done (1 dataset pending)
+## Phase 4 — Multi-competition ingestion + data expansion  ✅ 4a–4d done · 📌 4e pinned
 
 The flagship overlap item: engineering-at-scale in service of ML. Turns Module A's "generalises
 from n=2 contexts" into a defensible claim and fixes Module B's single-season thinness.

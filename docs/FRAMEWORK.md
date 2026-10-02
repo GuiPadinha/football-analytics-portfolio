@@ -124,4 +124,4 @@ The full interface design — screens, interaction model, the map from each pane
 
 ---
 
-*Scope, framing, and roadmap for the ongoing improvement work live in [INITIATIVE.md](INITIATIVE.md).*
+*Scope, framing, and roadmap for the ongoing improvement work live in [ROADMAP.md](ROADMAP.md).*

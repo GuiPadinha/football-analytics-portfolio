@@ -302,4 +302,4 @@ explaining the framework, the data, and what's next.
   which delivers most of the same "real or luck" payoff more cleanly.
 - Further modelling upgrades — xG uncertainty ranges, 360°-context xG, a smarter distance metric
   for similarity (Mahalanobis, today's Euclidean double-counts correlated stats) — see
-  `docs/INITIATIVE.md` for the full phase-by-phase roadmap.
+  `docs/ROADMAP.md` for the full phase-by-phase roadmap.

@@ -115,7 +115,7 @@ didn't clear with the existing "just retry, it's resumable" playbook. Likely a p
 rate limit on GitHub's raw-content host, not StatsBomb's data or our code. The resumable-cache
 design still means a later retry (a different session, or after a longer cooldown) picks up
 exactly where it left off at no extra cost — this just wasn't a same-session fix. Left genuinely
-unwired rather than forcing it; see `INITIATIVE.md`'s Phase 4c log entry.
+unwired rather than forcing it; see `ROADMAP.md`'s Phase 4c log entry.
 
 **Follow-up same session:** retried once more, hours later (per an explicit "retry but don't waste
 time on it" ask). Still `429` — and this time the very first call, `sb.matches()` (the match-list
