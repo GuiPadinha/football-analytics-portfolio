@@ -50,12 +50,13 @@ colleague pitch (date TBD — today or the next day at the time of writing).
 - **6** competitions, **1,635** players in the similarity pool (incl. **124 goalkeepers**, wired in
   2026-07-13 with their own feature set — saves, shots faced, goals conceded, claims, save % — and
   K-means clustered into style archetypes like the outfield groups).
-- **10,824** shots trained the xG model; a further **4,704** held-out shots — across **4**
-  different tournaments the model never trained on — used to check it generalises.
+- **10,824** shots trained the xG model; a further **7,215** held-out shots — across **6**
+  tournaments it never trained on, **2 of them women's** — used to check it generalises.
 - **1,215** players matched to a real Transfermarkt market value (2026-07-14, men's competitions
   only — see the Roadmap section below for the honest coverage caveat).
-- **86** automated tests, green on every push (CI), a reproducible one-command rebuild
-  (`python -m src.pipeline`), and a live deployed app.
+- **~150** automated tests, including smoke tests of every app view, run on every push on Python
+  3.10 and 3.12; a one-command rebuild (`python -m src.pipeline`) that reproduces every number and
+  chart byte-for-byte; and a live deployed app.
 
 *(The first two lines are the app's "About & Roadmap" → "What's been built" tiles; market value
 and test count aren't on-screen tiles but are just as safe to say from memory.)*

@@ -213,36 +213,28 @@ profile, given that data.
 
 ```
 football-analytics-portfolio/
-├── README.md
-├── CLAUDE.md                  ← full project log, ML reasoning, session-by-session decisions
-├── docs/ML_LEARNING_LOG.md         ← theory reference + concepts exercised + tooling gotchas
-├── metrics.json                ← headline-metrics single source (see src/metrics.py)
-├── app.py                      ← Streamlit app (streamlit run app.py) — reads app_data/, no live pulls
-├── app_data/                   ← precomputed Parquet artifacts for the app (small, committed)
-├── .streamlit/config.toml      ← Streamlit theme
-├── requirements.txt            ← the app's runtime dependencies (what Streamlit Cloud installs)
-├── requirements-dev.txt        ← + ingestion, notebooks, tests (includes requirements.txt)
-├── docs/                        ← full doc set (framework, architecture, modules, data, roadmap,
-│                                  product spec, progress log — see CLAUDE.md for the complete index)
-├── notebooks/
-│   ├── 01_data_exploration.ipynb
-│   ├── 02_xg_model.ipynb
-│   └── 03_player_similarity.ipynb
-├── src/
-│   ├── config.py               ← named dataset definitions (competition/season ids)
-│   ├── data_loader.py          ← StatsBomb + SkillCorner ingestion (per-match cache)
-│   ├── features.py             ← xG feature engineering
-│   ├── models.py                ← xG model training and evaluation
-│   ├── similarity.py            ← clustering, PCA, nearest-neighbour lookup
-│   ├── visualisation.py         ← pitch plots, radar charts, all chart functions
-│   ├── market_value.py          ← Transfermarkt entity resolution + valuation lookup
-│   ├── manifest.py              ← data provenance manifest (python -m src.manifest)
-│   ├── metrics.py               ← writes metrics.json (python -m src.metrics)
-│   ├── pipeline.py              ← headless rebuild: data → models → outputs (python -m src.pipeline)
-│   └── app_data.py              ← builds app_data/ for the Streamlit app (python -m src.app_data)
-├── tests/                      ← pytest unit tests
-└── outputs/                    ← saved plots (shown above)
+├── app.py                  ← the Streamlit app (streamlit run app.py)
+├── src/                    ← all logic: ingestion, features, models, similarity, charts, pipeline
+├── notebooks/              ← 01 exploration · 02 xG model · 03 player similarity (narrated)
+├── tests/                  ← pytest suite, incl. smoke tests of every app view
+├── app_data/               ← precomputed tables the app reads (committed, ~1 MB)
+├── outputs/                ← the charts shown in this README (written by the pipeline)
+├── metrics.json            ← every headline number, generated — docs are tested against it
+├── requirements.txt        ← what the app needs to run
+├── requirements-dev.txt    ← + everything to rebuild data/models and run tests
+└── docs/                   ← see the map below
 ```
+
+**Docs map** — start with the first two:
+
+| Doc | What's in it |
+|---|---|
+| [FRAMEWORK.md](docs/FRAMEWORK.md) | What the tool is for, who uses it, how the two modules combine |
+| [ROADMAP.md](docs/ROADMAP.md) | Phase table, milestones, what's next |
+| [MODULES.md](docs/MODULES.md) · [DATA.md](docs/DATA.md) | Model specs and results · data sources and their caveats |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) · [PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) | How the code fits together · how the app is built |
+| [ML_LEARNING_LOG.md](docs/ML_LEARNING_LOG.md) · [ML_THEORY.md](docs/ML_THEORY.md) | Modelling decisions and gotchas · the theory behind them |
+| [PROGRESS.md](docs/PROGRESS.md) | Session-by-session log |
 
 ## Tech Stack
 
@@ -295,11 +287,11 @@ explaining the framework, the data, and what's next.
 
 ## What's next
 
-- **Module C — Performance Under Pressure (PUP):** a per-player KPI comparing performance in
-  high-stakes league moments (title race, relegation, derby) against tournament performance, for
-  the 51 players who appear in both this project's league and tournament datasets. Fully scoped in
-  `docs/MODULES.md`, not started — deprioritised behind Phase 5's hierarchical finishing model,
-  which delivers most of the same "real or luck" payoff more cleanly.
-- Further modelling upgrades — xG uncertainty ranges, 360°-context xG, a smarter distance metric
-  for similarity (Mahalanobis, today's Euclidean double-counts correlated stats) — see
-  `docs/ROADMAP.md` for the full phase-by-phase roadmap.
+- **Uncertainty on goals − xG** (next up): an interval around each player's over/under-performance,
+  so "+8 on 40 shots" and "+8 on 200 shots" stop reading as the same claim; then a hierarchical
+  finishing model.
+- **More data:** StatsBomb 360 freeze frames (defender positions at the moment of each shot) for a
+  360-context xG model; more full-season women's leagues; current-season men's shots via Understat.
+- **Module C — Performance Under Pressure:** scoped in `docs/MODULES.md`, not started.
+
+Full phase-by-phase plan: [docs/ROADMAP.md](docs/ROADMAP.md).

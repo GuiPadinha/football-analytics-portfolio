@@ -4,96 +4,32 @@ Project source of truth. Read this first every session, then load linked docs on
 
 ---
 
-## Current Status
+## Current Status (updated 2026-10-02)
 
-**Active initiative:** Framework Hardening & Expansion — Phases 0–3 and Phase 8 fully ✅ complete;
-Phase 4 is 🟡 4c mostly done (2026-07-09: Module A scored separately against three more held-out
-tournaments, see Key numbers below — a fourth, Women's EURO 2025, is still rate-limited and pending
-a retry, not folded into "done"). Phase 8: minimal Streamlit build shipped 2026-07-04 (ahead of
-strict phase order, for an upcoming demo), extended 2026-07-05 with real-time search, a dark theme,
-and a widened multi-competition player pool; a 2026-07-06 pass fixed a real radar dark-theme bug +
-added whole-number totals; a 2026-07-08 pass shipped the all-players **leaderboard** (goals incl.
-penalties + xG where available) and verified both app views in a real browser (Playwright-over-Edge
-screenshots); **deployed to Streamlit Community Cloud 2026-07-09**; a 2026-07-09 (cont. 4) pass
-shipped penalty info (total goals + penalty split) on the single-player page; a 2026-07-09 (cont. 5)
-pass shipped the clickable "similar player" recursive drill-down (and fixed a real infinite-jump
-cascade bug it exposed — see PROGRESS.md); a 2026-07-13 pitch-prep pass promoted the app's framework
-explanation into its own **"About & Roadmap"** sidebar view (what it is, how to use it, what's
-built, what's next, and a "Methodology" expander), rewrote the headline stat tiles to whole-number
-counts instead of decimal model scores, and wired the Phase 4c generalisation chart into the app for
-the first time; a same-day (cont. 3) pass **wired goalkeepers into the app** (own feature set, a 4th
-position filter, 124 keepers — not yet clustered at that point, see MODULES.md; K-means clustered in
-a later same-day cont. 6 pass, below) and expanded the Leaderboard view's own explanatory copy; a
-same-day (cont. 4) visual/
-brand pass added Leaderboard name/position filters, a proper Player explorer intro, a reusable
-`render_page_header` (icon + slogan badge on every page), a live-stat-carrying sidebar, and
-expanded "About & Roadmap" with visible (non-decimal) "Data used" and "How each model works"
-sections plus a third "Module C / Performance-Under-Pressure" roadmap paragraph; a same-day
-(cont. 5) pass opened the "bigger visual + docs" ask flagged at the end of cont. 4 — read all 16
-`.md` files end-to-end and fixed four real doc-drift findings (a self-contradicting README, a
-missing `docs/PRODUCT_SPEC.md` entry in this file's own Repository Layout, `ARCHITECTURE.md` never
-mentioning `app_data.py`, two markdown-to-markdown line-anchors that had already drifted to the
-wrong section), then shipped two new app features reusing already-computed data with no new
-modelling: a **Style archetype panel** (Player explorer, outfield players — surfaces the K=4
-cluster label `app_data.py` has computed since Phase 4 but the app never showed, via
-`similarity.profile_clusters`'s z-score readout) and a **percentile bar chart** replacing the plain
-per-90 stats table, both via a new shared `visualisation.plot_diverging_bar`; plus a diverging
-background colour on the Leaderboard's G-xG column —
-**[live demo](https://gpfootball-analytics-portfolio.streamlit.app)** (Python 3.10 pinned in the
-deploy settings to match `requirements.txt`, not Cloud's newer default — see ROADMAP.md's Phase 9
-backlog note on why that version bump is deliberately deferred); a same-day (cont. 6) pass closed
-out three explicitly-scoped items: goalkeepers are now **K-means clustered** (K=4, same
-silhouette-informed-but-archetype-driven call as the outfield groups, checked against the real
-124-keeper pool — see MODULES.md) and share the Style archetype panel with outfield players;
-**cross-league similarity normalisation** is designed and implemented
-(`similarity.normalize_within_competition` — per-90 stats are now z-scored within each competition
-before clustering/"players like X" ever compare across leagues, a relative fix since no external
-league-strength data exists in this project); and the Leaderboard's long-standing blank-cell-shows-
-"None" bug is fixed (confirmed as a real, still-open upstream Streamlit limitation — GitHub issue
-#7360 — fixed at the data layer via hand-formatted text columns, not the config layer three prior
-attempts tried). 75 tests green; `metrics.json` unchanged (byte-identical); a same-day (2026-07-14)
-follow-up shipped two more Phase 9 backlog items: **market value** (`src/market_value.py` matches
-each player onto an external Transfermarkt valuation by name — no shared ID exists between the two
-data sources, so this needed real entity-resolution engineering, including finding and fixing two
-genuine matching bugs against real data; ~90% match rate on the four men's competitions, shown on a
-player's page, "players like X," and the Leaderboard) and a new **Compare players** view (any two
-players side by side; market value/Finishing always compare directly, a radar/signature-stats/
-percentile comparison only when both share a position group). 86 tests green; a same-day (cont.)
-UX-debt pass fixed three things flagged from actually using the deployed app: the Player
-explorer/Compare players search boxes felt dead (typed text did nothing until Enter — replaced
-with live-filtering, blank-start `st.selectbox`es, one deliberate revisit of a widget shape
-PRODUCT_SPEC.md records as explicitly rejected once before, confirmed with Guilherme first given
-that history); the **Style archetype** panel led with raw σ jargon (now plain language first, exact
-z-scores demoted to a collapsed expander); and a real **percentile-direction bug** where a
-goalkeeper's Goals Conceded percentile read backwards (a leaky keeper looked "elite") — fixed via
-new `similarity.goodness_percentiles`, with a plain-language tier word (Elite/Good/Average/Poor/…)
-now shown next to every percentile in the app. 89 tests green. Both this pass and the market
-value/Compare players work above are **committed and pushed** (`78db78f`, `78feefe`).
-See [docs/PROGRESS.md](docs/PROGRESS.md). Full review backlog folded into a renumbered 0–9 program on
-2026-07-02.
-**Next session, start here:** nothing mid-flight — pick up an open backlog item.
-**Next (open backlog, all documented, none started):** (1) a multi-season "player career" page/view
-(needs new lineups pulls; international-tournament trophies/awards/MOTM data does not exist in any
-current source and would need new scraping infra); (2) the Leaderboard's name filter still needs
-Enter (feeds a multi-row table, not a single pick, so the live-selectbox fix above doesn't transfer
-directly — three options weighed, none chosen, see ROADMAP.md's Phase 9 list); (3) "new app
-features" — an open discussion, not a task list, with a curated candidate set (auto-generated
-scouting-report blurb, shareable deep links via `st.query_params`, a team-level/"Best XI" view) in
-the same ROADMAP.md Phase 9 section. Known small gaps in what shipped 2026-07-14: market-value
-matching can miss a real match (name/position collision, no club/season cross-check) and has zero
-coverage for the two women's leagues (that Transfermarkt mirror only covers men's football) — both
-stated honestly in-app, not silently hidden. Exact code entry points for anything else still open
-are in [PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)'s "Backlog from 2026-07-06 feedback" section and
-[ROADMAP.md](docs/ROADMAP.md)'s Phase 9 list — the PRODUCT_SPEC section also has one minor open
-cosmetic follow-up from the drill-down work (an expander's open/closed state not always carrying
-over consistently across a jump).**
-(360-context xG is now Phase 7; the Streamlit product build is now Phase 8 — see the phase table.)
-Run the app locally: `python -m src.app_data` (once, to build `app_data/`) then `streamlit run app.py`
-— or just use the [live demo](https://gpfootball-analytics-portfolio.streamlit.app).
+**Where we are:** Phases 0–4 ✅ (4c closed 2026-10-01 with two women's tournaments; **4e**, new data
+sources + 360, is pinned), Phase 8 ✅ ([live app](https://gpfootball-analytics-portfolio.streamlit.app)),
+Phase 9 ongoing. Phases 5–7, the ML-depth work, are not started. The 2026-09-30 repo health check
+and all its fixes were completed on 2026-10-02: HTTPS via the OS trust store, Python 3.12, the
+`app.py` restructure + app tests, and the repo/doc declutter. Session detail is in
+[docs/PROGRESS.md](docs/PROGRESS.md); phases and backlog are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
-Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts dropped) — Phase 4c scores five more held-out tournaments, and the ranking holds on all (0.76–0.81): FIFA World Cup 2022 0.808, Africa Cup of Nations 2023 0.807, Women's World Cup 2023 0.777, Copa América 2024 0.763, Women's EURO 2025 0.763 (see `metrics.json`'s `xg_generalisation`, [docs/MODULES.md](docs/MODULES.md)). EURO 2024 is near the bottom, not "the floor". Similarity: K=4 per position group, silhouette ~0.24 (soft continuum) on the notebook/pipeline's single-competition (PL 2015/16) scope — the app's own player pool is wider (6 competitions, now cross-league normalised, and goalkeepers are K-means clustered too — see MODULES.md). **1,215** players matched to a Transfermarkt market value (men's competitions only, ~90% match rate — see DATA.md). 89 unit tests passing. *(xG/similarity numbers are emitted to [metrics.json](metrics.json) by `python -m src.metrics`; a doc-lint test fails the build if a current-state doc drifts from it — see Phase 3b. Whole rebuild — data, models, outputs, manifest, metrics — runs headless via `python -m src.pipeline`, see Phase 3d.)*
+**Next session, start here:**
+1. **Redeploy the Streamlit Cloud app on Python 3.12.** A deployed app can't change Python, so
+   delete and redeploy it with the same subdomain; steps are in ROADMAP.md's Phase 9 "Python
+   3.10 → 3.12" item, and Guilherme approved doing it. Then drop 3.10 from the CI matrix and unpin
+   `ubuntu-24.04`. Python 3.10 reaches EOL on 2026-10-31.
+2. Then model work: **Phase 5a** (uncertainty on goals−xG), recommended since 2026-07-14.
 
-→ Phase tracker: [docs/ROADMAP.md](docs/ROADMAP.md) | Session log: [docs/PROGRESS.md](docs/PROGRESS.md)
+Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts
+dropped). Five more held-out tournaments rank as well (0.76–0.81): World Cup 2022 0.808, AFCON 2023
+0.807, Women's World Cup 2023 0.777, Copa América 2024 0.763, Women's EURO 2025 0.763. EURO 2024 is
+near the bottom, not "the floor". Similarity: K=4 per position group, silhouette ~0.22–0.26 (a
+soft continuum) on the notebook's PL 2015/16 scope; the app's pool is 6 competitions, 1,635
+players, league-normalised, with goalkeepers clustered too. **1,215** players matched to a
+Transfermarkt market value (men's competitions, ~90%). *(xG/similarity numbers come from
+[metrics.json](metrics.json) via `python -m src.metrics`, and a doc-lint test fails the build if a
+current-state doc drifts. The whole rebuild runs headless via `python -m src.pipeline`, and is
+byte-reproducible across Python 3.10/3.12.)*
 
 ---
 
@@ -111,55 +47,53 @@ Player Evaluation Framework — two modules on StatsBomb/SkillCorner open data:
 ## Repository Layout
 
 ```
+app.py                   ← Streamlit app (`streamlit run app.py`) — reads app_data/, never downloads
+requirements.txt         ← app runtime deps only (what Streamlit Cloud installs)
+requirements-dev.txt     ← + ingestion, truststore, jupyter, pytest (includes requirements.txt)
+metrics.json             ← headline numbers, single source (`python -m src.metrics`)
 src/
-  config.py          ← named Dataset constants (competition/season IDs, has_360)
+  config.py          ← named Dataset constants (competition/season ids, has_360, gender)
+  net.py             ← download plumbing: OS trust store (truststore) + retry/backoff
   data_loader.py     ← StatsBomb + SkillCorner ingestion, per-match pickle cache
-  net.py             ← shared download plumbing: OS trust store (truststore) + retry/backoff
   features.py        ← xG feature engineering (distance, angle, assist type, flags)
   models.py          ← logistic pipeline, CV, calibration, GBM, player xG table
-  similarity.py      ← clustering, PCA, find_similar_players, resolve_season_positions
-  visualisation.py   ← shot map, calibration curve, elbow, PCA, radar, xG ranking
-  presentation.py    ← the app's words around numbers: percentile tiers, blurb, labels (tested)
-  market_value.py    ← Transfermarkt entity resolution + valuation lookup (Phase 9, 2026-07-14)
+  similarity.py      ← per-90 features, league normalisation, clustering, find_similar_players
+  market_value.py    ← Transfermarkt entity resolution + valuation lookup
+  visualisation.py   ← all charts (shot map, radar, calibration, PCA, ...)
+  presentation.py    ← the app's words around numbers: percentile tiers, blurb, labels
   manifest.py        ← data provenance manifest (`python -m src.manifest`)
-  metrics.py         ← metrics.json single source (`python -m src.metrics`)
-  pipeline.py        ← headless rebuild: data → models → outputs → manifest/metrics (`python -m src.pipeline`)
-  app_data.py        ← Phase 8 build step: writes app_data/*.parquet (`python -m src.app_data`)
-app.py                 ← Phase 8 Streamlit app (`streamlit run app.py`) — reads app_data/, no live pulls
-requirements.txt       ← app runtime deps only (Streamlit Cloud); requirements-dev.txt adds the rest
-app_data/              ← precomputed Parquet artifacts the app reads (small, committed — not gitignored)
-.streamlit/config.toml ← Streamlit theme
-.githooks/pre-commit    ← enforces the "End of session" doc-log rule below (see Session Workflow)
-notebooks/
-  01_data_exploration.ipynb
-  02_xg_model.ipynb          ← Phase 2 ML rigor section added
-  03_player_similarity.ipynb ← silhouette + minutes-weighting added
+  metrics.py         ← writes metrics.json
+  pipeline.py        ← headless rebuild: data → models → outputs → manifest/metrics
+  app_data.py        ← writes app_data/*.parquet for the app (`python -m src.app_data`)
+app_data/                ← precomputed Parquet the app reads (small, committed)
+notebooks/               ← 01 exploration, 02 xG model, 03 similarity (the teaching surface)
+tests/                   ← pytest suite incl. AppTest smoke tests of every app view; conftest.py
+outputs/                 ← pipeline PNGs, committed (README embeds them; pipeline is the only writer)
+data/                    ← per-match cache + processed tables (gitignored, ~8 GB); manifest.json committed
 docs/
-  FRAMEWORK.md           ← what the tool is for (purpose, user story, scope)
-  ARCHITECTURE.md        ← module dependency graph, data flow, pure/IO-split pattern
-  PRODUCT_SPEC.md        ← Streamlit app interface spec, component→backend map, build/feedback log
-  ROADMAP.md          ← phase tracker (Phases 0–9)
-  MODULES.md             ← Module A/B/C specs and current state
-  DATA.md                ← data sources, datasets table, cache file index
-  CONTEXT.md             ← owner, learning goals, career context, portfolio framing
-  ROADMAP.md             ← historical S1–S9 session log (separate scheme from the Phase 0–9
-                            table above — see the note in the file) + detailed per-phase task lists
-  PROGRESS.md            ← recent session log, auto-archived to PROGRESS_ARCHIVE.md above 150 lines
-  PROGRESS_ARCHIVE.md    ← full historical session log (S1–S8 onward)
-  PITCH.md               ← living pre-demo pitch cheat sheet, refreshed by hand before each pitch
-  ML_THEORY.md           ← ML/stats theory reference (textbook-level)
+  FRAMEWORK.md           ← what the tool is for (purpose, user, scope)
+  ARCHITECTURE.md        ← import graph, data flow, pure/IO-split pattern
+  PRODUCT_SPEC.md        ← the app as it is: views, panel→function map, UX decision log
+  MODULES.md             ← Module A/B/C specs and results
+  DATA.md                ← data sources, datasets, caveats, cache index
+  ROADMAP.md             ← phase table (0–9) + milestones + per-phase task lists + backlog
+  PROGRESS.md            ← recent session log (archived to PROGRESS_ARCHIVE.md above 150 lines)
+  PROGRESS_ARCHIVE.md    ← full history, incl. the original S1–S9 build
+  ML_LEARNING_LOG.md     ← ML/data gotchas and decisions
+  ML_THEORY.md           ← textbook theory reference
   ML_TOOLING.md          ← Windows/environment gotchas
-docs/ML_LEARNING_LOG.md       ← ML gotchas and decisions log (pointers to above docs)
-tests/                   ← pytest unit tests + an AppTest smoke test of every app view (count: see CI)
-outputs/                 ← pipeline PNGs, committed (README embeds them)
-data/                    ← per-match cache + Parquet feature tables (gitignored)
+  CONTEXT.md             ← owner, learning goals, career context
+  PITCH.md               ← pre-demo cheat sheet, refreshed by hand
+.github/workflows/tests.yml  ← CI: pytest on 3.10 + 3.12, plus an app-runtime-only smoke job
+.githooks/pre-commit         ← enforces the doc-log rule below
+.streamlit/config.toml       ← app theme
 ```
 
 ---
 
 ## Session Workflow
 
-**Git CLI is fine** (as of 2026-07-04) — `git status`/`log`/`diff`/`add`/`commit` may be run directly. Still: only commit when explicitly asked, never force-push or push without confirmation, prefer new commits over amending. (Earlier sessions used GitHub Desktop only, on the mistaken assumption `git` wasn't reachable — that restriction is lifted.)
+**Git:** the CLI is used directly. Commit only when Guilherme asks, and when he does, commit **and push** (no separate confirmation). When executing a plan he approved, make one commit + push per plan item so history stays organised. Every push redeploys the live app, so verify before pushing. Never force-push; prefer new commits over amending.
 
 **Start of session:**
 1. Read this file; check [docs/PROGRESS.md](docs/PROGRESS.md) for last session state

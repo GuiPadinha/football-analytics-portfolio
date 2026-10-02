@@ -190,6 +190,15 @@ restructure.
   logs it used to carry were already duplicated in PROGRESS/ARCHIVE. FRAMEWORK.md's "Product
   Layer (Planned)", ARCHITECTURE.md's "future app" and ROADMAP Phase 8's "scoped to PL 2015/16"
   were updated to match.
+- *6d, entry-point docs:*
+  - CLAUDE.md went from 218 to 154 lines. Its ~70-line "Current Status" run-on paragraph is now ~25
+    lines with an explicit "next session" list. The layout block had duplicate ROADMAP lines after
+    the merge. The git rule now matches Guilherme's preference: "commit" includes push, one commit
+    per plan item.
+  - README's repository tree is down to the top level, plus a docs map table. A reader was being
+    sent to CLAUDE.md (assistant instructions) for the doc index. "What's next" was refreshed.
+  - PITCH.md: 7,215 held-out shots across 6 tournaments; the test count is no longer pinned to a
+    stale exact number.
 
 ---
 
