@@ -290,7 +290,7 @@ was a smoke test to answer "does it help at all," not the production wiring deci
 
 Docs only (`ML_TOOLING.md`, `CLAUDE.md` end-of-session checklist) + this log entry — the experiment
 script itself is scratch, not part of the repo. 41 tests untouched. Also added to
-[ML_LEARNING_LOG.md](../ML_LEARNING_LOG.md)'s Module A gotcha list. Committed as part of `0d4d2fe`.
+[ML_LEARNING_LOG.md](ML_LEARNING_LOG.md)'s Module A gotcha list. Committed as part of `0d4d2fe`.
 
 ---
 
@@ -358,7 +358,7 @@ but worth fixing now that ~2,400 Phase 4 matches make it not-quite-negligible, a
 found it before production data did.
 
 Tests **51 → 59 green**; CLAUDE.md's two test-count mentions updated. Logged in
-[ML_LEARNING_LOG.md](../ML_LEARNING_LOG.md). `src/features.py` changed (the fix); everything else
+[ML_LEARNING_LOG.md](ML_LEARNING_LOG.md). `src/features.py` changed (the fix); everything else
 docs/tests only. Committed as part of `1c8d90d`.
 
 ---
