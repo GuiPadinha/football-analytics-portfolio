@@ -15,7 +15,7 @@ already handles it (see app.py's "no logged shots" fallback).
 
 Goalkeepers (2026-07-13) are built via their own feature set (`build_goalkeeper_per90_features`)
 across the same `config.SIMILARITY_SETS` pool, then concatenated onto the outfield table — see
-`_build_combined_gk_table`. As of the same-day cross-league-normalisation + goalkeeper-clustering
+`_build_combined_tables`. As of the same-day cross-league-normalisation + goalkeeper-clustering
 pass, both the three outfield groups and goalkeepers are K-means clustered via
 `_cluster_position_groups`, on cross-league-normalised features (`similarity.normalize_within_
 competition`) rather than the raw pooled per-90 rates — see that function's docstring for why.
@@ -44,8 +44,7 @@ from src.pipeline import CLUSTER_K, POSITION_GROUPS, build_shot_tables
 from src.similarity import (
     GK_PER90_FEATURE_COLUMNS,
     PER90_FEATURE_COLUMNS,
-    build_goalkeeper_per90_features,
-    build_player_per90_features,
+    build_season_per90_tables,
     fit_kmeans,
     normalize_within_competition,
 )
@@ -53,53 +52,37 @@ from src.similarity import (
 APP_DATA_DIR = Path(__file__).resolve().parent.parent / "app_data"
 
 
-def _build_combined_similarity_table(datasets=config.SIMILARITY_SETS):
-    """Build and concatenate per-90 features across every dataset in the app's similarity pool.
+def _build_combined_tables(datasets=config.SIMILARITY_SETS):
+    """Build and concatenate outfield and goalkeeper per-90 tables across the app's pool.
 
     Each dataset contributes its own season's minutes/actions (per-90 rates don't carry across
-    competitions) — this just tags provenance and stacks the results; clustering happens
-    afterward in `_cluster_position_groups`, across the *combined* pool per position group, so
-    "players like X" can surface a cross-league match, not just same-league ones.
+    competitions); this tags provenance and stacks the results. Clustering happens afterward in
+    `_cluster_position_groups`, across the *combined* pool per position group, so "players like
+    X" (and "similar goalkeeper") can surface a cross-league match, not just same-league ones.
+    Goalkeepers get their own feature set (saves, shots faced, claims, ...; see
+    `build_goalkeeper_per90_features`), since a keeper's outfield-action rates are near zero.
+    Both tables come from one pass over each season (`build_season_per90_tables`), which cut
+    ~27% off this build (2026-10-02).
 
     Args:
         datasets (list[config.Dataset]): competitions/seasons to include.
 
     Returns:
-        pandas.DataFrame: concatenated output of `build_player_per90_features`, one extra
-            `competition` column (the dataset's `label`) identifying each row's source.
+        tuple[pandas.DataFrame, pandas.DataFrame]: (outfield, goalkeepers), each the
+            concatenated per-dataset tables with one extra `competition` column (the dataset's
+            `label`) identifying each row's source.
     """
-    frames = []
+    outfield_frames, goalkeeper_frames = [], []
     for dataset in datasets:
-        features = build_player_per90_features(dataset.comp_id, dataset.season_id)
-        features["competition"] = dataset.label
-        frames.append(features)
-    return pd.concat(frames, ignore_index=True)
-
-
-def _build_combined_gk_table(datasets=config.SIMILARITY_SETS):
-    """Build and concatenate goalkeeper per-90 features across the app's similarity pool.
-
-    Mirrors `_build_combined_similarity_table`, but via `build_goalkeeper_per90_features` (own
-    feature set — saves, shots faced, goals conceded, claims, punches, sweeper actions, save % —
-    since a keeper's outfield-action rates are meaninglessly near zero, see that function's
-    docstring). Clustering happens afterward in `_cluster_position_groups`, same as the outfield
-    table (2026-07-13: goalkeepers went from wired-but-unclustered to a real silhouette-informed
-    K, see that function and ML_LEARNING_LOG.md for the decision).
-
-    Args:
-        datasets (list[config.Dataset]): competitions/seasons to include — same pool as the
-            outfield table, so a keeper's "similar goalkeeper" match can also cross leagues.
-
-    Returns:
-        pandas.DataFrame: concatenated output of `build_goalkeeper_per90_features`, with the
-            same `competition` provenance column the outfield table carries.
-    """
-    frames = []
-    for dataset in datasets:
-        features = build_goalkeeper_per90_features(dataset.comp_id, dataset.season_id)
-        features["competition"] = dataset.label
-        frames.append(features)
-    return pd.concat(frames, ignore_index=True)
+        outfield, goalkeepers = build_season_per90_tables(dataset.comp_id, dataset.season_id)
+        outfield["competition"] = dataset.label
+        goalkeepers["competition"] = dataset.label
+        outfield_frames.append(outfield)
+        goalkeeper_frames.append(goalkeepers)
+    return (
+        pd.concat(outfield_frames, ignore_index=True),
+        pd.concat(goalkeeper_frames, ignore_index=True),
+    )
 
 
 def _cluster_position_groups(per90_features, position_groups, feature_columns, n_clusters=CLUSTER_K):
@@ -123,8 +106,8 @@ def _cluster_position_groups(per90_features, position_groups, feature_columns, n
     ML_LEARNING_LOG.md for the real elbow/silhouette numbers behind this call.
 
     Args:
-        per90_features (pandas.DataFrame): output of `_build_combined_similarity_table` or
-            `_build_combined_gk_table` — must carry `position_group` and `competition`.
+        per90_features (pandas.DataFrame): either table from `_build_combined_tables` — must
+            carry `position_group` and `competition`.
         position_groups (list[str]): groups to cluster, e.g. `POSITION_GROUPS` (outfield) or
             `["Goalkeeper"]`.
         feature_columns (list[str]): raw per-90 columns to normalise and cluster on (
@@ -165,11 +148,12 @@ def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
     app_data_dir.mkdir(parents=True, exist_ok=True)
 
     shots_train, _ = build_shot_tables()
+    outfield_table, goalkeeper_table = _build_combined_tables()
     outfield_per90 = _cluster_position_groups(
-        _build_combined_similarity_table(), POSITION_GROUPS, PER90_FEATURE_COLUMNS
+        outfield_table, POSITION_GROUPS, PER90_FEATURE_COLUMNS
     )
     gk_per90 = _cluster_position_groups(
-        _build_combined_gk_table(), ["Goalkeeper"], GK_PER90_FEATURE_COLUMNS
+        goalkeeper_table, ["Goalkeeper"], GK_PER90_FEATURE_COLUMNS
     )
     # Concatenated, not two separate artifacts: lets goalkeepers show up for free in every
     # position-group-driven UI element already keyed off `per90["position_group"].unique()`

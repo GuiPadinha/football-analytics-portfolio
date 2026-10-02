@@ -358,29 +358,33 @@ def extract_goalkeeper_match_actions(events):
 GK_ACTION_COLUMNS = ["shots_faced", "saves", "goals_conceded", "claims", "punches", "sweeper_actions"]
 
 
-def _build_season_minutes_and_actions(competition_id, season_id, extract_match_actions):
-    """Shared season-build loop: minutes played + one action-extractor's per-match counts.
+def _build_season_minutes_and_actions(competition_id, season_id, *extractors):
+    """Shared season-build loop: minutes played + each action extractor's per-match counts.
 
     Factored out of `build_player_per90_features`/`build_goalkeeper_per90_features` — both
     need the same per-match minutes/lineup iteration, differing only in *which* actions get
-    counted from each match's events (outfield vs. goalkeeper).
+    counted from each match's events (outfield vs. goalkeeper). Takes several extractors so one
+    pass can feed both tables (`build_season_per90_tables`): loading a match is over a third of
+    the per-match cost, so reading every match twice was waste in the app build (2026-10-02).
+    Safe because no extractor modifies `events` in place (each filters, then copies).
 
     Args:
         competition_id (int): StatsBomb competition id.
         season_id (int): StatsBomb season id.
-        extract_match_actions (callable): `extract_player_match_actions` or
+        *extractors (callable): one or more of `extract_player_match_actions` /
             `extract_goalkeeper_match_actions` — one match's events in, one row per
             (player, team) of that match's raw action counts out.
 
     Returns:
-        tuple[pandas.DataFrame, pandas.DataFrame]: (season_minutes, actions_df) — the
-            minutes-weighted position table (`resolve_season_positions`) and the
-            concatenated raw per-match action counts, not yet summed or per-90'd.
+        tuple[pandas.DataFrame, list[pandas.DataFrame]]: (season_minutes, actions) — the
+            minutes-weighted position table (`resolve_season_positions`) and, per extractor
+            in the order given, the concatenated raw per-match action counts, not yet summed
+            or per-90'd.
     """
     matches = load_matches(competition_id, season_id)
 
     all_minutes = []
-    all_actions = []
+    all_actions = [[] for _ in extractors]
     for match_id in matches["match_id"]:
         events = load_events(match_id)
         match_duration = events["minute"].max()
@@ -390,18 +394,86 @@ def _build_season_minutes_and_actions(competition_id, season_id, extract_match_a
         match_minutes["match_id"] = match_id
         all_minutes.append(match_minutes)
 
-        match_actions = extract_match_actions(events)
-        match_actions["match_id"] = match_id
-        all_actions.append(match_actions)
+        for extractor_actions, extract_match_actions in zip(all_actions, extractors):
+            match_actions = extract_match_actions(events)
+            match_actions["match_id"] = match_id
+            extractor_actions.append(match_actions)
 
     minutes_df = pd.concat(all_minutes, ignore_index=True)
-    actions_df = pd.concat(all_actions, ignore_index=True)
+    actions = [pd.concat(frames, ignore_index=True) for frames in all_actions]
 
     # Minutes-weighted position assignment (see resolve_season_positions): assign
     # each player to the group they logged the most season minutes in, not their
     # modal per-match position — the latter mislabels versatile players whose
     # attacking minutes are split across several labels (10 hybrids in Phase 2).
-    return resolve_season_positions(minutes_df), actions_df
+    return resolve_season_positions(minutes_df), actions
+
+
+def _outfield_per90_table(season_minutes, actions_df, min_minutes):
+    """Season minutes + raw outfield action counts → `build_player_per90_features`' table.
+
+    Pure: the half of the outfield build that runs after the season loop, split out so
+    `build_season_per90_tables` can share one loop with the goalkeeper table.
+
+    Args:
+        season_minutes (pandas.DataFrame): first output of `_build_season_minutes_and_actions`.
+        actions_df (pandas.DataFrame): `extract_player_match_actions` counts for the season.
+        min_minutes (float): see `build_player_per90_features`.
+
+    Returns:
+        pandas.DataFrame: exactly `PER90_TABLE_COLUMNS`, one row per outfield player.
+    """
+    count_columns = ACTION_COLUMNS + DISPLAY_COUNT_COLUMNS
+    season_actions = (
+        actions_df.groupby(["player", "team"])[count_columns].sum().reset_index()
+    )
+
+    features = season_minutes.merge(season_actions, on=["player", "team"], how="left")
+    features[count_columns] = features[count_columns].fillna(0)
+
+    features = features[features["minutes_played"] >= min_minutes]
+    features = features[features["position_group"] != "Goalkeeper"]
+
+    # Per-90 rates only for the modelling columns; DISPLAY_COUNT_COLUMNS stay raw season totals
+    # (a "goals incl. penalties" per-90 rate would be a stat nobody asked for and easy to misread).
+    for col in ACTION_COLUMNS:
+        features[f"{col}_p90"] = features[col] / features["minutes_played"] * 90
+
+    return features[PER90_TABLE_COLUMNS].reset_index(drop=True)
+
+
+def _goalkeeper_per90_table(season_minutes, actions_df, min_minutes):
+    """Season minutes + raw goalkeeper action counts → `build_goalkeeper_per90_features`' table.
+
+    Pure: the goalkeeper counterpart of `_outfield_per90_table`, split out for the same reason.
+
+    Args:
+        season_minutes (pandas.DataFrame): first output of `_build_season_minutes_and_actions`.
+        actions_df (pandas.DataFrame): `extract_goalkeeper_match_actions` counts for the season.
+        min_minutes (float): see `build_goalkeeper_per90_features`.
+
+    Returns:
+        pandas.DataFrame: one row per goalkeeper (columns as `build_goalkeeper_per90_features`).
+    """
+    season_actions = (
+        actions_df.groupby(["player", "team"])[GK_ACTION_COLUMNS].sum().reset_index()
+    )
+
+    features = season_minutes.merge(season_actions, on=["player", "team"], how="left")
+    features[GK_ACTION_COLUMNS] = features[GK_ACTION_COLUMNS].fillna(0)
+
+    features = features[features["minutes_played"] >= min_minutes]
+    features = features[features["position_group"] == "Goalkeeper"].copy()
+
+    features["save_pct"] = np.where(
+        features["shots_faced"] > 0, features["saves"] / features["shots_faced"], 0.0
+    )
+    for col in GK_ACTION_COLUMNS:
+        features[f"{col}_p90"] = features[col] / features["minutes_played"] * 90
+
+    keep_columns = ["player", "team", "position_group", "minutes_played", "save_pct"] + \
+        GK_ACTION_COLUMNS + [f"{col}_p90" for col in GK_ACTION_COLUMNS]
+    return features[keep_columns].reset_index(drop=True)
 
 
 def build_player_per90_features(competition_id, season_id, min_minutes=900):
@@ -426,26 +498,10 @@ def build_player_per90_features(competition_id, season_id, min_minutes=900):
             on. Goalkeepers are excluded — see `build_goalkeeper_per90_features`
             for their own feature set.
     """
-    season_minutes, actions_df = _build_season_minutes_and_actions(
+    season_minutes, (actions_df,) = _build_season_minutes_and_actions(
         competition_id, season_id, extract_player_match_actions
     )
-    count_columns = ACTION_COLUMNS + DISPLAY_COUNT_COLUMNS
-    season_actions = (
-        actions_df.groupby(["player", "team"])[count_columns].sum().reset_index()
-    )
-
-    features = season_minutes.merge(season_actions, on=["player", "team"], how="left")
-    features[count_columns] = features[count_columns].fillna(0)
-
-    features = features[features["minutes_played"] >= min_minutes]
-    features = features[features["position_group"] != "Goalkeeper"]
-
-    # Per-90 rates only for the modelling columns; DISPLAY_COUNT_COLUMNS stay raw season totals
-    # (a "goals incl. penalties" per-90 rate would be a stat nobody asked for and easy to misread).
-    for col in ACTION_COLUMNS:
-        features[f"{col}_p90"] = features[col] / features["minutes_played"] * 90
-
-    return features[PER90_TABLE_COLUMNS].reset_index(drop=True)
+    return _outfield_per90_table(season_minutes, actions_df, min_minutes)
 
 
 def build_goalkeeper_per90_features(competition_id, season_id, min_minutes=900):
@@ -475,28 +531,36 @@ def build_goalkeeper_per90_features(competition_id, season_id, min_minutes=900):
             `build_player_per90_features`: a whole-number season total (e.g. "112 saves") is
             the human headline number, the per-90 rate is what comparisons actually use.
     """
-    season_minutes, actions_df = _build_season_minutes_and_actions(
+    season_minutes, (actions_df,) = _build_season_minutes_and_actions(
         competition_id, season_id, extract_goalkeeper_match_actions
     )
-    season_actions = (
-        actions_df.groupby(["player", "team"])[GK_ACTION_COLUMNS].sum().reset_index()
+    return _goalkeeper_per90_table(season_minutes, actions_df, min_minutes)
+
+
+def build_season_per90_tables(competition_id, season_id, min_minutes=900):
+    """Outfield and goalkeeper per-90 tables for one competition/season, from one pass.
+
+    Same output as `build_player_per90_features` plus `build_goalkeeper_per90_features`, but
+    each match's events and lineups are loaded once, not twice. `app_data.py` needs both tables
+    for every competition in the app's pool, so this is its path (~27% faster, measured
+    2026-10-02).
+
+    Args:
+        competition_id (int): StatsBomb competition id.
+        season_id (int): StatsBomb season id.
+        min_minutes (float): minutes floor applied to both tables.
+
+    Returns:
+        tuple[pandas.DataFrame, pandas.DataFrame]: (outfield, goalkeepers), each exactly as the
+            single-table builder returns it.
+    """
+    season_minutes, (outfield_actions, goalkeeper_actions) = _build_season_minutes_and_actions(
+        competition_id, season_id, extract_player_match_actions, extract_goalkeeper_match_actions
     )
-
-    features = season_minutes.merge(season_actions, on=["player", "team"], how="left")
-    features[GK_ACTION_COLUMNS] = features[GK_ACTION_COLUMNS].fillna(0)
-
-    features = features[features["minutes_played"] >= min_minutes]
-    features = features[features["position_group"] == "Goalkeeper"].copy()
-
-    features["save_pct"] = np.where(
-        features["shots_faced"] > 0, features["saves"] / features["shots_faced"], 0.0
+    return (
+        _outfield_per90_table(season_minutes, outfield_actions, min_minutes),
+        _goalkeeper_per90_table(season_minutes, goalkeeper_actions, min_minutes),
     )
-    for col in GK_ACTION_COLUMNS:
-        features[f"{col}_p90"] = features[col] / features["minutes_played"] * 90
-
-    keep_columns = ["player", "team", "position_group", "minutes_played", "save_pct"] + \
-        GK_ACTION_COLUMNS + [f"{col}_p90" for col in GK_ACTION_COLUMNS]
-    return features[keep_columns].reset_index(drop=True)
 
 
 def build_physical_per90_features(match_id, min_observed_minutes=30.0):

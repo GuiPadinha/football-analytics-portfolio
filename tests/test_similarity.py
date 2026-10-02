@@ -4,12 +4,19 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from src import similarity
 from src.similarity import (
+    ACTION_COLUMNS,
+    DISPLAY_COUNT_COLUMNS,
+    GK_ACTION_COLUMNS,
     _parse_clock,
     compute_minutes_played,
     compute_silhouette_scores,
     extract_goalkeeper_match_actions,
     extract_player_match_actions,
+    build_goalkeeper_per90_features,
+    build_player_per90_features,
+    build_season_per90_tables,
     find_similar_players,
     goodness_percentiles,
     normalize_within_competition,
@@ -304,3 +311,45 @@ def test_goodness_percentiles_does_not_mutate_input():
     goodness_percentiles(raw)
 
     assert raw["goals_conceded_p90"] == pytest.approx(0.9)
+
+
+def _fake_season_sources(monkeypatch, loaded):
+    """Patch every loader the season build touches: two matches, one outfielder over the
+    minutes floor, one under it, one goalkeeper. `loaded` records each events load."""
+    monkeypatch.setattr(similarity, "load_matches", lambda comp, season: pd.DataFrame({"match_id": [1, 2]}))
+
+    def fake_events(match_id):
+        loaded.append(match_id)
+        return pd.DataFrame({"minute": [90]})
+
+    monkeypatch.setattr(similarity, "load_events", fake_events)
+    monkeypatch.setattr(similarity, "load_lineups", lambda match_id: None)
+    monkeypatch.setattr(similarity, "compute_minutes_played", lambda lineups, duration: pd.DataFrame({"player": ["x"]}))
+    monkeypatch.setattr(similarity, "resolve_season_positions", lambda minutes: pd.DataFrame({
+        "player": ["Striker", "Sub", "Keeper"],
+        "team": ["T", "T", "T"],
+        "position_group": ["Forward", "Defender", "Goalkeeper"],
+        "minutes_played": [1800.0, 120.0, 1800.0],
+    }))
+    outfield_counts = {col: [1, 1] for col in ACTION_COLUMNS + DISPLAY_COUNT_COLUMNS}
+    monkeypatch.setattr(similarity, "extract_player_match_actions", lambda events: pd.DataFrame(
+        {"player": ["Striker", "Sub"], "team": ["T", "T"], **outfield_counts}))
+    monkeypatch.setattr(similarity, "extract_goalkeeper_match_actions", lambda events: pd.DataFrame(
+        {"player": ["Keeper"], "team": ["T"], **{col: [2] for col in GK_ACTION_COLUMNS}}))
+
+
+def test_build_season_per90_tables_matches_the_separate_builders_in_one_pass(monkeypatch):
+    loaded = []
+    _fake_season_sources(monkeypatch, loaded)
+    outfield_alone = build_player_per90_features(9, 9)
+    goalkeepers_alone = build_goalkeeper_per90_features(9, 9)
+    assert loaded == [1, 2, 1, 2]  # the separate builders read every match twice
+
+    loaded.clear()
+    outfield, goalkeepers = build_season_per90_tables(9, 9)
+
+    assert loaded == [1, 2]  # one pass
+    pd.testing.assert_frame_equal(outfield, outfield_alone)
+    pd.testing.assert_frame_equal(goalkeepers, goalkeepers_alone)
+    assert list(outfield["player"]) == ["Striker"]  # floor and goalkeeper split still applied
+    assert list(goalkeepers["player"]) == ["Keeper"]

@@ -419,15 +419,6 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
   the `tests.yml` matrix comments, README "Running it", CLAUDE.md (status + layout line),
   PRODUCT_SPEC.md's intro, PITCH.md, and the Leaderboard item above ("pinned Python 3.10").
   (The notebooks were already re-executed on 3.12 on 2026-10-02: identical results.)
-- **`python -m src.app_data` is slow: ~10.6 min** (found 2026-10-02). It sits outside the
-  pipeline on purpose: the pipeline is the reproducibility check, and `app_data/` is the deploy
-  artifact. Measured per match: load events 77 ms, count outfield actions 114 ms, count goalkeeper
-  actions 32 ms. Each competition is read twice, once per extractor. Reading each match once would
-  save only ~27% (to ~7.5 min), because counting costs more than loading. The real win would be a
-  per-competition per-90 cache, but that adds back the stale-cache risk fixed the same day. A column
-  check can't see a counting-logic change. Revisit only if rebuilds become frequent (e.g. during
-  Phase 5a). Moving `CACHE_DIR` out of OneDrive (Phase 4e's ingestion follow-ups) would help a little
-  too.
 - **Data-engineering showcase: a cloud ELT layer** (flagged 2026-10-02 from a LinkedIn post
   Guilherme shared): [paolomagni/football-platform](https://github.com/paolomagni/football-platform)
   ingests football-data.org into GCP. The stack is Cloud Run ingestion → Cloud Storage → BigQuery →
@@ -449,6 +440,11 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
 - **2026-10-02 re-audit fixes** — the similarity-table cache now rebuilds when its columns change;
   the doc-lint also covers the per-tournament AUCs and the silhouette range; restructure leftovers
   (dead archive links, a Makefile mention) cleaned up; notebooks re-executed on 3.12.
+- **Faster `python -m src.app_data`** (2026-10-02): 636 s → 191 s with identical output. Two changes:
+  one pass per competition for outfield and goalkeeper tables (`build_season_per90_tables`), and
+  the cache moved out of OneDrive (`FAP_CACHE_DIR`), whose file filter slowed every read. It stays
+  outside the pipeline on purpose: the pipeline is the reproducibility check, `app_data/` the
+  deploy artifact.
 - **A bigger visual + documentation pass** (flagged 2026-07-13) — done as the 2026-09-30 health
   check and its six-phase fix-up (2026-10-01/02): app restructure + tests, repo declutter, roadmap
   merge, PRODUCT_SPEC rewrite, slimmer CLAUDE.md/README.

@@ -18,6 +18,10 @@ now resolve `python` to 3.12.10.
   drive), and the variable is set for Guilherme's user account. The first cache miss in a run now
   prints where it downloads to, so a process that can't see the variable won't silently
   re-download gigabytes. +4 tests.
+- *Faster app-data build:* `similarity.build_season_per90_tables` reads each match once for both
+  the outfield and goalkeeper tables. With the cache outside OneDrive, `python -m src.app_data`
+  went from 636 s to 191 s; all four tables are identical to the committed ones (to 1e-12) and no
+  file was re-downloaded. +1 test (one pass, same output as the separate builders).
 
 ---
 
@@ -54,8 +58,8 @@ re-verified against the repo.
 - *Notebooks on 3.12:* all three re-executed on the `fap312` kernel with 0 errors (01 in 74s, 02
   in 14s, 03 in 11s). Every printed result is unchanged; only warning paths differ. 03 ran on the
   rebuilt similarity pickle. The kernelspec stays the portable `python3`.
-- *Not done, on purpose:* speeding up `src.app_data`. Measured: a single pass over each match
-  saves only ~27%, and a real cache would bring back the stale-cache risk. See ROADMAP Phase 9.
+- *Deferred, then done in the next entry:* speeding up `src.app_data` (a real per-90 cache was
+  rejected: it would bring back the stale-cache risk).
 
 **Next:** (1) restart VS Code, then redeploy the Cloud app on 3.12 and do its CI/doc pass;
 (2) Phase 5a.
