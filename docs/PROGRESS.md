@@ -199,6 +199,10 @@ restructure.
     sent to CLAUDE.md (assistant instructions) for the doc index. "What's next" was refreshed.
   - PITCH.md: 7,215 held-out shots across 6 tournaments; the test count is no longer pinned to a
     stale exact number.
+- *6e, ROADMAP Phase 9 regrouped:* open items are grouped as app/product, models/data and
+  infrastructure, and done items are one-liners. The "bigger visual + docs pass" flagged on
+  2026-07-13 is closed by this whole effort. The "player career" item now records that an **xG
+  career is buildable from already-cached Barcelona shots**, with no new pulls.
 
 ---
 

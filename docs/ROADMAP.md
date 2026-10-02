@@ -306,7 +306,12 @@ tested versions; Cloud's newer default risked missing wheels for `kloppy`/`pyarr
 rendering already confirmed locally via Playwright-over-Edge (2026-07-08) and now confirmed live in
 the cloud by Guilherme directly.
 
-## Phase 9 — Opportunistic  ⬜
+## Phase 9 — Opportunistic  🟡 ongoing
+
+Opportunistic work, grouped by theme. Done items are one-liners; their full story is in
+PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
+
+### Open — app / product
 
 - **Leaderboard's name filter still needs Enter** — flagged 2026-07-14 (cont.), deliberately not
   fixed that session: it's an `st.text_input` feeding a multi-row `st.dataframe`, not a single-pick
@@ -335,20 +340,6 @@ the cloud by Guilherme directly.
   an open discussion, not a task list, same as the visual/docs item below. Candidates surfaced
   while thinking this through, roughly in "buildable from data already in `app_data/`" → "needs new
   data" order:
-  - ~~**Auto-generated scouting-report blurb**~~ — flagged 2026-07-14 (cont.), built same day
-    (chosen first as the fastest of this list's candidates): a new **"Scouting report"** section at
-    the top of a player's page (`build_scouting_blurb`, since 2026-10-01 in `src/presentation.py`), one paragraph combining the
-    Style archetype read, the single best percentile stat, and market value into prose — the same
-    "synthesize already-computed numbers into a sentence" move the Style archetype panel and
-    signature-stat cards already make. No new modelling, no new data; a fixed template over
-    already-verified numbers (not LLM-generated), so it can't say anything the rest of the page
-    doesn't already say. Required reordering three existing computations (percentiles, the style
-    cluster read, market value) earlier in the script so the blurb has what it needs before its own
-    panels render — no duplicate computation, same variables reused by both. Verified live via
-    Playwright for a forward (Messi: "A Key Passes and Progressive Passes forward, light on
-    Clearances...") and a goalkeeper (Kasper Schmeichel), confirming the sentence reads sensibly for
-    both feature sets and that `goodness_percentiles`' goals-conceded flip doesn't put a misleading
-    stat forward via the blurb's `percentiles.idxmax()` pick.
   - **Shareable deep links** via `st.query_params` — encode the current view/filters/picked player
     in the URL so a specific player's page (or a specific comparison) can be linked directly,
     instead of always landing on a blank search. Session-only state today; this would need no new
@@ -356,41 +347,18 @@ the cloud by Guilherme directly.
   - **A team-level or "Best XI" view** — aggregate stats by team, or let a user assemble a squad
     from the pool and see combined market value / style mix. New scope, buildable from existing
     per-player data, no new pulls — but a genuinely new page, not a small addition.
-  - **Multi-season "player career" page** — already the standing next-open-backlog item (see
-    CLAUDE.md's Current Status and MODULES.md); needs new lineups pulls, and trophies/awards/MOTM
-    data doesn't exist in any current source. Repeated here only so it isn't lost among newer ideas.
+  - **Multi-season "player career" page** — splits into two parts (found 2026-09-30):
+    - **xG career, buildable now from cached data.** The shots for 16 Barcelona seasons
+      (2004/05–2020/21) are already extracted (`data/shots_barcelona_*.parquet`). Scoring them with
+      the fitted model gives every Barcelona player a per-season goals vs. xG line, including
+      Messi's whole career there. Goals − xG needs no minutes, so no lineups pulls are needed.
+    - **Per-90 career** needs new lineups pulls (minutes played).
+
+    Trophies/awards/MOTM exist in no current source. Relatedly, scoring the La Liga/Serie A/Ligue 1
+    2015/16 shots (also cached) would give most of the app's pool a Finishing panel; today only
+    PL 2015/16 has one.
   - **xA / chance-creation model, Module C (PUP)** — both already listed below in this same Phase 9
     section; larger, model-layer undertakings rather than app-layer features.
-- **A bigger visual + documentation pass** — flagged 2026-07-13, right after that day's own
-  visual/brand pass (Leaderboard filters, page-header branding, About & Roadmap expansion — see
-  PROGRESS.md's "cont. 4" entry). Guilherme wants to go further on both fronts next session;
-  scope (which pages, which docs, how deep — e.g. a doc consolidation pass vs. a full app redesign)
-  wasn't decided yet, so treat this as an open discussion, not a fixed task list.
-- **Python 3.10 → 3.12** — flagged 2026-07-09 (the Streamlit Cloud deploy chose 3.10 to match the
-  pinned requirements), deferred as housekeeping until the 2026-09-30 health check found a real
-  deadline: **3.10 reaches end-of-life on 2026-10-31**. *Repo side done 2026-10-01:* the same
-  pins install on 3.12 (all have wheels). The full suite passes on 3.12 locally (an isolated `uv`
-  env) and CI now runs a 3.10/3.12 matrix. A new `app-runtime` CI job installs only
-  `requirements.txt`, mirroring the Cloud. The app no longer needs `statsbombpy`/`kloppy` at all
-  (lazy imports; requirements split into runtime vs. `requirements-dev.txt`). *Local switch done 2026-10-02:* Python 3.12.10 installed per-user and put first on PATH (3.10
-  kept as rollback). `requirements-dev.txt` is installed into it, the full suite passes, and a
-  `fap312` Jupyter kernel and the VS Code interpreter point at it (see ML_TOOLING.md). *Still
-  open, needs Guilherme's Streamlit account:* **redeploy the Cloud app on 3.12**. Per
-  [Streamlit's docs](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app/upgrade-python),
-  the Python version can't be changed on a deployed app. Delete it, then deploy again from
-  `GuiPadinha/football-analytics-portfolio`, branch `main`, entrypoint `app.py`, with the custom
-  subdomain `gpfootball-analytics-portfolio` and Python 3.12 under Advanced settings. The app has
-  no secrets. Then drop 3.10 from the CI matrix and unpin the runner from `ubuntu-24.04`.
-- ~~**Side-by-side player comparison view**~~ — flagged 2026-07-13 during pitch-prep, built
-  2026-07-14: a new "Compare players" view, any two players (radar overlay when they share a
-  position group, market value and Finishing always compare directly). See MODULES.md's Module B
-  section.
-- ~~**Market value (Transfermarkt) alongside "players like X"**~~ — flagged 2026-07-13 ahead of a
-  pitch, built 2026-07-14: `src/market_value.py` resolves a Transfermarkt valuation per player by
-  name (no shared ID exists, so this needed real entity-resolution engineering — see
-  ML_LEARNING_LOG.md for two real matching bugs found and fixed against actual data), ~90% match
-  rate on the four men's competitions. See [DATA.md](DATA.md#transfermarkt-market-value-data-phase-9-built-2026-07-14)
-  for the full account.
 - **Market-value tiebreak for same-name players** (found 2026-10-01): Luis Suárez (Barcelona) is
   unmatched because Transfermarkt has two same-position "Luis Suárez" profiles (born 1987/1997).
   `players.csv` has `date_of_birth`, and `player_valuations` has the club at each date. Either one
@@ -400,14 +368,14 @@ the cloud by Guilherme directly.
   traffic, so the first visitor from a CV/LinkedIn link sees a "wake this app up" screen and waits
   ~1 min. Options: a scheduled GitHub Action that opens the app in a headless browser (a plain
   HTTP GET doesn't wake it), or a line in README warning that the first load is slow.
+
+### Open — models and data
+
 - **xA / chance-creation model** — sibling to xG on the same pipeline; also upgrades 6d.
 - **Module C (PUP)** — only if desired; carries a selection-bias confound + label-acquisition cost,
   and Phase 5 already delivers most of its payoff. Spec:
   [MODULES.md](MODULES.md#module-c--pup-performance-under-pressure).
 - **Remaining alt-models** — hierarchical clustering, cosine, monotonic GBM.
-- ~~**Architecture / dependency doc**~~ — flagged 2026-07-04, done same day:
-  [ARCHITECTURE.md](ARCHITECTURE.md) (import graph, data flow for both modules, the pure/IO-split
-  pattern, and the implicit DataFrame-schema contracts an import graph can't show).
 - **2026 World Cup player/team performance model** (flagged 2026-07-05, not started) — a
   predictive model for the *current* tournament (~2026-06-11 to ~2026-07-19), rather than the
   retrospective xG/similarity framing used everywhere else in this project. **First step before
@@ -429,6 +397,24 @@ the cloud by Guilherme directly.
   That reframes this item: "predict the tournament" becomes a retrospective team-strength model,
   not a shot model. Also seen: [openfootball/worldcup.json](https://github.com/openfootball/worldcup.json)
   (public-domain fixtures/results only).
+
+### Open — infrastructure
+
+- **Python 3.10 → 3.12** — flagged 2026-07-09 (the Streamlit Cloud deploy chose 3.10 to match the
+  pinned requirements), deferred as housekeeping until the 2026-09-30 health check found a real
+  deadline: **3.10 reaches end-of-life on 2026-10-31**. *Repo side done 2026-10-01:* the same
+  pins install on 3.12 (all have wheels). The full suite passes on 3.12 locally (an isolated `uv`
+  env) and CI now runs a 3.10/3.12 matrix. A new `app-runtime` CI job installs only
+  `requirements.txt`, mirroring the Cloud. The app no longer needs `statsbombpy`/`kloppy` at all
+  (lazy imports; requirements split into runtime vs. `requirements-dev.txt`). *Local switch done 2026-10-02:* Python 3.12.10 installed per-user and put first on PATH (3.10
+  kept as rollback). `requirements-dev.txt` is installed into it, the full suite passes, and a
+  `fap312` Jupyter kernel and the VS Code interpreter point at it (see ML_TOOLING.md). *Still
+  open, needs Guilherme's Streamlit account:* **redeploy the Cloud app on 3.12**. Per
+  [Streamlit's docs](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app/upgrade-python),
+  the Python version can't be changed on a deployed app. Delete it, then deploy again from
+  `GuiPadinha/football-analytics-portfolio`, branch `main`, entrypoint `app.py`, with the custom
+  subdomain `gpfootball-analytics-portfolio` and Python 3.12 under Advanced settings. The app has
+  no secrets. Then drop 3.10 from the CI matrix and unpin the runner from `ubuntu-24.04`.
 - **Data-engineering showcase: a cloud ELT layer** (flagged 2026-10-02 from a LinkedIn post
   Guilherme shared): [paolomagni/football-platform](https://github.com/paolomagni/football-platform)
   ingests football-data.org into GCP. The stack is Cloud Run ingestion → Cloud Storage → BigQuery →
@@ -439,3 +425,14 @@ the cloud by Guilherme directly.
   a scheduled job landing StatsBomb/Understat pulls in BigQuery with dbt models feeding
   `app_data/`, would show Guilherme's data-engineering background next to the ML. Not started;
   scope undecided.
+
+### Done
+
+- **Architecture / dependency doc** — [ARCHITECTURE.md](ARCHITECTURE.md), 2026-07-04.
+- **Market value (Transfermarkt) alongside "players like X"** — `src/market_value.py`, ~90% match
+  rate on the men's leagues, 2026-07-14 (see [DATA.md](DATA.md)).
+- **Side-by-side "Compare players" view** — 2026-07-14.
+- **Auto-generated scouting-report blurb** — `build_scouting_blurb`, 2026-07-14.
+- **A bigger visual + documentation pass** (flagged 2026-07-13) — done as the 2026-09-30 health
+  check and its six-phase fix-up (2026-10-01/02): app restructure + tests, repo declutter, roadmap
+  merge, PRODUCT_SPEC rewrite, slimmer CLAUDE.md/README.
