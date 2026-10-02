@@ -28,8 +28,11 @@ re-verified against the repo.
   - three restructure leftovers (Makefile/INITIATIVE mentions, two dead archive links);
   - a list of the docs that need updating once the redeploy happens.
 
-**Next:** unchanged. (1) Redeploy on 3.12 plus its doc/CI pass; (2) Phase 5a. The re-audit
-fixes are optional and fit in one short session.
+**Fixed the same day** (Guilherme: fix rather than just log; one commit + push each):
+- *Similarity cache:* `pipeline.build_similarity_table` now rebuilds when the cached columns differ
+  from the new `similarity.PER90_TABLE_COLUMNS`, which is also what `build_player_per90_features`
+  returns. The real pipeline run on 3.12 detected the stale July pickle and rebuilt it on its
+  own. `metrics.json`, the manifest and all 9 PNGs came out byte-identical. +1 test.
 
 ---
 

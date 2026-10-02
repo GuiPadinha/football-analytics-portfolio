@@ -11,6 +11,7 @@ import pandas as pd
 
 from src import config
 from src.pipeline import build_generalisation_table, build_shot_tables, build_similarity_table
+from src.similarity import PER90_TABLE_COLUMNS
 
 
 def _fake_builder(calls, marker):
@@ -125,33 +126,52 @@ def test_build_shot_tables_rebuilds_a_cache_without_competition_ids(tmp_path, mo
     assert test["marker"].iloc[0] == "cached"
 
 
-def test_build_similarity_table_reuses_existing_cache(tmp_path, monkeypatch):
-    pd.DataFrame({"marker": ["cached"]}).to_pickle(tmp_path / "player_per90_pl_2015_16.pkl")
+def _per90_frame(marker, columns=PER90_TABLE_COLUMNS):
+    """A one-row per-90 table with the given columns; `player` carries the marker."""
+    return pd.DataFrame({col: [marker] for col in columns})
 
-    calls = []
 
-    def fake_per90(comp_id, season_id):
+def _fake_per90_builder(calls):
+    """Stub for `build_player_per90_features`: records the call, returns a 'rebuilt' table."""
+
+    def builder(comp_id, season_id):
         calls.append((comp_id, season_id))
-        return pd.DataFrame({"marker": ["rebuilt"]})
+        return _per90_frame("rebuilt")
 
-    monkeypatch.setattr("src.pipeline.build_player_per90_features", fake_per90)
+    return builder
+
+
+def test_build_similarity_table_reuses_existing_cache(tmp_path, monkeypatch):
+    _per90_frame("cached").to_pickle(tmp_path / "player_per90_pl_2015_16.pkl")
+    calls = []
+    monkeypatch.setattr("src.pipeline.build_player_per90_features", _fake_per90_builder(calls))
 
     features = build_similarity_table(force=False, data_dir=tmp_path)
 
     assert calls == []
-    assert features["marker"].iloc[0] == "cached"
+    assert features["player"].iloc[0] == "cached"
 
 
 def test_build_similarity_table_missing_cache_triggers_build(tmp_path, monkeypatch):
     calls = []
-
-    def fake_per90(comp_id, season_id):
-        calls.append((comp_id, season_id))
-        return pd.DataFrame({"marker": ["rebuilt"]})
-
-    monkeypatch.setattr("src.pipeline.build_player_per90_features", fake_per90)
+    monkeypatch.setattr("src.pipeline.build_player_per90_features", _fake_per90_builder(calls))
 
     features = build_similarity_table(force=False, data_dir=tmp_path)
 
     assert len(calls) == 1
-    assert features["marker"].iloc[0] == "rebuilt"
+    assert features["player"].iloc[0] == "rebuilt"
+
+
+def test_build_similarity_table_rebuilds_a_cache_with_stale_columns(tmp_path, monkeypatch):
+    # The real case found 2026-10-02: a cache from before the raw season totals were added.
+    stale_columns = [col for col in PER90_TABLE_COLUMNS if not col.endswith("_p90")][:4] + \
+        [col for col in PER90_TABLE_COLUMNS if col.endswith("_p90")]
+    _per90_frame("cached", stale_columns).to_pickle(tmp_path / "player_per90_pl_2015_16.pkl")
+    calls = []
+    monkeypatch.setattr("src.pipeline.build_player_per90_features", _fake_per90_builder(calls))
+
+    features = build_similarity_table(force=False, data_dir=tmp_path)
+
+    assert len(calls) == 1
+    assert features["player"].iloc[0] == "rebuilt"
+    assert list(features.columns) == PER90_TABLE_COLUMNS

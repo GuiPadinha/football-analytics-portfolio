@@ -293,6 +293,13 @@ ACTION_COLUMNS = [
 # spotting penalty-inflated tallies); ACTION_COLUMNS' `non_penalty_goals` is the modelling one.
 DISPLAY_COUNT_COLUMNS = ["goals"]
 
+# The exact columns `build_player_per90_features` returns, in order. One list so a cached copy of
+# that table (pipeline.py's) can be checked against the current code instead of trusted blindly.
+PER90_TABLE_COLUMNS = (
+    ["player", "team", "position_group", "minutes_played"]
+    + ACTION_COLUMNS + DISPLAY_COUNT_COLUMNS + [f"{col}_p90" for col in ACTION_COLUMNS]
+)
+
 
 def extract_goalkeeper_match_actions(events):
     """Count per-goalkeeper action totals for one match, for later per-90 conversion.
@@ -438,9 +445,7 @@ def build_player_per90_features(competition_id, season_id, min_minutes=900):
     for col in ACTION_COLUMNS:
         features[f"{col}_p90"] = features[col] / features["minutes_played"] * 90
 
-    keep_columns = ["player", "team", "position_group", "minutes_played"] + \
-        ACTION_COLUMNS + DISPLAY_COUNT_COLUMNS + [f"{col}_p90" for col in ACTION_COLUMNS]
-    return features[keep_columns].reset_index(drop=True)
+    return features[PER90_TABLE_COLUMNS].reset_index(drop=True)
 
 
 def build_goalkeeper_per90_features(competition_id, season_id, min_minutes=900):

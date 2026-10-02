@@ -39,6 +39,7 @@ from src.models import (
 )
 from src.similarity import (
     PER90_FEATURE_COLUMNS,
+    PER90_TABLE_COLUMNS,
     build_player_per90_features,
     compute_elbow_scores,
     compute_silhouette_scores,
@@ -150,14 +151,42 @@ def build_generalisation_table(force=False, data_dir=DATA_DIR):
     return pd.read_parquet(path)
 
 
+def _cache_has_columns(path, columns):
+    """True if the pickled table at `path` exists and has exactly `columns`, in order.
+
+    The similarity table's version of `_cache_matches_datasets`: its risk is a feature change,
+    not a config list change. "The file exists" was the whole key here too, so a copy cached
+    before the raw season totals were added (2026-07-06) was still being reused in October.
+    Notebook 03 and the README PNGs read this cache while metrics.json rebuilds features
+    directly, so a stale copy would let them disagree without anything failing.
+
+    Args:
+        path (Path): a cached per-90 pickle.
+        columns (list[str]): the columns the current builder returns.
+
+    Returns:
+        bool: False when missing or when the columns differ.
+    """
+    if not path.exists():
+        return False
+    cached_columns = list(pd.read_pickle(path).columns)
+    if cached_columns != list(columns):
+        print(f"      {path.name} columns no longer match the feature builder — rebuilding")
+        return False
+    return True
+
+
 def build_similarity_table(force=False, data_dir=DATA_DIR):
     """Rebuild (or load) the per-90 similarity feature table for `config.SIMILARITY_SET`.
+
+    Rebuilt when the cache is missing, when its columns differ from `PER90_TABLE_COLUMNS` (see
+    `_cache_has_columns`), or when `force=True`.
 
     Returns:
         pandas.DataFrame: output of `build_player_per90_features`.
     """
     path = Path(data_dir) / "player_per90_pl_2015_16.pkl"
-    if force or not path.exists():
+    if force or not _cache_has_columns(path, PER90_TABLE_COLUMNS):
         features = build_player_per90_features(
             config.SIMILARITY_SET.comp_id, config.SIMILARITY_SET.season_id
         )
