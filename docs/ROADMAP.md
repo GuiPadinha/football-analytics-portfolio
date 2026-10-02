@@ -242,8 +242,8 @@ every dataset (it used to skip WC 2022/AFCON 2023).
 **Ingestion-robustness follow-ups (only if a bulk pull needs them):** a persistent
 `raw.githubusercontent.com` 429 (as in July) can't be waited out in-process. The fallback would be
 a sparse `git clone` of `statsbomb/open-data` read from local JSON, which avoids per-file HTTP
-altogether. Also, `CACHE_DIR` lives inside OneDrive (8.2 GB); making it configurable would let the
-cache sit outside sync.
+altogether. (The cache location is configurable since 2026-10-02: `FAP_CACHE_DIR`, used here to
+keep 8.5 GB out of OneDrive.)
 
 ## Phase 5 — xG uncertainty + hierarchical finishing model  ⬜
 

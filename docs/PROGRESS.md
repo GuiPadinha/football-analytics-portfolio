@@ -13,6 +13,11 @@ now resolve `python` to 3.12.10.
 - *Test crash found while doing it:* a subset of test files crashed with `0x80000003` (Tk backend
   plus AppTest threads). Present before any change; the full suite only passed by import-order
   luck. `tests/conftest.py` now forces Agg (ML_TOOLING.md). 152 passed.
+- *Cache out of OneDrive:* new `FAP_CACHE_DIR` setting (`data_loader.resolve_cache_dir`; the default
+  is still `data/cache`). The 4,378 files (8.5 GB) moved to a folder outside OneDrive in 1 s (same
+  drive), and the variable is set for Guilherme's user account. The first cache miss in a run now
+  prints where it downloads to, so a process that can't see the variable won't silently
+  re-download gigabytes. +4 tests.
 
 ---
 

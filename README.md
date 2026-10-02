@@ -261,6 +261,9 @@ python -m src.pipeline            # reuses the data/ cache where present
 python -m src.pipeline --force    # ignore the cache, re-pull/re-engineer from raw StatsBomb data
 ```
 
+Downloaded matches are cached in `data/cache/` (~8.5 GB for everything). Set the `FAP_CACHE_DIR`
+environment variable to keep them elsewhere, e.g. outside a cloud-synced folder.
+
 Notebooks stay the teaching surface (narrated decisions, S1–S8 + Phase 2 rigor sections);
 `src/pipeline.py` is their non-interactive twin, used for CI/release-style reproducibility checks.
 

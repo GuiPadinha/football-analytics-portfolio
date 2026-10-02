@@ -7,7 +7,9 @@
 ## StatsBomb Open Data (primary)
 
 - Library: `statsbombpy` — no API key required; pulls programmatically
-- Data volume: ~8 GB locally as of 2026-10 (~4,300 per-match pickles in `data/cache/`, gitignored)
+- Data volume: ~8.5 GB locally as of 2026-10 (~4,400 per-match pickles). They live in `data/cache/`
+  (gitignored) unless the `FAP_CACHE_DIR` environment variable points elsewhere. Guilherme's machine
+  uses `C:/Users/guilh/fap-cache` (since 2026-10-02), so OneDrive doesn't sync them.
 
 **Key data objects:**
 - `competitions` — available competitions list
@@ -188,7 +190,7 @@ than removing it. Treated as acceptable for a personal portfolio demo, as before
 
 | File | Format | Contents |
 |---|---|---|
-| `data/cache/*.pkl` | Pickle | Raw per-match StatsBomb events (nested dicts/lists — stays pickle, not Parquet) |
+| `data/cache/*.pkl` (or `$FAP_CACHE_DIR`) | Pickle | Raw per-match StatsBomb events and lineups (nested dicts/lists — stays pickle, not Parquet) |
 | `data/shots_train.parquet` | Parquet | Processed xG training features (flat → parquet-safe) |
 | `data/shots_test.parquet` | Parquet | Processed xG test features (flat → parquet-safe) |
 | `data/shots_generalisation.parquet` | Parquet | Combined shots across `config.GENERALISATION_TEST_SETS` (Phase 4c held-out tournaments), scored per-competition by `metrics.compute_generalisation_metrics` |

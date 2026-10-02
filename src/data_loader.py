@@ -19,6 +19,7 @@ Every network call goes through `src.net`: TLS is verified against the OS certif
 connections) are retried with backoff (`with_retries`) — see that module for why.
 """
 
+import os
 import pickle
 from pathlib import Path
 
@@ -28,8 +29,45 @@ from src.net import use_os_trust_store, with_retries
 
 use_os_trust_store()
 
-# data/ is gitignored; the cache lives under it so cached pulls never get committed.
-CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "cache"
+# data/ is gitignored; by default the cache lives under it so cached pulls never get committed.
+DEFAULT_CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "cache"
+CACHE_DIR_ENV_VAR = "FAP_CACHE_DIR"
+
+
+def resolve_cache_dir(environ=os.environ):
+    """Where the per-match cache lives: `$FAP_CACHE_DIR` if set, else `data/cache`.
+
+    An override because the default can be a bad place for ~8.5 GB of pickles: this clone sits
+    inside OneDrive, which kept syncing every cached match to the cloud. A fresh clone without the
+    variable behaves exactly as before.
+
+    Args:
+        environ (Mapping[str, str]): environment to read; injectable for tests.
+
+    Returns:
+        Path: the cache directory (not created here; `_disk_cached` creates it on first write).
+    """
+    override = environ.get(CACHE_DIR_ENV_VAR, "").strip()
+    return Path(override) if override else DEFAULT_CACHE_DIR
+
+
+CACHE_DIR = resolve_cache_dir()
+
+_download_notice_shown = False
+
+
+def _announce_first_download():
+    """Say where downloads are going, once per process, on the first cache miss.
+
+    A cache miss is expected on a fresh clone. But it is also what a process sees when it can't
+    find the real cache, e.g. one started before `FAP_CACHE_DIR` was set, which would otherwise
+    re-download gigabytes into the default folder without a word.
+    """
+    global _download_notice_shown
+    if not _download_notice_shown:
+        print(f"Downloading uncached StatsBomb matches into {CACHE_DIR} "
+              f"(set {CACHE_DIR_ENV_VAR} to use another folder)")
+        _download_notice_shown = True
 
 
 def _statsbomb():
@@ -89,6 +127,7 @@ def _disk_cached(kind, match_id, producer, use_cache=True):
         with open(path, "rb") as cache_file:
             return pickle.load(cache_file)
 
+    _announce_first_download()
     result = with_retries(producer, describe=f"{kind} {match_id}")
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     with open(path, "wb") as cache_file:

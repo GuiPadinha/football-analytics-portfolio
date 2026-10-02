@@ -72,7 +72,8 @@ app_data/                ← precomputed Parquet the app reads (small, committed
 notebooks/               ← 01 exploration, 02 xG model, 03 similarity (the teaching surface)
 tests/                   ← pytest suite incl. AppTest smoke tests of every app view; conftest.py
 outputs/                 ← pipeline PNGs, committed (README embeds them; pipeline is the only writer)
-data/                    ← per-match cache + processed tables (gitignored, ~8 GB); manifest.json committed
+data/                    ← processed tables (gitignored) + manifest.json (committed); the ~8.5 GB
+                           per-match cache is data/cache/, or $FAP_CACHE_DIR (outside OneDrive here)
 docs/
   FRAMEWORK.md           ← what the tool is for (purpose, user, scope)
   ARCHITECTURE.md        ← import graph, data flow, pure/IO-split pattern
