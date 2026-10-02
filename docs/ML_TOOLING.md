@@ -357,11 +357,44 @@ was created fine inside the session scratchpad (already ~180 characters deep). B
 `python.exe` refused to start: uv reported `exit code: 0xc0000106`, which is Windows'
 `STATUS_NAME_TOO_LONG`. The venv's internal paths pushed past the classic 260-character
 `MAX_PATH` limit. Fix: put throwaway environments under a short path (e.g.
-`%TEMP%ap312\`), or enable Windows long-path support. **Related uv detail:** behind Avast's
+`%TEMP%\fap312\`), or enable Windows long-path support. **Related uv detail:** behind Avast's
 HTTPS scanning, uv needs `UV_SYSTEM_CERTS=1` (the older `UV_NATIVE_TLS` still works but prints a
 deprecation warning) to download interpreters and wheels, for the same reason as the Python cert
 entry above. And `UV_PYTHON_INSTALL_DIR` / `UV_CACHE_DIR` keep the downloaded interpreter out of
 `%APPDATA%`, so a test environment leaves nothing behind once its folder is deleted.
+
+## A VS Code session keeps the PATH it was launched with
+
+Found 2026-10-02, right after the switch to 3.12. The *user* PATH had Python312 first, but `python`
+in VS Code's terminals and in Claude Code's shells was still 3.10.7: their process PATH only listed
+the Python310 entries. A running program inherits its environment at launch and never re-reads it,
+so a PATH change only reaches processes started after it. Fix: quit VS Code completely (every
+window), reopen it, and check `python --version`. Until then, `py -3.12` is explicit. The `py`
+launcher also lists 3.14 (Python install manager) and 3.9, so always pass the version.
+
+## Streamlit servers started for a browser check outlive the session
+
+Found 2026-10-02: a `streamlit run app.py --server.port 8599` started for the 10-01 browser check
+was still running a day later on Python 3.10, listening on `0.0.0.0` (so reachable from the LAN).
+Background servers don't stop when the session ends. Stop the server once the check is done. To
+sweep them all (PowerShell):
+```powershell
+Get-CimInstance Win32_Process -Filter "Name like 'python%'" |
+  Where-Object { $_.CommandLine -match 'streamlit' } |
+  ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+```
+For local checks, add `--server.address localhost` so the server isn't exposed beyond the machine.
+
+## A backslash followed by `f` in tool-written text can land as a form-feed byte
+
+Found 2026-10-02: the uv entry above contained a literal `0x0C` byte where a Windows path had a
+backslash before `fap312`. That pair was read as the `\f` escape somewhere between the text and the
+file, and it happened again on the first two repair attempts. Writing the bytes by code
+(`bytes([0x5c, 0x66])`) fixed it. Check for stray control characters after a doc edit containing
+Windows paths:
+```bash
+git ls-files '*.md' '*.py' | xargs grep -l -P '[\x00-\x08\x0B\x0C\x0E-\x1F]'
+```
 
 ## How to use this file
 

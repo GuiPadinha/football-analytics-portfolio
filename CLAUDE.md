@@ -16,9 +16,11 @@ and all its fixes were completed on 2026-10-02: HTTPS via the OS trust store, Py
 **Next session, start here:**
 1. **Redeploy the Streamlit Cloud app on Python 3.12.** A deployed app can't change Python, so
    delete and redeploy it with the same subdomain; steps are in ROADMAP.md's Phase 9 "Python
-   3.10 → 3.12" item, and Guilherme approved doing it. Then drop 3.10 from the CI matrix and unpin
-   `ubuntu-24.04`. Python 3.10 reaches EOL on 2026-10-31.
-2. Then model work: **Phase 5a** (uncertainty on goals−xG), recommended since 2026-07-14.
+   3.10 → 3.12" item, and Guilherme approved doing it. Then drop 3.10 from the CI matrix, unpin
+   `ubuntu-24.04`, and do that item's doc/notebook pass. Python 3.10 reaches EOL on 2026-10-31.
+   Restart VS Code first, or its shells still resolve `python` to 3.10.
+2. Optional, one short session: the **2026-10-02 re-audit fixes** (ROADMAP.md Phase 9).
+3. Then model work: **Phase 5a** (uncertainty on goals−xG), recommended since 2026-07-14.
 
 Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts
 dropped). Five more held-out tournaments rank as well (0.76–0.81): World Cup 2022 0.808, AFCON 2023
@@ -27,9 +29,11 @@ near the bottom, not "the floor". Similarity: K=4 per position group, silhouette
 soft continuum) on the notebook's PL 2015/16 scope; the app's pool is 6 competitions, 1,635
 players, league-normalised, with goalkeepers clustered too. **1,215** players matched to a
 Transfermarkt market value (men's competitions, ~90%). *(xG/similarity numbers come from
-[metrics.json](metrics.json) via `python -m src.metrics`, and a doc-lint test fails the build if a
-current-state doc drifts. The whole rebuild runs headless via `python -m src.pipeline`, and is
-byte-reproducible across Python 3.10/3.12.)*
+[metrics.json](metrics.json) via `python -m src.metrics`. A doc-lint test fails the build if a
+current-state doc drifts on the headline xG numbers, but the per-tournament AUCs and silhouettes
+aren't checked yet. `python -m src.pipeline` rebuilds data, models and outputs headless, and
+`metrics.json` and the PNGs come out byte-identical on Python 3.10 and 3.12. `python -m
+src.app_data` rebuilds the app's data separately, in ~10 min.)*
 
 ---
 

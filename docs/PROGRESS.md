@@ -6,6 +6,33 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-10-02 (cont.) — Re-audit of the health check
+
+Guilherme asked for a last check for loose ends before moving on. Every 2026-09-30 finding was
+re-verified against the repo.
+- **Closed, verified:** every item except the Cloud redeploy on 3.12, which is still pending and
+  comes next. Full suite 147 passed. Every relative link and `#L` anchor resolves except two in the
+  archive (below). README PNGs are tracked; CI is on actions v7 + `ubuntu-24.04`; the requirements
+  split is in place. The Suárez correction is in DATA.md. `app_data/` rebuilt on 3.12 gives
+  identical frames, so the committed 3.10 files were kept (diff ≤ 9e-16, see ML_LEARNING_LOG.md).
+- **Killed:** a leftover `streamlit run` (port 8599, Python 3.10, `0.0.0.0`) from the 10-01
+  browser check had been running for a day. No local Streamlit process is left (ML_TOOLING.md).
+- **New, logged in ML_TOOLING.md:** this VS Code session still resolved `python` to 3.10.7, because
+  it predates the PATH change (fix: restart VS Code). A form-feed byte had corrupted a path in
+  ML_TOOLING.md's uv entry; it is repaired and the way it happened is noted.
+- **New, logged as ROADMAP.md Phase 9 "Re-audit fixes":**
+  - the similarity-table cache only checks that the file exists (latent; no number is wrong today);
+  - the doc-lint covers 9 xG numbers, not the per-tournament AUCs or the silhouettes;
+  - `src.app_data` takes ~10.6 min, re-reads events twice per competition, and isn't part of
+    the pipeline;
+  - three restructure leftovers (Makefile/INITIATIVE mentions, two dead archive links);
+  - a list of the docs that need updating once the redeploy happens.
+
+**Next:** unchanged. (1) Redeploy on 3.12 plus its doc/CI pass; (2) Phase 5a. The re-audit
+fixes are optional and fit in one short session.
+
+---
+
 ## 2026-09-30 → 10-02 — Health check after a 2.5-month gap, then a six-phase fix-up
 
 Full detail (every finding, number and bug) is in [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md)

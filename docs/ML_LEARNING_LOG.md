@@ -10,6 +10,15 @@ Companion to CLAUDE.md. Running record of ML/stats concepts exercised, gotchas h
 
 Key gotchas and lessons — most recent first:
 
+- **"Byte-reproducible" holds for rounded outputs, not raw floats** (2026-10-02, health-check
+  re-audit). Rebuilding `app_data/` on Python 3.12 changed the bytes of
+  `player_xg_table.parquet`/`shots_with_xg.parquet` (built on 3.10 in July). The frames are equal
+  row for row. The largest difference is 8.9e-16 in summed xG and 2.2e-16 in a shot's xG: one or two
+  units in the last place of a float64. That is floating-point noise from a different arithmetic
+  path, not drift (the exact cause wasn't investigated). `metrics.json` and the PNGs came out
+  byte-identical on 3.12 only because they round first. Compare floats with a tolerance
+  (`assert_frame_equal`'s default), and don't commit a regeneration whose only change is that noise.
+  It would be churn, so the 3.10 files stayed.
 - **Brier score isn't comparable across populations with different base rates; use
   calibration-in-the-large to ask "is the model biased here?"** (2026-10-01, women's tournaments
   wired into Phase 4c). Women's EURO 2025 got the worst Brier of six held-out tournaments
@@ -94,6 +103,16 @@ Key gotchas and lessons — most recent first:
 
 Key gotchas and lessons — most recent first:
 
+- **The 2026-10-01 stale-cache fix covered the shot tables only; the similarity table still trusts
+  "the file exists"** (found 2026-10-02, health-check re-audit). `pipeline.build_similarity_table`
+  reuses `data/player_per90_pl_2015_16.pkl` whenever the file is present, and notebook 03 reads
+  the same file. The cached copy is from 2026-07-05. It lacks the 12 raw season-total columns that
+  `build_player_per90_features` has returned since then. Its `_p90` columns, the ones clustering
+  uses, are current, and notebook 03's silhouettes match `metrics.json`, so **no published number
+  is wrong today**. But the next change to `ACTION_COLUMNS` would reach `metrics.json` (which
+  rebuilds features directly) and not the README PNGs or notebook 03. Those would then disagree,
+  and nothing would fail. Same lesson as the shot caches: a cache key must cover whatever can
+  change the content (here, the column list), not just the path. Fix logged in ROADMAP.md Phase 9.
 - **Adding features re-shaped the clusters, and every qualitative claim built on the old ones went
   stale without anything failing** (found 2026-09-30, repo health check). `clearances`/`blocks`
   joined `ACTION_COLUMNS` on 2026-07-05 (9 → 11 clustering features), but notebook 03 was last

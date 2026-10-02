@@ -415,6 +415,28 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
   `GuiPadinha/football-analytics-portfolio`, branch `main`, entrypoint `app.py`, with the custom
   subdomain `gpfootball-analytics-portfolio` and Python 3.12 under Advanced settings. The app has
   no secrets. Then drop 3.10 from the CI matrix and unpin the runner from `ubuntu-24.04`.
+  *Same pass (listed by the 2026-10-02 re-audit):* update what still calls 3.10 the live version:
+  the `tests.yml` matrix comments, README "Running it", CLAUDE.md (status + layout line),
+  PRODUCT_SPEC.md's intro, PITCH.md, and the Leaderboard item above ("pinned Python 3.10").
+  Re-execute the three notebooks on the `fap312` kernel too; all were last run on 3.10.7.
+- **Re-audit fixes (found 2026-10-02, after the health-check fix-up).** All small, none urgent:
+  - *Similarity-table cache staleness:* `pipeline.build_similarity_table` rebuilds only when the
+    pickle is missing (see ML_LEARNING_LOG.md, Module B). Compare the cached columns with the
+    builder's, like `_cache_matches_datasets` does for shots, then rebuild it once.
+  - *Doc-lint covers 9 numbers, not "the xG/similarity numbers":*
+    `test_current_state_docs_match_metrics_json` checks the headline xG figures only. The six
+    per-tournament AUCs and the silhouette peaks are typed by hand into README/CLAUDE/MODULES.
+    That gap is how "EURO 2024 is the floor" lasted from July to October. Add them, and fix
+    CLAUDE.md's wording, which claims the wider coverage today.
+  - *`python -m src.app_data` takes ~10.6 min and sits outside the pipeline.* For every one of the 6
+    competitions it reads all match events twice (outfield, then goalkeeper features) from the
+    OneDrive cache, with no processed per-90 cache. Fixes: extract both action sets in one pass,
+    cache per-competition per-90 tables (same staleness check), and run it as the pipeline's last
+    step so "the whole rebuild" includes the app's data. Moving `CACHE_DIR` out of OneDrive
+    (Phase 4e's ingestion follow-ups) would help too.
+  - *Leftovers from the docs restructure:* the phase table's Phase 3 row still says
+    "`pipeline.py`/Makefile"; `tests/test_metrics.py`'s docstring mentions "INITIATIVE log
+    entries"; PROGRESS_ARCHIVE.md has two dead `../ML_LEARNING_LOG.md` links (2026-07-04 entries).
 - **Data-engineering showcase: a cloud ELT layer** (flagged 2026-10-02 from a LinkedIn post
   Guilherme shared): [paolomagni/football-platform](https://github.com/paolomagni/football-platform)
   ingests football-data.org into GCP. The stack is Cloud Run ingestion → Cloud Storage → BigQuery →
