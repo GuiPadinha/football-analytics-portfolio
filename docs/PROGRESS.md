@@ -33,6 +33,8 @@ re-verified against the repo.
   from the new `similarity.PER90_TABLE_COLUMNS`, which is also what `build_player_per90_features`
   returns. The real pipeline run on 3.12 detected the stale July pickle and rebuilt it on its
   own. `metrics.json`, the manifest and all 9 PNGs came out byte-identical. +1 test.
+- *Doc-lint:* now also requires the six per-tournament AUCs in README/CLAUDE/MODULES and the
+  silhouette range ("0.22–0.26") in CLAUDE/MODULES/PITCH. A deliberately drifted AUC is caught.
 
 ---
 

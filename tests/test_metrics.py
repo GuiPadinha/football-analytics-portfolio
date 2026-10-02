@@ -6,13 +6,14 @@ Two kinds of test here:
   tiny synthetic frames, so they stay offline and deterministic (same reason the manifest
   tests inject a fake loader — CI has no ``data/`` and no network).
 * the **doc-lint** test is the actual point of Phase 3b: it reads the committed
-  ``metrics.json`` and fails if a *current-state* doc (README/CLAUDE/MODULES/DATA) quotes a
-  different number. Append-only history (PROGRESS, INITIATIVE log entries, ML_LEARNING_LOG,
-  the archive) is intentionally NOT checked — an old dated entry is allowed to record the
-  0.798 it reported at the time.
+  ``metrics.json`` and fails if a *current-state* doc (README/CLAUDE/MODULES/DATA/PITCH) quotes
+  a different number. Append-only history (PROGRESS, ROADMAP's dated milestones,
+  ML_LEARNING_LOG, the archive) is intentionally NOT checked — an old dated entry is allowed to
+  record the 0.798 it reported at the time.
 """
 
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -187,6 +188,20 @@ def test_current_state_docs_match_metrics_json():
         (f"{xg['n_train_shots']:,}", ["README.md", "docs/DATA.md"]),
         (f"{xg['n_test_shots']:,}", ["README.md", "docs/DATA.md"]),
     ]
+
+    # Per-tournament generalisation AUCs: hand-copied into three docs, which is how "EURO 2024 is
+    # the floor" survived July to October without anything failing (found 2026-10-02).
+    for tournament in m.get("xg_generalisation", {}).values():
+        expectations.append(
+            (f"{tournament['roc_auc']:.3f}", ["README.md", "CLAUDE.md", "docs/MODULES.md"])
+        )
+
+    # Silhouette peaks are quoted as a rounded-outward range ("~0.22–0.26"); the range must
+    # still contain every group's peak.
+    peaks = [group["best_silhouette"] for group in m["similarity"]["groups"].values()]
+    low, high = math.floor(min(peaks) * 100) / 100, math.ceil(max(peaks) * 100) / 100
+    silhouette_range = f"{low:.2f}–{high:.2f}"
+    expectations.append((silhouette_range, ["CLAUDE.md", "docs/MODULES.md", "docs/PITCH.md"]))
 
     failures = []
     for value, docs in expectations:

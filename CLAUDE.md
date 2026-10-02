@@ -30,8 +30,8 @@ soft continuum) on the notebook's PL 2015/16 scope; the app's pool is 6 competit
 players, league-normalised, with goalkeepers clustered too. **1,215** players matched to a
 Transfermarkt market value (men's competitions, ~90%). *(xG/similarity numbers come from
 [metrics.json](metrics.json) via `python -m src.metrics`. A doc-lint test fails the build if a
-current-state doc drifts on the headline xG numbers, but the per-tournament AUCs and silhouettes
-aren't checked yet. `python -m src.pipeline` rebuilds data, models and outputs headless, and
+current-state doc drifts on the headline xG numbers, the per-tournament AUCs or the silhouette
+range. `python -m src.pipeline` rebuilds data, models and outputs headless, and
 `metrics.json` and the PNGs come out byte-identical on Python 3.10 and 3.12. `python -m
 src.app_data` rebuilds the app's data separately, in ~10 min.)*
 
