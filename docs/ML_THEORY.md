@@ -2,7 +2,7 @@
 
 Textbook-level theory behind every concept used in this project. Read when the goal is understanding the concept itself, not just what was decided here.
 
-→ Project decisions + gotchas: [../ML_LEARNING_LOG.md](../ML_LEARNING_LOG.md) | Env gotchas: [ML_TOOLING.md](ML_TOOLING.md)
+→ Project decisions + gotchas: [ML_LEARNING_LOG.md](ML_LEARNING_LOG.md) | Env gotchas: [ML_TOOLING.md](ML_TOOLING.md)
 
 ---
 

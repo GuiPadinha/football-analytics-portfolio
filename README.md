@@ -215,9 +215,8 @@ profile, given that data.
 football-analytics-portfolio/
 ├── README.md
 ├── CLAUDE.md                  ← full project log, ML reasoning, session-by-session decisions
-├── ML_LEARNING_LOG.md         ← theory reference + concepts exercised + tooling gotchas
+├── docs/ML_LEARNING_LOG.md         ← theory reference + concepts exercised + tooling gotchas
 ├── metrics.json                ← headline-metrics single source (see src/metrics.py)
-├── Makefile                    ← thin wrapper around src/pipeline.py
 ├── app.py                      ← Streamlit app (streamlit run app.py) — reads app_data/, no live pulls
 ├── app_data/                   ← precomputed Parquet artifacts for the app (small, committed)
 ├── .streamlit/config.toml      ← Streamlit theme
@@ -268,7 +267,6 @@ every output PNG, `data/manifest.json`, and `metrics.json` in one go:
 ```bash
 python -m src.pipeline            # reuses the data/ cache where present
 python -m src.pipeline --force    # ignore the cache, re-pull/re-engineer from raw StatsBomb data
-make pipeline                     # equivalent, if `make` is on your PATH
 ```
 
 Notebooks stay the teaching surface (narrated decisions, S1–S8 + Phase 2 rigor sections);

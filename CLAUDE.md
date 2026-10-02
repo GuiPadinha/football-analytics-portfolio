@@ -125,7 +125,6 @@ src/
   metrics.py         ← metrics.json single source (`python -m src.metrics`)
   pipeline.py        ← headless rebuild: data → models → outputs → manifest/metrics (`python -m src.pipeline`)
   app_data.py        ← Phase 8 build step: writes app_data/*.parquet (`python -m src.app_data`)
-Makefile               ← thin wrapper around src/pipeline.py
 app.py                 ← Phase 8 Streamlit app (`streamlit run app.py`) — reads app_data/, no live pulls
 requirements.txt       ← app runtime deps only (Streamlit Cloud); requirements-dev.txt adds the rest
 app_data/              ← precomputed Parquet artifacts the app reads (small, committed — not gitignored)
@@ -150,7 +149,7 @@ docs/
   PITCH.md               ← living pre-demo pitch cheat sheet, refreshed by hand before each pitch
   ML_THEORY.md           ← ML/stats theory reference (textbook-level)
   ML_TOOLING.md          ← Windows/environment gotchas
-ML_LEARNING_LOG.md       ← ML gotchas and decisions log (pointers to above docs)
+docs/ML_LEARNING_LOG.md       ← ML gotchas and decisions log (pointers to above docs)
 tests/                   ← pytest unit tests + an AppTest smoke test of every app view (count: see CI)
 outputs/                 ← pipeline PNGs, committed (README embeds them)
 data/                    ← per-match cache + Parquet feature tables (gitignored)
@@ -169,7 +168,7 @@ data/                    ← per-match cache + Parquet feature tables (gitignore
 
 **End of session:**
 1. Add dated entry to [docs/PROGRESS.md](docs/PROGRESS.md) (move old entries to PROGRESS_ARCHIVE.md when it exceeds 150 lines)
-2. Log any new environment/tooling obstacle to [docs/ML_TOOLING.md](docs/ML_TOOLING.md), any new ML/data gotcha to [ML_LEARNING_LOG.md](ML_LEARNING_LOG.md) — as it happens, not just when asked to retrospectively
+2. Log any new environment/tooling obstacle to [docs/ML_TOOLING.md](docs/ML_TOOLING.md), any new ML/data gotcha to [docs/ML_LEARNING_LOG.md](docs/ML_LEARNING_LOG.md) — as it happens, not just when asked to retrospectively
 3. Give 3-line summary: done / unresolved / commit message suggestion
 
 **This is enforced, not just requested (added 2026-07-09):** relying on memory to follow the rule
@@ -177,7 +176,7 @@ above failed within a single session (a real retry attempt went unlogged until a
 mechanisms now backstop it — see `.githooks/pre-commit`'s own header comment for full detail:
 - **Local hook** (`.githooks/pre-commit`, active once `git config core.hooksPath .githooks` has
   been run in a given clone): blocks a commit that touches `src/`/`app.py`/`tests/`/`notebooks/`
-  without touching `docs/PROGRESS.md`, `docs/ML_TOOLING.md`, or `ML_LEARNING_LOG.md`. Escape hatch
+  without touching `docs/PROGRESS.md`, `docs/ML_TOOLING.md`, or `docs/ML_LEARNING_LOG.md`. Escape hatch
   for genuinely trivial commits: `DOC_CHECK_ACK=1 git commit ...` (prefer this over `--no-verify`,
   which would skip every hook, not just this check).
 - **CI backstop** (`.github/workflows/tests.yml`'s "Check evolving docs were touched" step): the
@@ -218,4 +217,4 @@ Token efficiency: `/compact` when session history is long; `/clear` when switchi
 - Flag real ML/stats gotchas when they come up
 - When Guilherme asks "why", explain conceptually before writing more code
 
-→ Concepts log: [ML_LEARNING_LOG.md](ML_LEARNING_LOG.md) | Theory: [docs/ML_THEORY.md](docs/ML_THEORY.md) | Env gotchas: [docs/ML_TOOLING.md](docs/ML_TOOLING.md)
+→ Concepts log: [docs/ML_LEARNING_LOG.md](docs/ML_LEARNING_LOG.md) | Theory: [docs/ML_THEORY.md](docs/ML_THEORY.md) | Env gotchas: [docs/ML_TOOLING.md](docs/ML_TOOLING.md)

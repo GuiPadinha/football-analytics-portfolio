@@ -2,7 +2,7 @@
 
 Windows-specific friction hit while building this project. Written so they don't get silently re-solved every few sessions.
 
-→ ML/stats decisions: [../ML_LEARNING_LOG.md](../ML_LEARNING_LOG.md) | Theory: [ML_THEORY.md](ML_THEORY.md)
+→ ML/stats decisions: [ML_LEARNING_LOG.md](ML_LEARNING_LOG.md) | Theory: [ML_THEORY.md](ML_THEORY.md)
 
 ---
 
@@ -58,7 +58,7 @@ Symptom: "Running cells with 'base (Python 3.9.12)' requires the ipykernel packa
 Root cause: Jupyter kernel is chosen separately from the Python interpreter. The `.ipynb` files had a `base` kernelspec baked into their metadata.
 
 Two-part fix:
-1. `jupyter.kernels.filter` in `.vscode/settings.json` to hide the conda-base interpreter
+1. `jupyter.kernels.filter` in `.vscode/settings.json` to hide the conda-base interpreter (that file is local-only since 2026-10-02: it holds machine-specific paths, so it is gitignored)
 2. Normalize every notebook's `metadata.kernelspec` to the portable `python3`
 
 For headless `nbconvert`: register the env (`python -m ipykernel install --user --name fap312` — 3.12, registered 2026-10-02; the older `fap310` kernel still exists) and pass `--ExecutePreprocessor.kernel_name=fap310`.
@@ -366,4 +366,4 @@ entry above. And `UV_PYTHON_INSTALL_DIR` / `UV_CACHE_DIR` keep the downloaded in
 ## How to use this file
 
 - Hit a real environment/tooling obstacle this session (network, encoding, kernel, caching, a silent tool failure)? Add it here **before** the session ends, dated only if the fix might later change — most of these don't need a date, just the symptom and the fix. Don't wait for a retrospective "were there any obstacles?" question to write them down.
-- Distinct from [ML_LEARNING_LOG.md](../ML_LEARNING_LOG.md): that file is *modelling* gotchas (a bug in feature engineering, a stats concept, a data-quality trap). This file is *environment/tooling* friction (Windows paths, encoding, kernels, network, background-task quirks) — a bug in `features.py` goes there even if the trigger was new data; a `curl` that silently fails goes here.
+- Distinct from [ML_LEARNING_LOG.md](ML_LEARNING_LOG.md): that file is *modelling* gotchas (a bug in feature engineering, a stats concept, a data-quality trap). This file is *environment/tooling* friction (Windows paths, encoding, kernels, network, background-task quirks) — a bug in `features.py` goes there even if the trigger was new data; a `curl` that silently fails goes here.

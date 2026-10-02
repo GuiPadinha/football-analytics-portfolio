@@ -168,8 +168,15 @@ restructure.
   It's usable for a team-level model only. Logged in ROADMAP.md's Phase 9 WC item.
 - *LinkedIn post → paolomagni/football-platform* (GCP Cloud Run → BigQuery → dbt → Looker,
   Terraform, OIDC CI) logged as a future data-engineering showcase idea in ROADMAP.md Phase 9.
-- *Phase 6 declutter, prepared but parked* in `git stash` ("phase6-declutter-wip") until
-  Guilherme resumes it.
+
+**Phase 6: repo + docs restructure** (resumed the same day).
+- *6a, root declutter* (Guilherme felt "overwhelmed" opening the repo). `.vscode/settings.json`
+  is untracked and `.vscode/`/`.claude/` are gitignored: per-machine absolute paths have no place
+  in a public repo, and the local copy still works. Removed the `Makefile` (redundant with
+  `python -m src.pipeline`, and `make` isn't on Windows) and `.claudeignore` (duplicated
+  `.gitignore`). `conftest.py` moved into `tests/`, and `ML_LEARNING_LOG.md` into `docs/`, with the
+  pre-commit hook, the CI check and every link updated. The root now holds only README, CLAUDE.md,
+  app.py, metrics.json, the two requirements files, and the folders.
 
 ---
 

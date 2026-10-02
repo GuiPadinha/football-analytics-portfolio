@@ -2,7 +2,7 @@
 
 Companion to CLAUDE.md. Running record of ML/stats concepts exercised, gotchas hit, and ideas parked. Read this before starting a new module or before an interview — it's the "why", not the "what."
 
-→ Theory reference: [docs/ML_THEORY.md](docs/ML_THEORY.md) | Environment gotchas: [docs/ML_TOOLING.md](docs/ML_TOOLING.md)
+→ Theory reference: [ML_THEORY.md](ML_THEORY.md) | Environment gotchas: [ML_TOOLING.md](ML_TOOLING.md)
 
 ---
 
@@ -295,7 +295,7 @@ Key gotchas and lessons — most recent first:
 
 ## Module C (candidate) — "PUP" (Performance Under Pressure)
 
-**Status: scoped only, not started.** Full spec in [docs/MODULES.md](docs/MODULES.md).
+**Status: scoped only, not started.** Full spec in [MODULES.md](MODULES.md).
 
 Core idea: players performing well in high-pressure league moments (title race, relegation, derby, must-win) should perform well in tournaments. PUP = per-player delta (high-pressure vs. normal league performance).
 
@@ -310,5 +310,5 @@ What's needed: external match-importance labels (StatsBomb has no league-table o
 - After any session producing a real "why" moment — add an entry here, dated, under the relevant module.
 - Before an interview — this is the list of decisions worth explaining.
 - If an idea isn't built yet, write it here (as Module C shows) — the cost is near zero; losing it across a context clear means full re-derivation.
-- New ML/stats theory → add to [docs/ML_THEORY.md](docs/ML_THEORY.md) (that file is the complete textbook primer).
-- New environment/tooling gotcha → add to [docs/ML_TOOLING.md](docs/ML_TOOLING.md).
+- New ML/stats theory → add to [ML_THEORY.md](ML_THEORY.md) (that file is the complete textbook primer).
+- New environment/tooling gotcha → add to [ML_TOOLING.md](ML_TOOLING.md).

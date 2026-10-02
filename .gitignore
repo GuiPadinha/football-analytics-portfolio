@@ -25,9 +25,10 @@ __pycache__/
 venv/
 *.egg-info/
 
-# VS Code (keep settings.json, ignore the rest)
-.vscode/*
-!.vscode/settings.json
+# Editor/assistant settings are per-machine (the old .vscode/settings.json held absolute
+# interpreter paths for one laptop), so they stay local.
+.vscode/
+.claude/
 
 # OS
 .DS_Store

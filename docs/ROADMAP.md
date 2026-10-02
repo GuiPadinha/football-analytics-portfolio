@@ -62,7 +62,7 @@ of Phase 4's ingestion pipeline and 3b (`metrics.json`) must exist before the da
 - **3d — `pipeline.py` + `Makefile`** (done 2026-07-03): `src/pipeline.py` chains the ingestion →
   features → model → outputs steps into a headless rebuild, runnable as `python -m src.pipeline`
   (`--force` to bypass caches, `--skip-plots` for data-only). A thin root `Makefile` wraps it
-  (`make pipeline`). Notebooks **stay** as the teaching surface (learning mandate) — the pipeline
+  (`make pipeline`; removed 2026-10-02 as redundant, since `make` isn't on Windows by default). Notebooks **stay** as the teaching surface (learning mandate) — the pipeline
   runs alongside them, not instead of them.
 - **3e — Data manifest:** `data/manifest.json` pinning comp/season/match IDs + row counts + content
   hash per dataset; catches upstream StatsBomb changes; feeds Phase 4.

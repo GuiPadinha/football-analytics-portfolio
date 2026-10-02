@@ -1,6 +1,0 @@
-{
-    "python.defaultInterpreterPath": "C:\\Users\\guilh\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-    "jupyter.kernels.excludePythonEnvironments": [
-        "C:\\Users\\guilh\\miniconda3\\python.exe"
-    ]
-}
