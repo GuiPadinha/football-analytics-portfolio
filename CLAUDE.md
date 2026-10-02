@@ -19,8 +19,7 @@ and all its fixes were completed on 2026-10-02: HTTPS via the OS trust store, Py
    3.10 → 3.12" item, and Guilherme approved doing it. Then drop 3.10 from the CI matrix, unpin
    `ubuntu-24.04`, and do that item's doc/notebook pass. Python 3.10 reaches EOL on 2026-10-31.
    Restart VS Code first, or its shells still resolve `python` to 3.10.
-2. Optional, one short session: the **2026-10-02 re-audit fixes** (ROADMAP.md Phase 9).
-3. Then model work: **Phase 5a** (uncertainty on goals−xG), recommended since 2026-07-14.
+2. Then model work: **Phase 5a** (uncertainty on goals−xG), recommended since 2026-07-14.
 
 Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts
 dropped). Five more held-out tournaments rank as well (0.76–0.81): World Cup 2022 0.808, AFCON 2023

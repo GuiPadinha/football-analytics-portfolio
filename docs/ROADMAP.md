@@ -418,25 +418,16 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
   *Same pass (listed by the 2026-10-02 re-audit):* update what still calls 3.10 the live version:
   the `tests.yml` matrix comments, README "Running it", CLAUDE.md (status + layout line),
   PRODUCT_SPEC.md's intro, PITCH.md, and the Leaderboard item above ("pinned Python 3.10").
-  Re-execute the three notebooks on the `fap312` kernel too; all were last run on 3.10.7.
-- **Re-audit fixes (found 2026-10-02, after the health-check fix-up).** All small, none urgent:
-  - *Similarity-table cache staleness:* `pipeline.build_similarity_table` rebuilds only when the
-    pickle is missing (see ML_LEARNING_LOG.md, Module B). Compare the cached columns with the
-    builder's, like `_cache_matches_datasets` does for shots, then rebuild it once.
-  - *Doc-lint covers 9 numbers, not "the xG/similarity numbers":*
-    `test_current_state_docs_match_metrics_json` checks the headline xG figures only. The six
-    per-tournament AUCs and the silhouette peaks are typed by hand into README/CLAUDE/MODULES.
-    That gap is how "EURO 2024 is the floor" lasted from July to October. Add them, and fix
-    CLAUDE.md's wording, which claims the wider coverage today.
-  - *`python -m src.app_data` takes ~10.6 min and sits outside the pipeline.* For every one of the 6
-    competitions it reads all match events twice (outfield, then goalkeeper features) from the
-    OneDrive cache, with no processed per-90 cache. Fixes: extract both action sets in one pass,
-    cache per-competition per-90 tables (same staleness check), and run it as the pipeline's last
-    step so "the whole rebuild" includes the app's data. Moving `CACHE_DIR` out of OneDrive
-    (Phase 4e's ingestion follow-ups) would help too.
-  - *Leftovers from the docs restructure:* the phase table's Phase 3 row still says
-    "`pipeline.py`/Makefile"; `tests/test_metrics.py`'s docstring mentions "INITIATIVE log
-    entries"; PROGRESS_ARCHIVE.md has two dead `../ML_LEARNING_LOG.md` links (2026-07-04 entries).
+  (The notebooks were already re-executed on 3.12 on 2026-10-02: identical results.)
+- **`python -m src.app_data` is slow: ~10.6 min** (found 2026-10-02). It sits outside the
+  pipeline on purpose: the pipeline is the reproducibility check, and `app_data/` is the deploy
+  artifact. Measured per match: load events 77 ms, count outfield actions 114 ms, count goalkeeper
+  actions 32 ms. Each competition is read twice, once per extractor. Reading each match once would
+  save only ~27% (to ~7.5 min), because counting costs more than loading. The real win would be a
+  per-competition per-90 cache, but that adds back the stale-cache risk fixed the same day. A column
+  check can't see a counting-logic change. Revisit only if rebuilds become frequent (e.g. during
+  Phase 5a). Moving `CACHE_DIR` out of OneDrive (Phase 4e's ingestion follow-ups) would help a little
+  too.
 - **Data-engineering showcase: a cloud ELT layer** (flagged 2026-10-02 from a LinkedIn post
   Guilherme shared): [paolomagni/football-platform](https://github.com/paolomagni/football-platform)
   ingests football-data.org into GCP. The stack is Cloud Run ingestion → Cloud Storage → BigQuery →
@@ -455,6 +446,9 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
   rate on the men's leagues, 2026-07-14 (see [DATA.md](DATA.md)).
 - **Side-by-side "Compare players" view** — 2026-07-14.
 - **Auto-generated scouting-report blurb** — `build_scouting_blurb`, 2026-07-14.
+- **2026-10-02 re-audit fixes** — the similarity-table cache now rebuilds when its columns change;
+  the doc-lint also covers the per-tournament AUCs and the silhouette range; restructure leftovers
+  (dead archive links, a Makefile mention) cleaned up; notebooks re-executed on 3.12.
 - **A bigger visual + documentation pass** (flagged 2026-07-13) — done as the 2026-09-30 health
   check and its six-phase fix-up (2026-10-01/02): app restructure + tests, repo declutter, roadmap
   merge, PRODUCT_SPEC rewrite, slimmer CLAUDE.md/README.

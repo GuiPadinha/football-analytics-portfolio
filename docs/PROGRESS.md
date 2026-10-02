@@ -35,6 +35,15 @@ re-verified against the repo.
   own. `metrics.json`, the manifest and all 9 PNGs came out byte-identical. +1 test.
 - *Doc-lint:* now also requires the six per-tournament AUCs in README/CLAUDE/MODULES and the
   silhouette range ("0.22–0.26") in CLAUDE/MODULES/PITCH. A deliberately drifted AUC is caught.
+- *Restructure leftovers:* two dead archive links and the "Makefile" in the phase table.
+- *Notebooks on 3.12:* all three re-executed on the `fap312` kernel with 0 errors (01 in 74s, 02
+  in 14s, 03 in 11s). Every printed result is unchanged; only warning paths differ. 03 ran on the
+  rebuilt similarity pickle. The kernelspec stays the portable `python3`.
+- *Not done, on purpose:* speeding up `src.app_data`. Measured: a single pass over each match
+  saves only ~27%, and a real cache would bring back the stale-cache risk. See ROADMAP Phase 9.
+
+**Next:** (1) restart VS Code, then redeploy the Cloud app on 3.12 and do its CI/doc pass;
+(2) Phase 5a.
 
 ---
 
