@@ -46,6 +46,10 @@ candidates before the club check could tell them apart.
 - The pipeline's similarity cache rebuilt itself for the new column. `metrics.json`, PNGs and the
   manifest are byte-identical, and per-90 values and clusters are unchanged.
 
+**Phase 5a heads-up, measured:** the Finishing panel's in-sample xG vs. out-of-fold xG moves a PL
+player's goals − xG by 0.02 goals on average (max 0.20); the top-10 overperformers are the same
+set. 5a should still use out-of-fold xG (ML_LEARNING_LOG.md).
+
 ---
 
 ## 2026-10-02 → 10-03 — Deep audit: three shipped data bugs, then hardening

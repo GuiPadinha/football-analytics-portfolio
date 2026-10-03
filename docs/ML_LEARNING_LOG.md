@@ -10,6 +10,17 @@ Companion to CLAUDE.md. Running record of ML/stats concepts exercised, gotchas h
 
 Key gotchas and lessons — most recent first:
 
+- **In-sample xG flatters finishing only slightly here, but Phase 5a should still use
+  out-of-fold xG** (2026-10-03, measured for Guilherme's question). The app's Finishing panel
+  scores PL 2015/16 shots with a model trained on those same shots. For a logistic regression
+  with an intercept, training pulls total predicted goals to the total actual goals (here 1,099.0
+  vs. 1,098; L2 regularisation leaves the small gap), so each player's goals − xG is measured
+  against a baseline his own shots helped set. Cross-fitting (5 folds grouped by match, each shot
+  scored by a model that never saw it) moves goals − xG by 0.02 goals per player on average, at
+  most 0.20 (Agüero +6.48 → +6.65, Ighalo −1.17 → −1.37), and the top-10 overperformers are the
+  same set. Twelve features and 10.8k shots leave little room to memorise. 5a's job is to put
+  error bars on exactly this number, so its xG should come from out-of-fold predictions anyway:
+  five extra fits, and no in-sample shrinkage in the intervals.
 - **A dependency bump can move a model's numbers with no code change** (2026-10-03, numpy 2.2.6 →
   2.3.5 for the Python 3.14 Cloud). `metrics.json` stayed byte-identical, but the GBM feature
   importances moved in the third decimal (`angle_to_goal` ~0.397 → ~0.396), so

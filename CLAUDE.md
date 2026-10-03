@@ -23,7 +23,9 @@ StatsBomb's nickname, with the club check breaking ties (Luis Suárez). Session 
    app's Settings on share.streamlit.io). Local development stays on 3.12; CI tests both.
    VS Code must have been restarted after 2026-10-03 so it sees `FAP_CACHE_DIR` (the per-match
    cache now lives outside OneDrive); a process that doesn't see it prints where it downloads.
-2. Then model work: **Phase 5a** (uncertainty on goals−xG), recommended since 2026-07-14.
+2. Then model work: **Phase 5a** (uncertainty on goals−xG), recommended since 2026-07-14. Score
+   each shot with a model that never saw it (out-of-fold xG): ML_LEARNING_LOG.md's 2026-10-03
+   entry measured how little in-sample xG shifts today, and why 5a should still not use it.
 
 Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts
 dropped). Five more held-out tournaments rank as well (0.76–0.81): World Cup 2022 0.808, AFCON 2023
