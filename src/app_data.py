@@ -61,7 +61,7 @@ def _build_combined_tables(datasets=config.SIMILARITY_SETS):
     competitions); this tags provenance and stacks the results. Clustering happens afterward in
     `_cluster_position_groups`, across the *combined* pool per position group, so "players like
     X" (and "similar goalkeeper") can surface a cross-league match, not just same-league ones.
-    Goalkeepers get their own feature set (saves, shots faced, claims, ...; see
+    Goalkeepers get their own feature set (saves, goals conceded, claims, ...; see
     `build_goalkeeper_per90_features`), since a keeper's outfield-action rates are near zero.
     Both tables come from one pass over each season (`build_season_per90_tables`), which cut
     ~27% off this build (2026-10-02).
@@ -102,8 +102,8 @@ def _cluster_position_groups(per90_features, position_groups, feature_columns, n
     X" in the same corrected space, without recomputing it live.
 
     K=4 for goalkeepers (2026-07-13, first real K decision for them) matches the outfield
-    groups' choice for the same reason: silhouette on the league-normalised 124-keeper pool
-    peaks at K=2 (~0.22, the same soft-continuum shape the outfield groups show), and K=4 is
+    groups' choice for the same reason: silhouette on the league-normalised 123-keeper pool
+    peaks at K=2 (~0.24, the same soft-continuum shape the outfield groups show), and K=4 is
     kept anyway for archetype granularity rather than the metric's own preference — see
     ML_LEARNING_LOG.md for the real elbow/silhouette numbers behind this call.
 

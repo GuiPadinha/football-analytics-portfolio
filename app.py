@@ -870,10 +870,9 @@ def render_player_explorer(per90, searchable, xg_table, shots, market_value, pos
     if position_group == "Goalkeeper":
         saves = int(round(player_row_full["saves"]))
         on_target = saves + int(round(player_row_full["goals_conceded"]))
-        shots_faced = int(round(player_row_full["shots_faced"]))
         st.caption(
             f"**Save %: {player_row_full['save_pct']:.0%}** ({saves} saves from {on_target} shots on "
-            f"target, penalties included · {shots_faced} shots faced in total)"
+            "target, penalties included)"
         )
     elif pd.notna(player_row_full.get("goals")):
         total_goals = int(round(player_row_full["goals"]))
@@ -972,10 +971,9 @@ def render_player_explorer(per90, searchable, xg_table, shots, market_value, pos
         if position_group == "Goalkeeper":
             st.caption(
                 "Counts come from StatsBomb's `Goal Keeper` events (saves, goals conceded incl. "
-                "penalties, claims, punches, sweeper actions). Save % is above, as a ratio rather "
-                "than a per-90 rate; shots faced isn't ranked, since it mostly measures the defence "
-                "in front of the keeper. Goals Conceded's percentile is flipped so fewer conceded "
-                "reads as higher, not lower."
+                "penalties, claims, punches, sweeper actions). Only shots on target count: saves + "
+                "goals conceded. Save % is above, as a ratio rather than a per-90 rate. Goals "
+                "Conceded's percentile is flipped so fewer conceded reads as higher, not lower."
             )
         else:
             st.caption(

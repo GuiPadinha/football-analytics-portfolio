@@ -49,7 +49,8 @@ def test_goalkeeper_numbers_are_realistic(per90):
     on_target = keepers["saves"] + keepers["goals_conceded"]
     # Top-flight keepers save roughly 55-85% of on-target shots; judge only regular starters.
     assert keepers.loc[on_target >= 30, "save_pct"].between(0.5, 0.9).all()
-    assert (keepers["shots_faced"] >= on_target).all()
+    # A keeper's shots are the ones on target only (saves + goals conceded), never every shot.
+    assert "shots_faced" not in per90.columns
 
 
 def test_market_values_are_unique_mens_only_and_from_around_the_season(per90, market_value):

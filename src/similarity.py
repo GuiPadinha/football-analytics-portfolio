@@ -312,16 +312,14 @@ PER90_TABLE_COLUMNS = (
 )
 
 
-# Every shot creates exactly one goalkeeper event for the keeper facing it, with one of the types
-# below (checked on 150 real matches, 2026-10-02: these events always equal the shot count, and
-# the saved/conceded groups equal the saved/goal shot outcomes). StatsBomb's own "Shot Faced"
-# type is only the remainder (off target, blocked, post), not every shot faced: reading it as the
-# total made save % = saves / "Shot Faced" (~38% median instead of ~70%) until that date.
-GK_SAVE_TYPES = [
-    "Shot Saved", "Shot Saved Off Target", "Shot Saved to Post", "Penalty Saved", "Penalty Saved to Post",
-]
+# A keeper's shots count only when on target, and every on-target shot ends as a save or a goal.
+# StatsBomb logs one goalkeeper event per shot (checked on 150 real matches, 2026-10-02); these are
+# the on-target types, penalties included. Left out: "Shot Faced", the remainder (off target,
+# blocked, post), and "Shot Saved Off Target", a save of a shot that was going wide, which
+# StatsBomb's own shot outcome counts as off target. Reading "Shot Faced" as every shot made save %
+# = saves / "Shot Faced" (~38% median instead of ~70%) until 2026-10-02.
+GK_SAVE_TYPES = ["Shot Saved", "Shot Saved to Post", "Penalty Saved", "Penalty Saved to Post"]
 GK_CONCEDED_TYPES = ["Goal Conceded", "Penalty Conceded"]
-GK_SHOT_TYPES = GK_SAVE_TYPES + GK_CONCEDED_TYPES + ["Shot Faced"]
 
 
 def extract_goalkeeper_match_actions(events):
@@ -330,23 +328,19 @@ def extract_goalkeeper_match_actions(events):
     Mirrors `extract_player_match_actions`'s counting-not-rating approach, but reads the
     `Goal Keeper` event type's `goalkeeper_type` sub-classification: a keeper's meaningful
     actions (saves, claims, sweeping) live inside that one event type, which the outfield
-    columns never touch. See `GK_SHOT_TYPES` for how shots map onto it.
+    columns never touch. See `GK_SAVE_TYPES` for which shots count.
 
     Args:
         events (pandas.DataFrame): full event stream for one match.
 
     Returns:
-        pandas.DataFrame: one row per (player, team), with raw counts of shots faced (every
-            shot, any outcome), saves, goals conceded (penalties included), claims, punches,
-            and sweeper actions.
+        pandas.DataFrame: one row per (player, team), with raw counts of saves and goals
+            conceded (together, the shots on target, penalties included), claims, punches, and
+            sweeper actions.
     """
     gk_events = events[events["type"] == "Goal Keeper"].copy()
     gk_events["goalkeeper_type"] = safe_column(gk_events, "goalkeeper_type")
 
-    shots_faced = (
-        gk_events[gk_events["goalkeeper_type"].isin(GK_SHOT_TYPES)]
-        .groupby(["player", "team"]).size().rename("shots_faced")
-    )
     saves = (
         gk_events[gk_events["goalkeeper_type"].isin(GK_SAVE_TYPES)]
         .groupby(["player", "team"]).size().rename("saves")
@@ -369,17 +363,12 @@ def extract_goalkeeper_match_actions(events):
     )
 
     actions = pd.concat(
-        [shots_faced, saves, goals_conceded, claims, punches, sweeper_actions], axis=1,
+        [saves, goals_conceded, claims, punches, sweeper_actions], axis=1,
     ).fillna(0)
     return actions.reset_index()
 
 
 GK_ACTION_COLUMNS = ["saves", "goals_conceded", "claims", "punches", "sweeper_actions"]
-
-# Display-only for keepers, like `goals` for outfield players: shots faced mostly measures the
-# defence in front of the keeper, not the keeper, so it gives save % its denominator context but
-# is never clustered on or ranked as if more were better.
-GK_DISPLAY_COUNT_COLUMNS = ["shots_faced"]
 
 
 def canonical_team_names(names, home_team, away_team):
@@ -520,13 +509,12 @@ def _goalkeeper_per90_table(season_minutes, actions_df, min_minutes):
     Returns:
         pandas.DataFrame: one row per goalkeeper (columns as `build_goalkeeper_per90_features`).
     """
-    count_columns = GK_ACTION_COLUMNS + GK_DISPLAY_COUNT_COLUMNS
     season_actions = (
-        actions_df.groupby(["player", "team"])[count_columns].sum().reset_index()
+        actions_df.groupby(["player", "team"])[GK_ACTION_COLUMNS].sum().reset_index()
     )
 
     features = season_minutes.merge(season_actions, on=["player", "team"], how="left")
-    features[count_columns] = features[count_columns].fillna(0)
+    features[GK_ACTION_COLUMNS] = features[GK_ACTION_COLUMNS].fillna(0)
 
     features = features[features["minutes_played"] >= min_minutes]
     features = features[features["position_group"] == "Goalkeeper"].copy()
@@ -539,7 +527,7 @@ def _goalkeeper_per90_table(season_minutes, actions_df, min_minutes):
         features[f"{col}_p90"] = features[col] / features["minutes_played"] * 90
 
     keep_columns = ["player", "team", "position_group", "minutes_played", "save_pct"] + \
-        count_columns + [f"{col}_p90" for col in GK_ACTION_COLUMNS]
+        GK_ACTION_COLUMNS + [f"{col}_p90" for col in GK_ACTION_COLUMNS]
     return features[keep_columns].reset_index(drop=True)
 
 
@@ -590,7 +578,7 @@ def build_goalkeeper_per90_features(competition_id, season_id, min_minutes=900):
     Returns:
         pandas.DataFrame: one row per goalkeeper, with `minutes_played`, `save_pct` (saves /
             on-target shots, from raw season totals so it reads as a plain ratio; 0 for a keeper
-            who faced none), the display-only `shots_faced` total, and one raw season-total
+            who faced none), and one raw season-total
             `<action>` column plus one `<action>_p90` rate column per `GK_ACTION_COLUMNS` entry
             (same "keep both" reasoning as `build_player_per90_features`: "112 saves" is the
             headline a human reads, the per-90 rate is what comparisons use).

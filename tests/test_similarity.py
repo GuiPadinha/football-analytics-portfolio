@@ -9,7 +9,6 @@ from src.similarity import (
     ACTION_COLUMNS,
     DISPLAY_COUNT_COLUMNS,
     GK_ACTION_COLUMNS,
-    GK_DISPLAY_COUNT_COLUMNS,
     _goalkeeper_per90_table,
     _parse_clock,
     compute_minutes_played,
@@ -139,11 +138,12 @@ def test_find_similar_players_omits_competition_column_when_absent():
 
 
 def test_extract_goalkeeper_match_actions_counts_by_type():
-    # StatsBomb logs one keeper event per shot: saved, conceded, or "Shot Faced" for the rest
-    # (off target, blocked). Shots faced is all of them; penalties count as saves/goals too.
+    # StatsBomb logs one keeper event per shot. Only on-target shots count for a keeper, as a save
+    # or a goal, penalties included. "Shot Faced" (off target, blocked) and a save of a shot that
+    # was going wide ("Shot Saved Off Target") don't.
     shot_outcomes = [
-        "Shot Faced", "Shot Faced", "Shot Saved", "Shot Saved to Post", "Penalty Saved",
-        "Goal Conceded", "Penalty Conceded",
+        "Shot Faced", "Shot Faced", "Shot Saved Off Target", "Shot Saved", "Shot Saved to Post",
+        "Penalty Saved", "Goal Conceded", "Penalty Conceded",
     ]
     other_actions = ["Collected", "Punch", "Keeper Sweeper", "Save"]  # "Save" isn't shot-linked
     events = pd.DataFrame(
@@ -154,7 +154,7 @@ def test_extract_goalkeeper_match_actions_counts_by_type():
     )
     result = extract_goalkeeper_match_actions(events).set_index(["player", "team"])
     row = result.loc[("Keeper A", "T")]
-    assert row["shots_faced"] == 7
+    assert "shots_faced" not in result.columns
     assert row["saves"] == 3
     assert row["goals_conceded"] == 2
     assert row["claims"] == 1
@@ -170,13 +170,12 @@ def test_goalkeeper_save_pct_is_saves_over_on_target_shots():
     })
     actions = pd.DataFrame({
         "player": ["Keeper A", "Keeper B"], "team": ["T", "U"],
-        "shots_faced": [20, 5], "saves": [6, 0], "goals_conceded": [2, 0],
+        "saves": [6, 0], "goals_conceded": [2, 0],
         "claims": [0, 0], "punches": [0, 0], "sweeper_actions": [0, 0],
     })
     table = _goalkeeper_per90_table(season_minutes, actions, min_minutes=900).set_index("player")
-    assert table.loc["Keeper A", "save_pct"] == 0.75  # 6 of 8 on target, not 6 of 20 faced
+    assert table.loc["Keeper A", "save_pct"] == 0.75  # 6 saves from 8 shots on target
     assert table.loc["Keeper B", "save_pct"] == 0.0  # nothing on target: 0, not NaN
-    assert "shots_faced_p90" not in table.columns  # display-only, never a feature
 
 
 def test_extract_goalkeeper_match_actions_handles_zero_gk_events():
@@ -189,7 +188,7 @@ def test_extract_goalkeeper_match_actions_handles_zero_gk_events():
     result = extract_goalkeeper_match_actions(events)
     assert len(result) == 0
     assert list(result.columns) == [
-        "player", "team", "shots_faced", "saves", "goals_conceded", "claims", "punches", "sweeper_actions",
+        "player", "team", "saves", "goals_conceded", "claims", "punches", "sweeper_actions",
     ]
 
 
@@ -360,7 +359,7 @@ def _fake_season_sources(monkeypatch, loaded):
     monkeypatch.setattr(similarity, "extract_player_match_actions", lambda events: pd.DataFrame(
         {"player": ["Striker", "Sub"], "team": ["T", "T"], **outfield_counts}))
     monkeypatch.setattr(similarity, "extract_goalkeeper_match_actions", lambda events: pd.DataFrame(
-        {"player": ["Keeper"], "team": ["T"], **{col: [2] for col in GK_ACTION_COLUMNS + GK_DISPLAY_COUNT_COLUMNS}}))
+        {"player": ["Keeper"], "team": ["T"], **{col: [2] for col in GK_ACTION_COLUMNS}}))
 
 
 def test_build_season_per90_tables_matches_the_separate_builders_in_one_pass(monkeypatch):

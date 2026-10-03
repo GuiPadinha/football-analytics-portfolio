@@ -21,6 +21,14 @@ just use 3.14. No reason not to: it's the Cloud default and supported until 2030
   pinned to `ubuntu-24.04`, so the image changes only on purpose. 3.10 references updated in the
   docs.
 
+**Keepers: only shots on target count** (Guilherme's call). The "shots faced in total" figure next to
+save % is gone. A save of a shot going wide ("Shot Saved Off Target") no longer counts as a save,
+because StatsBomb's own shot outcome calls that shot off target: 166 saves across 90 keepers, at
+most 5 each. Median save % 70.1% → 69.8%. Outfield data and market values are unchanged. 12 of 123
+keepers moved archetype (soft continuum). Keeper silhouette 0.238 at K=2 (was 0.237), 0.187 at
+K=4 (unchanged). The rebuilt xG tables differed only by float noise from the numpy bump, so the
+committed files were kept.
+
 ---
 
 ## 2026-10-02 → 10-03 — Deep audit: three shipped data bugs, then hardening

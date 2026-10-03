@@ -132,8 +132,13 @@ Key gotchas and lessons — most recent first:
     keeper event, either a save type, a goal conceded, or "Shot Faced". Reconciliation proved it:
     on 150 matches the keeper events equal the shot count, and saves and goals match the shot
     outcomes exactly. A July note in MODULES.md had suspected the denominator, with the direction
-    backwards, and nobody checked. Fix: shots faced = all shot-linked types, save % = saves ÷
-    (saves + goals conceded), penalties included in goals conceded.
+    backwards, and nobody checked. Fix: save % = saves ÷ (saves + goals conceded), penalties
+    included in goals conceded. *Refined 2026-10-03 (Guilherme's call: a keeper's shots only
+    count if they're on target):* the all-shots "shots faced" total shown next to save % is gone,
+    and a save of a shot that was going wide ("Shot Saved Off Target", 166 of the pool's saves,
+    at most 5 per keeper) no longer counts, because StatsBomb's own shot outcome calls that shot
+    off target. Median save % 70.1% → 69.8%. Twelve of 123 keepers changed archetype: on a soft
+    continuum (silhouette ~0.19 at K=4), a 1–2% feature change moves the borderline keepers.
   - *Ligue 1 had 21 teams.* StatsBomb names Marseille "Marseille" in some matches' lineups and
     "Olympique de Marseille" elsewhere (Caen likewise), so a (player, team) group-by split those
     players' seasons in two (Mandanda: 2,334 + 1,027 minutes). Fix: map each match's names onto its
