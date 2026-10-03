@@ -4,21 +4,24 @@ Project source of truth. Read this first every session, then load linked docs on
 
 ---
 
-## Current Status (updated 2026-10-02)
+## Current Status (updated 2026-10-03)
 
 **Where we are:** Phases 0–4 ✅ (4c closed 2026-10-01 with two women's tournaments; **4e**, new data
 sources + 360, is pinned), Phase 8 ✅ ([live app](https://gpfootball-analytics-portfolio.streamlit.app)),
 Phase 9 ongoing. Phases 5–7, the ML-depth work, are not started. The 2026-09-30 repo health check
 and all its fixes were completed on 2026-10-02: HTTPS via the OS trust store, Python 3.12, the
-`app.py` restructure + app tests, and the repo/doc declutter. Session detail is in
+`app.py` restructure + app tests, and the repo/doc declutter. A deep audit (10-02/03) then found
+and fixed three data bugs the live app was showing (goalkeeper save %, Ligue 1 clubs split under two
+names, wrong-identity market values) plus a radar crash. Session detail is in
 [docs/PROGRESS.md](docs/PROGRESS.md); phases and backlog are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 **Next session, start here:**
 1. **Redeploy the Streamlit Cloud app on Python 3.12.** A deployed app can't change Python, so
    delete and redeploy it with the same subdomain; steps are in ROADMAP.md's Phase 9 "Python
    3.10 → 3.12" item, and Guilherme approved doing it. Then drop 3.10 from the CI matrix, unpin
-   `ubuntu-24.04`, and do that item's doc/notebook pass. Python 3.10 reaches EOL on 2026-10-31.
-   Restart VS Code first, or its shells still resolve `python` to 3.10.
+   `ubuntu-24.04`, and do that item's doc pass. Python 3.10 reaches EOL on 2026-10-31.
+   VS Code must have been restarted after 2026-10-02 so it sees `FAP_CACHE_DIR` (the per-match
+   cache now lives outside OneDrive); a process that doesn't see it prints where it downloads.
 2. Then model work: **Phase 5a** (uncertainty on goals−xG), recommended since 2026-07-14.
 
 Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts
@@ -27,12 +30,13 @@ dropped). Five more held-out tournaments rank as well (0.76–0.81): World Cup 2
 near the bottom, not "the floor". Similarity: K=4 per position group, silhouette ~0.22–0.26 (a
 soft continuum) on the notebook's PL 2015/16 scope; the app's pool is 6 competitions and
 1,638 players, league-normalised, with goalkeepers clustered too. **1,168** players matched to a
-Transfermarkt market value (men's competitions, ~87%, each confirmed at the right club). *(xG/similarity numbers come from
+Transfermarkt market value (men's competitions, ~87%, each confirmed at the right club).
+*(xG/similarity numbers come from
 [metrics.json](metrics.json) via `python -m src.metrics`. A doc-lint test fails the build if a
-current-state doc drifts on the headline xG numbers, the per-tournament AUCs or the silhouette
-range. `python -m src.pipeline` rebuilds data, models and outputs headless, and
+current-state doc drifts on the headline xG numbers, the per-tournament AUCs, the silhouette
+range or the app-pool numbers, and `tests/test_app_data.py` checks the shipped app tables. `python -m src.pipeline` rebuilds data, models and outputs headless, and
 `metrics.json` and the PNGs come out byte-identical on Python 3.10 and 3.12. `python -m
-src.app_data` rebuilds the app's data separately, in ~3 min.)*
+src.app_data` rebuilds the app's data separately, in ~3–5 min.)*
 
 ---
 
