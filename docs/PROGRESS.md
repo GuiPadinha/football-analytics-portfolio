@@ -29,6 +29,23 @@ keepers moved archetype (soft continuum). Keeper silhouette 0.238 at K=2 (was 0.
 K=4 (unchanged). The rebuilt xG tables differed only by float noise from the numpy bump, so the
 committed files were kept.
 
+**Market value: Luis Suárez and 158 more** (Guilherme asked "what's happening to Suárez?").
+Transfermarkt has two "Luis Suárez" profiles, and the matcher dropped any name with two
+candidates before the club check could tell them apart.
+- StatsBomb's lineups carry each player's popular name (`player_nickname`: "Koke", "Dani Alves",
+  "Luis Suárez"), which is how Transfermarkt names players. It now flows into the per-90 tables
+  as `nickname`.
+- Matching is now two plain steps. `find_name_candidates` lists every Transfermarkt player matching
+  the nickname or the full name, exactly or by distinctive words. `keep_candidates_at_the_right_club`
+  keeps the one valued at the player's club that season (no candidate or two left = blank).
+  Letters like Ł/Đ/ð are transliterated the way Transfermarkt writes them. The position tiebreak
+  changed nothing any more and was removed.
+- 1,168 → **1,327 of 1,347 (~99%)**: no existing match changed, and all 159 new ones were reviewed by
+  hand (Suárez €90M, Koke, Isco, Fàbregas, David Silva, Dani Alves, Pepe, Mikel...). 20 stay
+  blank (spellings with no shared word, bare common names like "Nacho", parent-club loanees).
+- The pipeline's similarity cache rebuilt itself for the new column. `metrics.json`, PNGs and the
+  manifest are byte-identical, and per-90 values and clusters are unchanged.
+
 ---
 
 ## 2026-10-02 → 10-03 — Deep audit: three shipped data bugs, then hardening

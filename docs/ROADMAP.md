@@ -359,12 +359,6 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
     PL 2015/16 has one.
   - **xA / chance-creation model, Module C (PUP)** — both already listed below in this same Phase 9
     section; larger, model-layer undertakings rather than app-layer features.
-- **Market-value tiebreak for same-name players** (found 2026-10-01): Luis Suárez (Barcelona) is
-  unmatched because Transfermarkt has two same-position "Luis Suárez" profiles (born 1987/1997).
-  `players.csv` has `date_of_birth`, and `player_valuations` has the club at each date. Either one
-  breaks the tie deterministically. Since 2026-10-02 the club check (`keep_matches_at_the_right_club`)
-  already learns each team's Transfermarkt club; applying it to tied candidates before the "exactly
-  one" rule, instead of after, would resolve this case with no new data.
 - **The live demo sleeps** (found 2026-10-01): Streamlit Community Cloud hibernates an app with no
   traffic, so the first visitor from a CV/LinkedIn link sees a "wake this app up" screen and waits
   ~1 min. Options: a scheduled GitHub Action that opens the app in a headless browser (a plain
@@ -416,8 +410,9 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
 
 - **Architecture / dependency doc** — [ARCHITECTURE.md](ARCHITECTURE.md), 2026-07-04.
 - **Market value (Transfermarkt) alongside "players like X"** — `src/market_value.py`, 2026-07-14;
-  club check against wrong identities added 2026-10-02, ~87% match rate on the men's leagues (see
-  [DATA.md](DATA.md)).
+  club check against wrong identities added 2026-10-02. Since 2026-10-03 it also matches on
+  StatsBomb's nickname, and the club check breaks same-name ties (Luis Suárez): ~99% match rate on
+  the men's leagues (see [DATA.md](DATA.md)).
 - **Side-by-side "Compare players" view** — 2026-07-14.
 - **Auto-generated scouting-report blurb** — `build_scouting_blurb`, 2026-07-14.
 - **2026-10-02 re-audit fixes** — the similarity-table cache now rebuilds when its columns change;

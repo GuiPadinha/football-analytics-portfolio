@@ -283,7 +283,7 @@ League, La Liga, Serie A, Ligue 1 (all 2015/16), plus Frauen Bundesliga and FA W
 K-means clustered into style archetypes like the outfield groups. The app also has a full player
 **leaderboard** (sortable, goals incl. penalties + xG where available), a **Compare players** view
 (any two players, side by side), a **Transfermarkt market value** matched onto "players like X" and
-the Leaderboard (men's competitions only, ~87% match rate), and an **About & Roadmap** tab
+the Leaderboard (men's competitions only, ~99% match rate), and an **About & Roadmap** tab
 explaining the framework, the data, and what's next.
 
 ---

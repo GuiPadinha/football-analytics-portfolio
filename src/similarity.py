@@ -92,9 +92,10 @@ def compute_minutes_played(lineups, match_duration):
             stints with no recorded end time (player still on at full time).
 
     Returns:
-        pandas.DataFrame: one row per player with `player`, `team`,
-            `position` (their most-played position that match), and
-            `minutes_played`.
+        pandas.DataFrame: one row per player with `player`, `nickname`
+            (StatsBomb's popular name for him, e.g. "Koke"; missing when it
+            records none), `team`, `position` (their most-played position
+            that match), and `minutes_played`.
     """
     records = []
     for team, lineup_df in lineups.items():
@@ -114,6 +115,8 @@ def compute_minutes_played(lineups, match_duration):
             primary_position = max(minutes_by_position, key=minutes_by_position.get)
             records.append({
                 "player": player_row["player_name"],
+                # The name Transfermarkt lists the player under (market_value.py matches on it).
+                "nickname": player_row.get("player_nickname"),
                 "team": team,
                 "position": primary_position,
                 "minutes_played": sum(minutes_by_position.values()),
@@ -148,12 +151,13 @@ def resolve_season_positions(minutes_df):
 
     Args:
         minutes_df (pandas.DataFrame): concatenated per-match output of
-            `compute_minutes_played`, with `player`, `team`, `position`,
-            `minutes_played`.
+            `compute_minutes_played`, with `player`, `nickname`, `team`,
+            `position`, `minutes_played`.
 
     Returns:
-        pandas.DataFrame: one row per (player, team) with `minutes_played`
-            (season total), `position_group`, and `position`. Players whose every
+        pandas.DataFrame: one row per (player, team) with `nickname` (the most
+            common one across his matches), `minutes_played` (season total),
+            `position_group`, and `position`. Players whose every
             recorded position is outside `POSITION_GROUPS` are dropped (no group
             to assign) — this never happens for standard StatsBomb position labels.
     """
@@ -171,9 +175,11 @@ def resolve_season_positions(minutes_df):
         primary_group = mapped.groupby("position_group")["minutes_played"].sum().idxmax()
         in_group = mapped[mapped["position_group"] == primary_group]
         primary_position = in_group.groupby("position")["minutes_played"].sum().idxmax()
+        nicknames = player_df["nickname"].dropna()
 
         records.append({
             "player": player,
+            "nickname": nicknames.mode().iloc[0] if len(nicknames) else None,
             "team": team,
             # Full presence across all positions (incl. any unmapped), so the
             # min_minutes filter still measures total pitch time, not time-in-group.
@@ -307,7 +313,7 @@ DISPLAY_COUNT_COLUMNS = ["goals"]
 # The exact columns `build_player_per90_features` returns, in order. One list so a cached copy of
 # that table (pipeline.py's) can be checked against the current code instead of trusted blindly.
 PER90_TABLE_COLUMNS = (
-    ["player", "team", "position_group", "minutes_played"]
+    ["player", "nickname", "team", "position_group", "minutes_played"]
     + ACTION_COLUMNS + DISPLAY_COUNT_COLUMNS + [f"{col}_p90" for col in ACTION_COLUMNS]
 )
 
@@ -526,7 +532,7 @@ def _goalkeeper_per90_table(season_minutes, actions_df, min_minutes):
     for col in GK_ACTION_COLUMNS:
         features[f"{col}_p90"] = features[col] / features["minutes_played"] * 90
 
-    keep_columns = ["player", "team", "position_group", "minutes_played", "save_pct"] + \
+    keep_columns = ["player", "nickname", "team", "position_group", "minutes_played", "save_pct"] + \
         GK_ACTION_COLUMNS + [f"{col}_p90" for col in GK_ACTION_COLUMNS]
     return features[keep_columns].reset_index(drop=True)
 

@@ -52,7 +52,7 @@ colleague pitch (date TBD — today or the next day at the time of writing).
   plus save % — and K-means clustered into style archetypes like the outfield groups).
 - **10,824** shots trained the xG model; a further **7,215** held-out shots — across **6**
   tournaments it never trained on, **2 of them women's** — used to check it generalises.
-- **1,168** players matched to a real Transfermarkt market value (men's competitions only, each
+- **1,327** players matched to a real Transfermarkt market value (men's competitions only, each
   confirmed at the player's club that season — see the Roadmap section below for the coverage caveat).
 - **~170** automated tests, including smoke tests of every app view, run on every push on Python
   3.12 and 3.14; a one-command rebuild (`python -m src.pipeline`) that reproduces every number and
@@ -116,6 +116,6 @@ lists).
 - **Market value modelling** (not *displaying* one — that's done, see above): still out of scope
   by design. This tool informs a human's valuation, it doesn't price players itself.
 - **If a specific player's market value is missing:** either no confident match (no shared player
-  ID exists between StatsBomb and Transfermarkt, and a name match must also show the player at the
-  same club that season — see DATA.md) or a women's-league player (zero coverage there). Never a
+  ID exists between StatsBomb and Transfermarkt, so exactly one name match must show the player at
+  the same club that season — see DATA.md) or a women's-league player (zero coverage there). Never a
   guessed number.

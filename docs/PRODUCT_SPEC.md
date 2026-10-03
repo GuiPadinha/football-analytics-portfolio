@@ -144,8 +144,8 @@ them again.
 - **Whole numbers up front, decimals in Methodology.** The headline tiles are things that can be
   said without notes; ROC-AUC/Brier/silhouette appear only with their explanation.
 - **Market value is displayed, never modelled.** It is a matched external Transfermarkt figure,
-  blank when the name match is ambiguous, when Transfermarkt doesn't place the player at that club
-  that season, or when the league isn't covered (women's football). It is never guessed.
+  blank unless exactly one name match is placed by Transfermarkt at the player's club that season,
+  or when the league isn't covered (women's football). It is never guessed.
 - **Goalkeepers get their own feature set**, not a branch of the outfield one (a keeper's tackles
   are noise).
 
@@ -156,8 +156,8 @@ them again.
 - The "Table view" expander's open/closed state doesn't always survive a drill-down jump (cosmetic).
 - No pass-completion % or duel-success %: those need *attempted*-action features from raw events,
   not a new chart.
-- Market value: same-name collisions are left blank (e.g. Luis Suárez), and there is no women's
-  coverage (see DATA.md).
+- Market value: 20 of 1,347 men's players stay blank (no single Transfermarkt profile at their
+  club that season), and there is no women's coverage (see DATA.md).
 - The live demo sleeps after inactivity, so the first visit waits about a minute (see ROADMAP.md's
   Phase 9 list).
 - No SkillCorner physical panel: that data shares no players with the event data.

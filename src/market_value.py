@@ -13,18 +13,14 @@ cache rather than re-pulling.
 
 **Two honest limitations, stated plainly rather than hidden:**
 
-1. **No shared player ID with StatsBomb** (DATA.md's flagged blocker). There is no official
-   crosswalk, so `match_players_to_transfermarkt` resolves it with normalised-name matching
-   (exact first, then a bidirectional token-subset fallback for the very common "StatsBomb logs a
-   player's full legal name, Transfermarkt uses their popular/shirt name" case — e.g. StatsBomb's
-   "Cristiano Ronaldo dos Santos Aveiro" vs Transfermarkt's "Cristiano Ronaldo"), filtered to a
-   compatible broad position, and **only accepted if exactly one Transfermarkt candidate
-   survives** — an unresolved or ambiguous name gets no market value shown, never a guess. A
-   name match must then pass a club check (`keep_matches_at_the_right_club`: Transfermarkt must
-   value the player at the StatsBomb team's club around that season), added 2026-10-02 after
-   name matching alone attached wrong identities to famous players. False negatives (a real
-   match missed, e.g. a loanee valued at his parent club) are the expected failure mode, not
-   false positives.
+1. **No shared player ID with StatsBomb** (DATA.md's flagged blocker), so players are matched in
+   two steps. `find_name_candidates` lists every Transfermarkt player whose name fits: StatsBomb's
+   nickname (the popular name Transfermarkt also uses, e.g. "Koke"), the full name, or the full
+   name's most distinctive words. `keep_candidates_at_the_right_club` then keeps the one
+   candidate Transfermarkt places at the player's club that season. No candidate left, or more
+   than one, means no market value is shown, never a guess. False negatives (a real match
+   missed, e.g. a loanee valued at his parent club) are the expected failure mode, not false
+   positives.
 2. **This mirror only covers men's football** (verified directly against the real data before
    relying on it — every `current_club_domestic_competition_id` in the `players` table is a
    men's league code; zero rows matched any known women's club name). So market value is only
@@ -65,20 +61,10 @@ MARKET_VALUE_AS_OF_DATES = {
     "Ligue 1 2015/16": pd.Timestamp("2016-01-01"),
 }
 
-# How far from the season's anchor date a valuation may be and still confirm which club a matched
-# player was at (see `keep_matches_at_the_right_club`). Twelve months either side spans the season
-# plus each transfer window around it, so a January signing still shows his new club.
+# How far from the season's anchor date a valuation may be and still confirm which club a
+# candidate was at (see `keep_candidates_at_the_right_club`). Twelve months either side spans the
+# season plus each transfer window around it, so a January signing still shows his new club.
 CLUB_CHECK_WINDOW = pd.DateOffset(months=12)
-
-# Transfermarkt's broad `position` category maps onto this project's four position groups
-# almost exactly (checked against the real data before relying on the mapping) — the one
-# rename is "Attack" -> "Forward" to match `similarity.POSITION_GROUPS`' naming.
-TM_POSITION_TO_GROUP = {
-    "Attack": "Forward",
-    "Midfield": "Midfielder",
-    "Defender": "Defender",
-    "Goalkeeper": "Goalkeeper",
-}
 
 # Name-construction particles common across the naming traditions in this player pool
 # (Portuguese/Spanish "de"/"da"/"dos"/"das"/"del"/"el", Dutch "van"/"der"/"den", French "du"/"le"/
@@ -86,11 +72,19 @@ TM_POSITION_TO_GROUP = {
 # Transfermarkt's "Dé" purely because "de" is (surprisingly) not a *common enough* token to be
 # scored low by `_token_rarity_scores` alone, and it was the only candidate at all, so it won by
 # default with no other candidate to lose to. A token-subset match built *entirely* from these
-# particles carries no real evidence about which specific player it is — `match_players_to_
-# transfermarkt` requires at least one non-particle token before accepting a candidate.
+# particles carries no real evidence about which specific player it is — `find_name_candidates`
+# requires at least one non-particle token before accepting a candidate.
 NAME_PARTICLE_STOPWORDS = {
     "de", "da", "do", "dos", "das", "del", "der", "den", "van", "von", "el", "la", "le", "du",
 }
+
+# Letters Unicode can't split into a plain letter plus an accent, so stripping accents would drop
+# them ("Łukasz" -> "ukasz"). Spelled the way Transfermarkt writes them ("Lukasz Fabianski",
+# "Gylfi Sigurdsson", "Damjan Djokovic"; checked 2026-10-03).
+TRANSLITERATIONS = str.maketrans({
+    "ł": "l", "Ł": "L", "đ": "dj", "Đ": "Dj", "ð": "d", "Ð": "D", "þ": "th", "Þ": "Th",
+    "ø": "o", "Ø": "O", "æ": "ae", "Æ": "AE", "œ": "oe", "Œ": "OE", "ß": "ss", "ı": "i",
+})
 
 
 def normalize_name(name):
@@ -100,7 +94,8 @@ def normalize_name(name):
     Shared normalisation for both StatsBomb and Transfermarkt names, so "Kramarić" and "Kramaric"
     (or StatsBomb's genuine doubled-apostrophe quirk, "N''Golo Kanté" — see ML_TOOLING.md)
     compare equal rather than failing a match on an encoding difference that has nothing to do
-    with whether it's the same player.
+    with whether it's the same player. Letters with no plain-letter base ("Ł", "Đ", "ð") are
+    transliterated first (`TRANSLITERATIONS`), so "Łukasz Fabiański" reads "lukasz fabianski".
 
     Args:
         name (str): a player name, from either source.
@@ -110,7 +105,7 @@ def normalize_name(name):
     """
     if pd.isna(name):
         return ""
-    decomposed = unicodedata.normalize("NFKD", str(name).replace("''", "'"))
+    decomposed = unicodedata.normalize("NFKD", str(name).replace("''", "'").translate(TRANSLITERATIONS))
     ascii_only = decomposed.encode("ascii", "ignore").decode("ascii")
     cleaned = re.sub(r"[^a-zA-Z\s]", " ", ascii_only)
     return " ".join(cleaned.lower().split())
@@ -154,9 +149,8 @@ def _token_rarity_scores(norm_names):
     """Inverse document frequency for every token across a corpus of normalised names.
 
     A plain "most tokens wins" specificity rule fails on real Lusophone/Hispanic full legal
-    names (see `match_players_to_transfermarkt`'s docstring): "Santos", "Junior", "Silva", "Da"
-    are common enough (95, 93, 126, 42 occurrences in this ~50k-player corpus) that a 2-token
-    collision built entirely from them (e.g. a real, unrelated "Júnior Santos") can outrank the
+    names: "Santos", "Junior", "Silva", "Da" are common enough (95, 93, 126, 42 occurrences in
+    this ~50k-player corpus) that a 2-token collision built entirely from them (e.g. a real, unrelated "Júnior Santos") can outrank the
     correct single-token mononym match ("Neymar" — only 2 occurrences, i.e. genuinely
     distinctive) under naive token-count ranking. Weighting by rarity instead — 1/frequency, so
     a token nearly every name doesn't share contributes far more evidence than a token half the
@@ -179,154 +173,129 @@ def _rarity_score(tokens, token_rarity):
     return sum(token_rarity.get(t, 0.0) for t in tokens)
 
 
-def match_players_to_transfermarkt(per90_players, tm_players):
-    """Resolve each (player, team) to at most one Transfermarkt `player_id`.
+def find_name_candidates(per90_players, tm_players):
+    """List every Transfermarkt player whose name fits each (player, team).
 
-    Two-pass matching, neither pass filtered to a matching broad position up front — checked
-    directly against real data before deciding this (see module docstring's limitation #1):
-    Transfermarkt's own `position` tag can genuinely disagree with this project's StatsBomb-
-    derived `position_group` for permutable attacking roles (e.g. Neymar is tagged "Midfield" on
-    Transfermarkt, "Forward" here), so a hard position pre-filter can silently exclude the real
-    candidate while leaving an unrelated same-position collision to win. Position is used only
-    as a last-resort tiebreaker between two otherwise-equally-good name matches.
+    Step one of matching: this gathers the name evidence, and `keep_candidates_at_the_right_club`
+    picks among it. A StatsBomb player has up to two names: his full name and, from StatsBomb's
+    lineups, his popular name ("Koke" for "Jorge Resurrección Merodio"), which is the name
+    Transfermarkt lists him under (added 2026-10-03; most of the famous blanks were found by it).
+    Each name is looked up two ways, and every candidate found is kept:
 
-    1. **Exact match** on the normalised full name.
-    2. **Rarity-weighted token-subset fallback**, for names left unresolved by (1): one side's
-       normalised name's tokens are a subset of the other's (either direction) — catches
-       "StatsBomb logs the full legal name, Transfermarkt logs the popular name" (e.g. TM's
-       "Cristiano Ronaldo" tokens {"cristiano", "ronaldo"} ⊆ StatsBomb's "Cristiano Ronaldo dos
-       Santos Aveiro" tokens). Candidates are scored by `_rarity_score` (sum of 1/corpus-
-       frequency across their tokens, see `_token_rarity_scores`) rather than raw token count,
-       and only the single highest-scoring candidate is accepted.
+    1. **Exactly**, after `normalize_name`.
+    2. **By its best token-subset match.** One name's tokens are a subset of the other's
+       (Transfermarkt's "Cristiano Ronaldo" within "Cristiano Ronaldo dos Santos Aveiro", or
+       "Charly Musonda" within "Charly Musonda Jr."). Only the top `_rarity_score` counts, so
+       common tokens can't outvote a distinctive one (a "Júnior Santos" against "Neymar"), and a
+       candidate made only of name particles ("de") never counts.
 
-    Either pass only accepts a match when **exactly one** Transfermarkt candidate survives (after
-    the position tiebreaker, for pass 2) — a name with zero or still-ambiguous candidates is left
-    unmatched rather than guessed. Real matches do get missed this way (e.g. two genuinely
-    different professional players who both happen to be named "Luis Suárez"), which is the
-    intended, honest failure mode: a missed match is safe, a wrong one under a real player's name
-    is not.
+    Several candidates for one player are normal (Transfermarkt has two players named "Luis
+    Suárez" and eight named "Danilo"): the club check tells them apart.
 
     Args:
-        per90_players (pandas.DataFrame): must contain `player`, `team`, `position_group`.
+        per90_players (pandas.DataFrame): must contain `player`, `team` and `nickname` (missing
+            where StatsBomb records none).
         tm_players (pandas.DataFrame): output of `_download_csv("players.csv.gz")` — must contain
-            `player_id`, `name`, `position`.
+            `player_id` and `name`.
 
     Returns:
-        pandas.DataFrame: one row per successfully matched (player, team), with `tm_player_id`
-            and `tm_name` (the matched Transfermarkt display name, kept so a UI can show what it
-            actually matched to, for transparency).
+        pandas.DataFrame: one row per (player, team, candidate), with `tm_player_id` and `tm_name`
+            (the Transfermarkt display name, kept so the UI can show what a player was matched to).
     """
-    tm = tm_players.copy()
+    tm = tm_players[["player_id", "name"]].copy()
     tm["norm_name"] = tm["name"].map(normalize_name)
-    tm["broad_group"] = tm["position"].map(TM_POSITION_TO_GROUP)
     tm = tm[tm["norm_name"] != ""].reset_index(drop=True)
     tm["tokens"] = tm["norm_name"].map(lambda n: frozenset(n.split()))
     token_rarity = _token_rarity_scores(tm["norm_name"])
+    rows_by_name = tm.groupby("norm_name").indices
 
-    # Inverted index (token -> row indices) so the subset-fallback pass only has to consider
-    # Transfermarkt rows sharing at least one token with the player being matched, instead of
-    # re-scanning all ~50k rows per unmatched player — a valid subset match (either direction)
-    # always shares at least one token, so this narrows the candidate pool with no loss of recall.
-    token_to_rows = {}
+    # Inverted index (token -> rows), so the subset search only looks at Transfermarkt names
+    # sharing a token with the player instead of all ~50k. A subset match always shares one.
+    rows_by_token = {}
     for idx, tokens in tm["tokens"].items():
         for token in tokens:
-            token_to_rows.setdefault(token, []).append(idx)
+            rows_by_token.setdefault(token, []).append(idx)
 
-    sb_players = per90_players[["player", "team", "position_group"]].drop_duplicates().copy()
-    sb_players["norm_name"] = sb_players["player"].map(normalize_name)
+    def best_subset_rows(norm_name):
+        tokens = frozenset(norm_name.split())
+        nearby = tm.loc[sorted(set().union(*(rows_by_token.get(t, []) for t in tokens)))]
+        fits = nearby["tokens"].map(
+            lambda t: (t <= tokens or tokens <= t) and bool(t - NAME_PARTICLE_STOPWORDS)
+        ).astype(bool)
+        nearby = nearby[fits]
+        if nearby.empty:
+            return []
+        scores = nearby["tokens"].map(lambda t: _rarity_score(t, token_rarity))
+        return list(nearby.index[scores == scores.max()])
 
-    matches = []
+    sb_players = per90_players[["player", "team", "nickname"]].drop_duplicates(["player", "team"])
+    candidates = []
     for row in sb_players.itertuples(index=False):
-        if not row.norm_name:
-            continue
+        rows = []
+        for name in (row.nickname, row.player):
+            norm_name = normalize_name(name)
+            if norm_name:
+                rows += list(rows_by_name.get(norm_name, [])) + best_subset_rows(norm_name)
+        for idx in dict.fromkeys(rows):  # one row per candidate, first evidence first
+            candidates.append({
+                "player": row.player, "team": row.team,
+                "tm_player_id": int(tm.at[idx, "player_id"]), "tm_name": tm.at[idx, "name"],
+            })
 
-        exact = tm[tm["norm_name"] == row.norm_name]
-        if len(exact) == 0:
-            sb_tokens = set(row.norm_name.split())
-            nearby_idx = sorted(set().union(*(token_to_rows.get(t, []) for t in sb_tokens)))
-            if not nearby_idx:
-                continue  # no Transfermarkt name shares even one token - nothing to consider
-            nearby = tm.loc[nearby_idx]
-            subset_mask = nearby["tokens"].map(
-                lambda tokens: tokens <= sb_tokens or sb_tokens <= tokens
-            ).astype(bool)
-            candidates = nearby[subset_mask].copy()
-            if candidates.empty:
-                continue
-            # A candidate whose entire token set is name-construction particles (e.g. "de" alone)
-            # carries no real evidence of who it is - see NAME_PARTICLE_STOPWORDS.
-            has_real_token = candidates["tokens"].map(
-                lambda t: bool(t - NAME_PARTICLE_STOPWORDS)
-            ).astype(bool)
-            candidates = candidates[has_real_token]
-            if candidates.empty:
-                continue
-            candidates["score"] = candidates["tokens"].map(
-                lambda tokens: _rarity_score(tokens, token_rarity)
-            )
-            top_score = candidates["score"].max()
-            candidates = candidates[candidates["score"] == top_score]
-        else:
-            candidates = exact
-
-        if len(candidates) > 1:
-            # Tied on name-match quality - fall back to broad-position agreement to break the
-            # tie; if that still doesn't leave exactly one, it's a genuine ambiguity (e.g. two
-            # different real players sharing a name and a position), not a bug - skip.
-            candidates = candidates[candidates["broad_group"] == row.position_group]
-        if len(candidates) != 1:
-            continue
-
-        matched = candidates.iloc[0]
-        matches.append({
-            "player": row.player, "team": row.team,
-            "tm_player_id": int(matched["player_id"]), "tm_name": matched["name"],
-        })
-
-    return pd.DataFrame(matches, columns=["player", "team", "tm_player_id", "tm_name"])
+    return pd.DataFrame(candidates, columns=["player", "team", "tm_player_id", "tm_name"])
 
 
-def keep_matches_at_the_right_club(matched_players, tm_valuations, as_of_date, window=CLUB_CHECK_WINDOW):
-    """Drop name matches that Transfermarkt doesn't place at the player's team around the season.
+def keep_candidates_at_the_right_club(candidates, tm_valuations, as_of_date, window=CLUB_CHECK_WINDOW):
+    """Keep, for each player, the one name candidate Transfermarkt places at his team's club.
 
-    Name matching alone produced confident wrong identities for players with long legal names
-    (found 2026-10-02): StatsBomb's "Daniel Alves da Silva" (Barcelona) matched a "Alves Da Silva"
-    valued at Royale Union Saint-Gilloise, and "Jorge Resurrección Merodio" (Koke, Atlético) matched
-    a "Jorge" at Flamengo. Here a match is kept only if Transfermarkt valued that player at the
-    StatsBomb team's club within `window` of `as_of_date`. A wrong identity almost never passes;
-    the cost is that loanees valued at their parent club become misses, which is the safe failure.
+    Names alone can't tell namesakes apart (two "Luis Suárez"), and they attached confident wrong
+    identities before this check existed (found 2026-10-02: StatsBomb's "Daniel Alves da Silva"
+    matched an "Alves Da Silva" at Royale Union Saint-Gilloise). Transfermarkt's valuation history
+    says where each candidate played, so a candidate is kept only if it was valued at the StatsBomb
+    team's club within `window` of `as_of_date`, and a player is matched only if exactly one
+    candidate is left. Two namesakes at the same club stay unmatched, and so does a loanee valued
+    at his parent club: a missed value is safe, a wrong one under a real player's name is not.
 
-    The two sources name clubs differently ("Barcelona" vs "FC Barcelona"), so each StatsBomb team's
-    Transfermarkt club is learned from the data: the club most of that team's matched players were
-    valued at in the window (most matches are right, so the majority is the real club). Club names
-    are compared, not ids: in `player_valuations`, `current_club_id` is the player's club *today*,
-    and only `current_club_name` is the club at the valuation date (checked on De Bruyne's history).
+    The two sources name clubs differently ("Barcelona" vs "FC Barcelona"), so each team's
+    Transfermarkt club is learned from the data: the club most of its single-candidate players
+    were valued at in the window (most of those are right, so the majority is the real club). Club
+    names are compared, not ids: in `player_valuations`, `current_club_id` is the player's club
+    *today*, and only `current_club_name` is the club at the valuation date (checked on De Bruyne's
+    history).
 
     Args:
-        matched_players (pandas.DataFrame): output of `match_players_to_transfermarkt`.
+        candidates (pandas.DataFrame): output of `find_name_candidates`.
         tm_valuations (pandas.DataFrame): `player_valuations` with `player_id`, `date` (datetime),
             `current_club_name`.
         as_of_date (pandas.Timestamp): the season's anchor date.
         window (pandas.DateOffset): how far either side of `as_of_date` a valuation may be.
 
     Returns:
-        pandas.DataFrame: the rows of `matched_players` that pass the club check.
+        pandas.DataFrame: one row per matched (player, team), same columns as `candidates`.
     """
     in_window = tm_valuations[
         (tm_valuations["date"] >= as_of_date - window) & (tm_valuations["date"] <= as_of_date + window)
     ]
     clubs_by_player = in_window.groupby("player_id")["current_club_name"].agg(set).to_dict()
-    player_clubs = [clubs_by_player.get(pid, set()) for pid in matched_players["tm_player_id"]]
+    candidate_clubs = [clubs_by_player.get(pid, set()) for pid in candidates["tm_player_id"]]
+    per_player = candidates.groupby(["player", "team"])["tm_player_id"].transform("size")
 
     votes = Counter(
-        (team, club) for team, clubs in zip(matched_players["team"], player_clubs) for club in clubs
+        (team, club)
+        for team, clubs, count in zip(candidates["team"], candidate_clubs, per_player) if count == 1
+        for club in clubs
     )
     team_club = {}
     for (team, club), _ in votes.most_common():  # highest count first, so the first seen wins
         team_club.setdefault(team, club)
 
-    keep = [team_club.get(team) in clubs for team, clubs in zip(matched_players["team"], player_clubs)]
-    return matched_players[keep].reset_index(drop=True)
+    at_right_club = pd.Series(
+        [team_club.get(team) in clubs for team, clubs in zip(candidates["team"], candidate_clubs)],
+        index=candidates.index, dtype=bool,
+    )
+    at_club = candidates[at_right_club]
+    left = at_club.groupby(["player", "team"])["tm_player_id"].transform("size")
+    return at_club[left == 1].reset_index(drop=True)
 
 
 def resolve_market_values(matched_players, tm_valuations, as_of_date):
@@ -338,7 +307,7 @@ def resolve_market_values(matched_players, tm_valuations, as_of_date):
     their 24-year-old-season stats would be a real, misleading mismatch, not a rounding error.
 
     Args:
-        matched_players (pandas.DataFrame): output of `match_players_to_transfermarkt`.
+        matched_players (pandas.DataFrame): output of `keep_candidates_at_the_right_club`.
         tm_valuations (pandas.DataFrame): output of `_download_csv("player_valuations.csv.gz")` —
             must contain `player_id`, `date`, `market_value_in_eur`.
         as_of_date (pandas.Timestamp): the representative date to find the nearest valuation to.
@@ -376,7 +345,7 @@ def build_market_value_table(per90_features, cache_dir=CACHE_DIR):
 
     Args:
         per90_features (pandas.DataFrame): the app's combined per-90 table (outfield + goalkeeper),
-            must contain `player`, `team`, `position_group`, `competition`.
+            must contain `player`, `team`, `nickname`, `competition`.
         cache_dir (Path): passed through to `_download_csv`.
 
     Returns:
@@ -394,8 +363,8 @@ def build_market_value_table(per90_features, cache_dir=CACHE_DIR):
         pool = per90_features[per90_features["competition"] == competition]
         if pool.empty:
             continue
-        matched = match_players_to_transfermarkt(pool, tm_players)
-        matched = keep_matches_at_the_right_club(matched, tm_valuations, as_of_date)
+        candidates = find_name_candidates(pool, tm_players)
+        matched = keep_candidates_at_the_right_club(candidates, tm_valuations, as_of_date)
         if matched.empty:
             continue
         resolved_frames.append(resolve_market_values(matched, tm_valuations, as_of_date))

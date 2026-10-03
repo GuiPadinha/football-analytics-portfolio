@@ -38,7 +38,8 @@ def test_parse_clock_zero():
 def test_compute_minutes_played_sums_stints_and_picks_modal_position():
     lineups = {
         "Test FC": pd.DataFrame([{
-            "player_name": "Test Player",
+            "player_name": "Test Player Full Name",
+            "player_nickname": "Test Player",
             "positions": [
                 {"from": "00:00", "to": "60:00", "position": "Center Back"},   # 60 min
                 {"from": "60:00", "to": None, "position": "Right Back"},        # 30 min (to full time)
@@ -49,7 +50,8 @@ def test_compute_minutes_played_sums_stints_and_picks_modal_position():
 
     assert len(result) == 1
     row = result.iloc[0]
-    assert row["player"] == "Test Player"
+    assert row["player"] == "Test Player Full Name"
+    assert row["nickname"] == "Test Player"  # kept for Transfermarkt matching
     assert row["team"] == "Test FC"
     assert row["minutes_played"] == pytest.approx(90.0)
     # Primary position is the one with the most minutes, not the last one played.
@@ -63,10 +65,10 @@ def test_resolve_season_positions_weights_by_minutes_not_match_count():
     # (4 matches) over any single forward label (1 match each) and call him a
     # defender; minutes-weighting at the group level must call him a forward.
     rows = (
-        [{"player": "P", "team": "T", "position": "Right Wing", "minutes_played": 90},
-         {"player": "P", "team": "T", "position": "Left Wing", "minutes_played": 90},
-         {"player": "P", "team": "T", "position": "Center Forward", "minutes_played": 90}]
-        + [{"player": "P", "team": "T", "position": "Right Back", "minutes_played": 20}
+        [{"player": "P", "nickname": None, "team": "T", "position": "Right Wing", "minutes_played": 90},
+         {"player": "P", "nickname": None, "team": "T", "position": "Left Wing", "minutes_played": 90},
+         {"player": "P", "nickname": None, "team": "T", "position": "Center Forward", "minutes_played": 90}]
+        + [{"player": "P", "nickname": None, "team": "T", "position": "Right Back", "minutes_played": 20}
            for _ in range(4)]
     )
     result = resolve_season_positions(pd.DataFrame(rows))
@@ -83,12 +85,23 @@ def test_resolve_season_positions_total_minutes_span_all_positions():
     # A genuine two-position player: total minutes must be the full season
     # presence (both positions summed), not just minutes in the winning group.
     rows = [
-        {"player": "Q", "team": "T", "position": "Center Midfield", "minutes_played": 600},
-        {"player": "Q", "team": "T", "position": "Center Back", "minutes_played": 300},
+        {"player": "Q", "nickname": None, "team": "T", "position": "Center Midfield", "minutes_played": 600},
+        {"player": "Q", "nickname": None, "team": "T", "position": "Center Back", "minutes_played": 300},
     ]
     result = resolve_season_positions(pd.DataFrame(rows)).iloc[0]
     assert result["position_group"] == "Midfielder"      # 600 > 300
     assert result["minutes_played"] == pytest.approx(900.0)
+    assert result["nickname"] is None
+
+
+def test_resolve_season_positions_keeps_the_nickname_a_match_left_blank():
+    rows = [
+        {"player": "Jorge Resurrección Merodio", "nickname": "Koke", "team": "T",
+         "position": "Center Midfield", "minutes_played": 90},
+        {"player": "Jorge Resurrección Merodio", "nickname": None, "team": "T",
+         "position": "Center Midfield", "minutes_played": 90},
+    ]
+    assert resolve_season_positions(pd.DataFrame(rows)).iloc[0]["nickname"] == "Koke"
 
 
 def _player_pool():
@@ -165,7 +178,7 @@ def test_extract_goalkeeper_match_actions_counts_by_type():
 
 def test_goalkeeper_save_pct_is_saves_over_on_target_shots():
     season_minutes = pd.DataFrame({
-        "player": ["Keeper A", "Keeper B"], "team": ["T", "U"],
+        "player": ["Keeper A", "Keeper B"], "nickname": [None, None], "team": ["T", "U"],
         "position_group": ["Goalkeeper", "Goalkeeper"], "minutes_played": [1800.0, 1800.0],
     })
     actions = pd.DataFrame({
@@ -351,6 +364,7 @@ def _fake_season_sources(monkeypatch, loaded):
                         lambda lineups, duration: pd.DataFrame({"player": ["x"], "team": ["T"]}))
     monkeypatch.setattr(similarity, "resolve_season_positions", lambda minutes: pd.DataFrame({
         "player": ["Striker", "Sub", "Keeper"],
+        "nickname": [None, None, None],
         "team": ["T", "T", "T"],
         "position_group": ["Forward", "Defender", "Goalkeeper"],
         "minutes_played": [1800.0, 120.0, 1800.0],
@@ -406,7 +420,8 @@ def test_season_build_merges_a_club_named_two_ways_into_one_row(monkeypatch):
     monkeypatch.setattr(similarity, "load_lineups", lambda match_id: {
         marseille_name[match_id]: None, "Lorient": None})
     monkeypatch.setattr(similarity, "compute_minutes_played", lambda lineups, duration: pd.DataFrame(
-        {"player": ["Steve Mandanda"], "team": [next(t for t in lineups if t != "Lorient")],
+        {"player": ["Steve Mandanda"], "nickname": [None],
+         "team": [next(t for t in lineups if t != "Lorient")],
          "position": ["Goalkeeper"], "minutes_played": [90.0]}))
 
     def keeper_actions(events):

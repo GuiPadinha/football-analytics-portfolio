@@ -12,7 +12,9 @@ Phase 9 ongoing. Phases 5–7, the ML-depth work, are not started. The 2026-09-3
 and all its fixes were completed on 2026-10-02: HTTPS via the OS trust store, Python 3.12, the
 `app.py` restructure + app tests, and the repo/doc declutter. A deep audit (10-02/03) then found
 and fixed three data bugs the live app was showing (goalkeeper save %, Ligue 1 clubs split under two
-names, wrong-identity market values) plus a radar crash. Session detail is in
+names, wrong-identity market values) plus a radar crash. On 10-03 the live app moved to Python
+3.14, keepers started counting only on-target shots, and market values started matching on
+StatsBomb's nickname, with the club check breaking ties (Luis Suárez). Session detail is in
 [docs/PROGRESS.md](docs/PROGRESS.md); phases and backlog are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 **Next session, start here:**
@@ -28,8 +30,8 @@ dropped). Five more held-out tournaments rank as well (0.76–0.81): World Cup 2
 0.807, Women's World Cup 2023 0.777, Copa América 2024 0.763, Women's EURO 2025 0.763. EURO 2024 is
 near the bottom, not "the floor". Similarity: K=4 per position group, silhouette ~0.22–0.26 (a
 soft continuum) on the notebook's PL 2015/16 scope; the app's pool is 6 competitions and
-1,638 players, league-normalised, with goalkeepers clustered too. **1,168** players matched to a
-Transfermarkt market value (men's competitions, ~87%, each confirmed at the right club).
+1,638 players, league-normalised, with goalkeepers clustered too. **1,327** players matched to a
+Transfermarkt market value (men's competitions, ~99%, each confirmed at the right club).
 *(xG/similarity numbers come from
 [metrics.json](metrics.json) via `python -m src.metrics`. A doc-lint test fails the build if a
 current-state doc drifts on the headline xG numbers, the per-tournament AUCs, the silhouette

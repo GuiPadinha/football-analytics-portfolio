@@ -147,36 +147,40 @@ hosting R2 bucket returns `403` for Python's default UA, and for HEAD/Range requ
 directly, not assumed) and cached under `data/transfermarkt/`.
 
 **Entity resolution (the real cost, exactly as flagged in the original research spike):** there is
-no shared player ID between StatsBomb and Transfermarkt. `match_players_to_transfermarkt` resolves
-it with normalised-name matching — exact match first, then a rarity-weighted token-subset fallback
-for the very common "StatsBomb logs the full legal name, Transfermarkt logs the popular name" case
-(StatsBomb's "Cristiano Ronaldo dos Santos Aveiro" ↔ Transfermarkt's "Cristiano Ronaldo"). A plain
-"most tokens wins" rule was tried first and is a real, demonstrable trap for Lusophone/Hispanic
-full legal names: a coincidental collision built entirely from common surname tokens ("Santos",
-"Junior", "Silva", "Da") can outrank the correct match — it nearly matched Neymar to an unrelated
-real player, "Júnior Santos", purely because those tokens are common. Fixed by weighting tokens by
-inverse corpus frequency (so "neymar," genuinely rare, outweighs a same-length match built from
-common surnames) — see `_token_rarity_scores` and ML_LEARNING_LOG.md for the full account,
-including a second real bug (a name-construction particle like "de" winning by default when it was
-the *only* candidate, fixed by requiring at least one non-particle token). A name with zero or
-still-ambiguous candidates (e.g. two genuinely different real players who share a name and
-position) is left unmatched, never guessed.
+no shared player ID between StatsBomb and Transfermarkt, so players are matched in two steps.
 
-**Club check (added 2026-10-02):** a name match is kept only if Transfermarkt valued that player
-at the StatsBomb team's club within 12 months of the season (`keep_matches_at_the_right_club`).
-Name matching alone had attached other people's valuations to famous players with long legal
-names: Dani Alves, Koke, Gabi, Danilo, Fernandinho, Jonny Evans and David Silva (€100k from a 2024
-valuation). The check removes 76 of 1,244 name matches; reviewing them by hand, about two-thirds
-were wrong identities and the rest real players on loan or a mid-season move. Two data traps: the sources name clubs differently
-("Barcelona" vs "FC Barcelona"), so each team's Transfermarkt club is learned by majority vote
-over its matched players; and `player_valuations.current_club_id` is the player's club *today*,
-so only `current_club_name` (the club at the valuation date) can be used. Result: **~87% of the
-four men's competitions matched (1,168 of 1,347 players)**, every kept valuation from 2015–16.
-Spot-checked: Messi, Ronaldo, Neymar, Kane, Agüero, Ibrahimović and Higuaín all resolve to
-era-correct valuations; the players above are now honest blanks. Loanees valued at their parent
-club also become blanks, the accepted cost. **Luis Suárez (Barcelona) is still unmatched:**
-Transfermarkt has two same-position "Luis Suárez" profiles (born 1987 and 1997) and ambiguous
-names are dropped before the club check runs; see ROADMAP.md's Phase 9 list.
+1. **Name candidates** (`find_name_candidates`): every Transfermarkt player whose name fits, from
+   three kinds of evidence. The strongest is StatsBomb's own nickname for the player: its lineups
+   record the popular name ("Koke" for "Jorge Resurrección Merodio"), which is the name
+   Transfermarkt uses (added 2026-10-03). Then the full name, exactly. Last, the full name's best
+   token-subset match (StatsBomb's "Cristiano Ronaldo dos Santos Aveiro" ↔ Transfermarkt's
+   "Cristiano Ronaldo"). The subset match weights tokens by inverse corpus frequency: a plain "most
+   tokens wins" rule nearly matched Neymar to an unrelated "Júnior Santos", purely because
+   "Santos"/"Junior" are common surnames. A candidate made only of a name particle ("de") never
+   counts. See `_token_rarity_scores` and ML_LEARNING_LOG.md.
+2. **Club check** (`keep_candidates_at_the_right_club`, added 2026-10-02; it has also broken ties
+   since 2026-10-03). A candidate is kept only if Transfermarkt valued it at the StatsBomb team's
+   club within 12 months of the season, and a player is matched only if exactly one candidate is
+   left. Names alone had attached other people's valuations to famous players with long legal
+   names: Dani Alves, Koke, Gabi, Danilo, Fernandinho, Jonny Evans and David Silva (€100k from a
+   2024 valuation). Names also can't tell namesakes apart: Transfermarkt has two "Luis Suárez",
+   born 1987 and 1997. Two data traps: the sources name clubs differently ("Barcelona" vs "FC
+   Barcelona"), so each team's Transfermarkt club is learned by majority vote over its
+   single-candidate players; and `player_valuations.current_club_id` is the player's club
+   *today*, so only `current_club_name` (the club at the valuation date) can be used.
+
+Result: **~99% of the four men's competitions matched (1,327 of 1,347 players)**, every valuation
+from 2015–16. The 2026-10-03 changes added 159 players to the 2026-10-02 version (1,168) and
+changed none of its matches. The nickname and the club tiebreak account for 148 of them, including
+Suárez (€90M), Koke, Isco, Fàbregas, Diego Costa, David Silva, Marcelo, Dani Alves and Pepe. The
+other 11 come from two smaller fixes: letters with no plain-letter base are transliterated the way
+Transfermarkt spells them (Łukasz Fabiański → "Lukasz Fabianski", Đoković → "Djokovic"), and the
+nickname is also matched by its words ("Mikel John Obi", "Charly Musonda Jr."). All 159 were
+reviewed by hand. Messi, Ronaldo, Neymar, Kane, Agüero, Ibrahimović and Higuaín resolve to
+era-correct valuations as before. The 20 still blank are mostly spellings that share no word
+(Robbie/Robert Brady, Sebastien/Sebastian De Maio), bare common names with nothing distinctive to
+match (Nacho, Alex, Tiago), and loanees Transfermarkt values at their parent club (Ranocchia and
+Dodô at Inter).
 
 **Valuation is dated, not one number:** uses `player_valuations`' history, picking the entry
 nearest a representative "as of" date per competition (`market_value.MARKET_VALUE_AS_OF_DATES` —

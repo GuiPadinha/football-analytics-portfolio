@@ -208,6 +208,18 @@ Key gotchas and lessons — most recent first:
   before it's fed into any "higher = better" visual convention (colour, ranking, ordering), and
   that flip has to happen at the data layer, not hoped for at the display layer, or every chart
   reusing the same raw percentile inherits the same silent bug.
+- **Before building clever matching, look for the field the source already has** (2026-10-03,
+  market value). Months of name heuristics (token subsets, rarity weights, particle stopwords)
+  matched StatsBomb's legal names to Transfermarkt's popular ones, and still missed Koke, Isco,
+  Casemiro and Pepe: nothing in "Jorge Resurrección Merodio" is in "Koke". StatsBomb's lineups had
+  `player_nickname` ("Koke") all along, for 568 of the 1,347 men's players. The second lesson is
+  about ordering. Ambiguity used to be resolved by names alone (exactly one candidate, else drop)
+  and the club check ran after, so two Transfermarkt "Luis Suárez" profiles meant no value for
+  Barcelona's. Now names only *propose* candidates and the club *decides*: the independent signal
+  goes where the decision is made. With two smaller fixes (letters like Ł and Đ transliterated,
+  and the nickname also matched by its words), matches went from 1,168 to 1,327 (~99%). No
+  existing match changed, and all 159 new ones were reviewed by hand. The position tiebreak
+  below then changed nothing, so it was removed.
 - **A naive "most tokens wins" name-matching rule has a real, demonstrable failure mode on
   Lusophone/Hispanic full legal names — common surname tokens can outrank a rarer, correct
   mononym match** (2026-07-14, Transfermarkt market-value entity resolution). Matching
