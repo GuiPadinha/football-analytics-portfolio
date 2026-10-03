@@ -7,25 +7,34 @@ Project source of truth. Read this first every session, then load linked docs on
 ## Current Status (updated 2026-10-03)
 
 **Where we are:** Phases 0–4 ✅ (4c closed 2026-10-01 with two women's tournaments; **4e**, new data
-sources + 360, is pinned), Phase 8 ✅ ([live app](https://gpfootball-analytics-portfolio.streamlit.app)),
+sources + 360, started 2026-10-03 with the women's leagues), Phase 8 ✅ ([live app](https://gpfootball-analytics-portfolio.streamlit.app)),
 Phase 9 ongoing. Phases 5–7, the ML-depth work, are not started. The 2026-09-30 repo health check
 and all its fixes were completed on 2026-10-02: HTTPS via the OS trust store, Python 3.12, the
 `app.py` restructure + app tests, and the repo/doc declutter. A deep audit (10-02/03) then found
 and fixed three data bugs the live app was showing (goalkeeper save %, Ligue 1 clubs split under two
 names, wrong-identity market values) plus a radar crash. On 10-03 the live app moved to Python
 3.14, keepers started counting only on-target shots, and market values started matching on
-StatsBomb's nickname, with the club check breaking ties (Luis Suárez). Session detail is in
+StatsBomb's nickname, with the club check breaking ties (Luis Suárez). Then the pool grew to 9
+competitions (three more women's leagues), and Guilherme judged the app "numbers, no insights,
+cheap-looking": a redesign was agreed. Session detail is in
 [docs/PROGRESS.md](docs/PROGRESS.md); phases and backlog are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
-**Next session, start here:**
-1. **Check the live app.** It was redeployed on 2026-10-03 on the Cloud's default Python, 3.14, and
-   must answer at gpfootball-analytics-portfolio.streamlit.app (if not, set that subdomain in the
-   app's Settings on share.streamlit.io). Local development stays on 3.12; CI tests both.
-   VS Code must have been restarted after 2026-10-03 so it sees `FAP_CACHE_DIR` (the per-match
-   cache now lives outside OneDrive); a process that doesn't see it prints where it downloads.
-2. Then model work: **Phase 5a** (uncertainty on goals−xG), recommended since 2026-07-14. Score
-   each shot with a model that never saw it (out-of-fold xG): ML_LEARNING_LOG.md's 2026-10-03
-   entry measured how little in-sample xG shifts today, and why 5a should still not use it.
+**Next session, start here (agreed order):**
+1. **App redesign, conclusions first** (Streamlit kept). Approved mockup:
+   https://claude.ai/artifact/PjwLKvcswLnErrfBFaj1tR (Home with findings; a player page as three
+   questions: style, are the goals real, who plays like him and cheaper; Compare with a verdict).
+   Start with the rule-based text generators (the "short version" and the compare verdict: tested
+   thresholds, no LLM), checked on 10–15 real players (incl. women, keepers, no-xG players). Then
+   the pages: popular names (`nickname`), separate men's/women's top-5 lookalikes both ways, any
+   two outfielders comparable, no σ/Euclidean/silhouette on player pages (methodology page only),
+   native charts instead of matplotlib images, top navigation. Build and push in stages.
+2. **Wyscout 2017/18** (Phase 4e): the only route to more men's data and a second season.
+3. **Phase 5a** (uncertainty on goals−xG). Score each shot with a model that never saw it
+   (out-of-fold xG): see ML_LEARNING_LOG.md's 2026-10-03 entry.
+
+Environment: the live app runs Python 3.14 at gpfootball-analytics-portfolio.streamlit.app; local
+is 3.12; CI tests both. `FAP_CACHE_DIR` (cache outside OneDrive) is visible after VS Code's
+2026-10-03 restart.
 
 Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts
 dropped). Five more held-out tournaments rank as well (0.76–0.81): World Cup 2022 0.808, AFCON 2023

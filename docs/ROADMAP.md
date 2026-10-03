@@ -26,7 +26,7 @@ was folded in — the old Phase 3 (360 xG) and Phase 5 (product) moved *later* b
 | **1** | Foundation: `config.py`, per-match cache, penalty/shootout fix, pinned deps, robustness fixes, first tests | 1 | ✅ Done |
 | **2** | ML rigor: cross-validation, scaled logistic, baseline feature engineering, calibrated GBM, silhouette, minutes-weighted position | 2 | ✅ Done |
 | **3** | Engineering & reproducibility spine: CI, `pipeline.py`, `metrics.json` single-source, data manifest | *new* | ✅ Done |
-| **4** | Multi-competition ingestion + data expansion: config-driven pipeline, Module A generalization, Module B cross-league | 4 (reshaped) | 🟡 4a–4d done (4c closed 2026-10-01: 5 held-out tournaments incl. 2 women's); **4e pinned** (new sources + 360, see Phase 4e below) |
+| **4** | Multi-competition ingestion + data expansion: config-driven pipeline, Module A generalization, Module B cross-league | 4 (reshaped) | 🟡 4a–4d done (4c closed 2026-10-01: 5 held-out tournaments incl. 2 women's); **4e started** 2026-10-03 (3 women's leagues added; Wyscout next, see Phase 4e below) |
 | **5** | xG uncertainty + hierarchical/empirical-Bayes finishing model; header/foot interaction; calibration by stratum | *new* | ⬜ Not started |
 | **6** | Module B upgrades: Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features | part of old 6 | ⬜ Not started |
 | **7** | New model: 360-context xG + post-shot xG (xGOT) | **3** | ⬜ Not started |
@@ -313,6 +313,10 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
 
 ### Open — app / product
 
+- **Redesign: conclusions first** (agreed 2026-10-03, next session). Guilherme's verdict on the
+  live app: numbers and method everywhere, no insights, cheap-looking and buggy charts. Plan and
+  approved mockup (https://claude.ai/artifact/PjwLKvcswLnErrfBFaj1tR) are in CLAUDE.md's
+  "Next session". It replaces several items below (Leaderboard filter, visual pass).
 - **Leaderboard's name filter still needs Enter** — flagged 2026-07-14 (cont.), deliberately not
   fixed that session: it's an `st.text_input` feeding a multi-row `st.dataframe`, not a single-pick
   widget, so the live-filtering-selectbox trick that fixed the other three search boxes that
