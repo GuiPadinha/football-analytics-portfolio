@@ -12,15 +12,14 @@ on:
 jobs:
   pytest:
     # Pinned rather than ubuntu-latest, which moves to Ubuntu 26 from 2026-10-19: setup-python's
-    # prebuilt interpreters for a brand-new image can lag, and this job still tests Python 3.10.
-    # Revisit once 3.10 is dropped from the matrix.
+    # prebuilt interpreters for a brand-new image can lag. Move to a new image deliberately.
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        # 3.10: what the live app is deployed on today (EOL 2026-10-31).
-        # 3.12: the migration target. Drop 3.10 once the Streamlit Cloud app is redeployed on 3.12.
-        python-version: ["3.10", "3.12"]
+        # 3.12: the local development interpreter. 3.14: what the live app runs on (Streamlit
+        # Community Cloud's default since the 2026-10-03 redeploy).
+        python-version: ["3.12", "3.14"]
     steps:
       - uses: actions/checkout@v7   # checkout@v4 / setup-python@v5 targeted deprecated Node 20
         with:
@@ -71,10 +70,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up Python 3.12
+      - name: Set up Python 3.14
         uses: actions/setup-python@v7
         with:
-          python-version: "3.12"
+          python-version: "3.14"
           cache: pip
 
       - name: Install the app's runtime dependencies only

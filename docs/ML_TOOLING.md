@@ -13,7 +13,9 @@ Windows-specific friction hit while building this project. Written so they don't
 `winget install --id Python.Python.3.12 -e --source winget --scope user`; `--source winget` is
 needed because the ID also matches the msstore source. It sits first on the user PATH, so new
 terminals get it as `python`. Python 3.10 stays installed (`...\Python310\`) as a rollback, and the
-`py` launcher lists both. The Windows Store "App execution alias" stub can shadow either. Fix:
+`py` launcher lists both. The live app runs on 3.14 (Streamlit Cloud's default, see below); 3.14.7
+is also installed here (Python install manager, `py -3.14`) for testing against it. The Windows
+Store "App execution alias" stub can shadow any of them. Fix:
 call by full path when bare `python` fails:
 ```
 & "C:\Users\guilh\AppData\Local\Programs\Python\Python312\python.exe" script.py
@@ -428,6 +430,20 @@ py -3.12 -m venv $env:TEMP\fapaudit
 ```
 Result on 2026-10-02: no known vulnerabilities in any pinned package, transitive ones included.
 Delete the venv afterwards.
+
+## Streamlit Cloud app crashes on `import matplotlib`: the package install failed
+
+Hit 2026-10-03 on the redeploy. The new app showed `ModuleNotFoundError` at `app.py`'s first
+third-party import (`matplotlib`). Streamlit and its own dependencies (pandas, numpy, pyarrow)
+come pre-installed, so when installing `requirements.txt` fails, the app still starts, with only
+those. The cause: the deploy form's Python had been left on the Cloud default, 3.14, and the pinned
+numpy 2.2.6 has no 3.14 wheel, so the whole install failed. Fix chosen: bump numpy to 2.3.5,
+the oldest line with 3.14 wheels, rather than redeploy on 3.12. Before pinning, check that every
+runtime package has a wheel for the Cloud's Python (PyPI's JSON API lists them:
+`https://pypi.org/pypi/<package>/<version>/json`). The first lines of the app's log ("Manage
+app") show the Python version and the failed install. Another trap from the same deploy: leaving
+"App URL" blank gives a random subdomain, and the old link 404s until the subdomain is set in the
+app's settings.
 
 ## How to use this file
 

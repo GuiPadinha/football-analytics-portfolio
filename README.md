@@ -243,7 +243,7 @@ Python · `statsbombpy` · `kloppy` · pandas · numpy · scikit-learn · `mplso
 
 ## Running it
 
-Python 3.10 or 3.12 (both tested in CI).
+Python 3.12 or 3.14 (both tested in CI; the live app runs on 3.14).
 
 ```bash
 pip install -r requirements-dev.txt     # everything: ingestion, notebooks, pipeline, tests

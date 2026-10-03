@@ -16,11 +16,10 @@ names, wrong-identity market values) plus a radar crash. Session detail is in
 [docs/PROGRESS.md](docs/PROGRESS.md); phases and backlog are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 **Next session, start here:**
-1. **Redeploy the Streamlit Cloud app on Python 3.12.** A deployed app can't change Python, so
-   delete and redeploy it with the same subdomain; steps are in ROADMAP.md's Phase 9 "Python
-   3.10 → 3.12" item, and Guilherme approved doing it. Then drop 3.10 from the CI matrix, unpin
-   `ubuntu-24.04`, and do that item's doc pass. Python 3.10 reaches EOL on 2026-10-31.
-   VS Code must have been restarted after 2026-10-02 so it sees `FAP_CACHE_DIR` (the per-match
+1. **Check the live app.** It was redeployed on 2026-10-03 on the Cloud's default Python, 3.14, and
+   must answer at gpfootball-analytics-portfolio.streamlit.app (if not, set that subdomain in the
+   app's Settings on share.streamlit.io). Local development stays on 3.12; CI tests both.
+   VS Code must have been restarted after 2026-10-03 so it sees `FAP_CACHE_DIR` (the per-match
    cache now lives outside OneDrive); a process that doesn't see it prints where it downloads.
 2. Then model work: **Phase 5a** (uncertainty on goals−xG), recommended since 2026-07-14.
 
@@ -35,7 +34,7 @@ Transfermarkt market value (men's competitions, ~87%, each confirmed at the righ
 [metrics.json](metrics.json) via `python -m src.metrics`. A doc-lint test fails the build if a
 current-state doc drifts on the headline xG numbers, the per-tournament AUCs, the silhouette
 range or the app-pool numbers, and `tests/test_app_data.py` checks the shipped app tables. `python -m src.pipeline` rebuilds data, models and outputs headless, and
-`metrics.json` and the PNGs come out byte-identical on Python 3.10 and 3.12. `python -m
+`metrics.json` and the PNGs come out byte-identical on Python 3.12 and 3.14. `python -m
 src.app_data` rebuilds the app's data separately, in ~3–5 min.)*
 
 ---
@@ -92,7 +91,7 @@ docs/
   ML_TOOLING.md          ← Windows/environment gotchas
   CONTEXT.md             ← owner, learning goals, career context
   PITCH.md               ← pre-demo cheat sheet, refreshed by hand
-.github/workflows/tests.yml  ← CI: pytest on 3.10 + 3.12, plus an app-runtime-only smoke job
+.github/workflows/tests.yml  ← CI: pytest on 3.12 + 3.14, plus an app-runtime-only smoke job (3.14)
 .githooks/pre-commit         ← enforces the doc-log rule below
 .streamlit/config.toml       ← app theme
 ```

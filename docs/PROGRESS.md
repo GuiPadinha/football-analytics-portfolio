@@ -6,6 +6,23 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-10-03 — Live app moved to Python 3.14
+
+Guilherme deleted the 3.10 app and redeployed. The new app crashed with `ModuleNotFoundError:
+matplotlib`: its Python was the Cloud default, 3.14, and the pinned numpy 2.2.6 has no 3.14 wheel,
+so nothing beyond Streamlit's own packages got installed (ML_TOOLING.md). Guilherme asked why not
+just use 3.14. No reason not to: it's the Cloud default and supported until 2030.
+- numpy 2.2.6 → 2.3.5, the only pin without 3.14 wheels. Every other runtime pin has them.
+- Verified on 3.14.7 (local venv) and 3.12: 171 tests pass on both. The app's tests also pass
+  with only `requirements.txt` installed, as on the Cloud. Pipeline outputs are identical across
+  the two versions. `metrics.json` is unchanged, while `feature_importance.png` moved in the third
+  decimal from the numpy bump (ML_LEARNING_LOG.md).
+- CI matrix is now 3.12 (local) + 3.14 (Cloud), with the `app-runtime` job on 3.14. The runner stays
+  pinned to `ubuntu-24.04`, so the image changes only on purpose. 3.10 references updated in the
+  docs.
+
+---
+
 ## 2026-10-02 → 10-03 — Deep audit: three shipped data bugs, then hardening
 
 Guilherme wasn't confident two health checks had found everything and asked for a ground-up

@@ -4,8 +4,8 @@
 
 **Status:** live at
 [gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app)
-since 2026-07-09 (Streamlit Community Cloud, Python 3.10 until the 3.12 redeploy in ROADMAP.md's
-Phase 9). This file describes the app **as it is**. How it got here, session by session, is in
+since 2026-07-09 (Streamlit Community Cloud; redeployed on Python 3.14 on 2026-10-03, see
+ROADMAP.md's Phase 9). This file describes the app **as it is**. How it got here, session by session, is in
 [PROGRESS.md](PROGRESS.md) / [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md). The design decisions
 worth not re-litigating are in the **UX decision log** below.
 

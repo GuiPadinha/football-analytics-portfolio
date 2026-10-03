@@ -10,6 +10,14 @@ Companion to CLAUDE.md. Running record of ML/stats concepts exercised, gotchas h
 
 Key gotchas and lessons — most recent first:
 
+- **A dependency bump can move a model's numbers with no code change** (2026-10-03, numpy 2.2.6 →
+  2.3.5 for the Python 3.14 Cloud). `metrics.json` stayed byte-identical, but the GBM feature
+  importances moved in the third decimal (`angle_to_goal` ~0.397 → ~0.396), so
+  `feature_importance.png` changed. The ranking didn't move. 3.12 and 3.14 on the new numpy give
+  identical outputs, so the cause is numpy's arithmetic, not Python. The likely reason only the GBM
+  moved: a tree keeps whichever split has the highest gain, so a last-bit difference can flip a
+  near-tie and change every split below it. The logistic optimum moves smoothly instead. Commit the
+  regenerated chart with the bump, and treat the third decimal of a tree importance as noise.
 - **A CV mean can be robust while its spread isn't** (2026-10-02, deep audit). `cross_validate`
   with `cv=5` doesn't shuffle, so the folds are contiguous blocks of the training data in match
   order (fold 0 holds all the Leverkusen shots), not the "random slices" the docstring claimed.

@@ -31,7 +31,7 @@ was folded in — the old Phase 3 (360 xG) and Phase 5 (product) moved *later* b
 | **6** | Module B upgrades: Mahalanobis distance, possession-adjusted actions, GMM soft membership, richer creative features | part of old 6 | ⬜ Not started |
 | **7** | New model: 360-context xG + post-shot xG (xGOT) | **3** | ⬜ Not started |
 | **8** | Product layer: lightweight Streamlit app — [spec done](PRODUCT_SPEC.md) 2026-07-01, minimal v1 built 2026-07-04 | **5** | ✅ Done — [live](https://gpfootball-analytics-portfolio.streamlit.app) (deployed 2026-07-09) |
-| **9** | Opportunistic: xA/chance-creation model, Module C (PUP), remaining alt-models (hierarchical, cosine, monotonic GBM), 2026 World Cup predictive model (data-availability check first) | old 6 + Module C | 🟡 Ongoing: market value, Compare players, scouting blurb shipped (2026-07-14); Python 3.12 repo + local done (2026-10-02, Cloud redeploy pending); the rest not started — see Phase 9 below |
+| **9** | Opportunistic: xA/chance-creation model, Module C (PUP), remaining alt-models (hierarchical, cosine, monotonic GBM), 2026 World Cup predictive model (data-availability check first) | old 6 + Module C | 🟡 Ongoing: market value, Compare players, scouting blurb shipped (2026-07-14); off Python 3.10 (3.12 local, 3.14 Cloud, 2026-10-03); the rest not started — see Phase 9 below |
 
 Execution order: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8, with 9 opportunistic. Per-phase task lists
 follow further down this file.
@@ -301,8 +301,8 @@ the UX decisions behind it, are in [PRODUCT_SPEC.md](PRODUCT_SPEC.md).
 
 **Deployed 2026-07-09** to Streamlit Community Cloud:
 [gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app)
-— Python version pinned to 3.10 in the deploy's advanced settings (matches `requirements.txt`'s
-tested versions; Cloud's newer default risked missing wheels for `kloppy`/`pyarrow`). Real-browser
+— first on Python 3.10, picked in the deploy's advanced settings to match the tested pins.
+Redeployed on 2026-10-03 on the Cloud's default, Python 3.14 (Phase 9 below). Real-browser
 rendering already confirmed locally via Playwright-over-Edge (2026-07-08) and now confirmed live in
 the cloud by Guilherme directly.
 
@@ -331,7 +331,7 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
     product call on whether that tradeoff is worth it for a browse-and-sort view.
   - **A third-party live-search component** (e.g. `streamlit-searchbox`) or a custom bidirectional
     component with real debounce. Would need a new `requirements.txt` dependency, re-verification
-    on Streamlit Community Cloud's pinned Python 3.10, and more moving parts for one filter box —
+    on Streamlit Community Cloud's Python 3.14, and more moving parts for one filter box —
     the highest-effort, highest-risk option of the three.
   - `st.fragment` (partial reruns) was considered and ruled out on inspection: it changes *what*
     reruns on an interaction, not *when* — it wouldn't make `text_input` rerun on keystroke, so it
@@ -401,25 +401,6 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
 
 ### Open — infrastructure
 
-- **Python 3.10 → 3.12** — flagged 2026-07-09 (the Streamlit Cloud deploy chose 3.10 to match the
-  pinned requirements), deferred as housekeeping until the 2026-09-30 health check found a real
-  deadline: **3.10 reaches end-of-life on 2026-10-31**. *Repo side done 2026-10-01:* the same
-  pins install on 3.12 (all have wheels). The full suite passes on 3.12 locally (an isolated `uv`
-  env) and CI now runs a 3.10/3.12 matrix. A new `app-runtime` CI job installs only
-  `requirements.txt`, mirroring the Cloud. The app no longer needs `statsbombpy`/`kloppy` at all
-  (lazy imports; requirements split into runtime vs. `requirements-dev.txt`). *Local switch done 2026-10-02:* Python 3.12.10 installed per-user and put first on PATH (3.10
-  kept as rollback). `requirements-dev.txt` is installed into it, the full suite passes, and a
-  `fap312` Jupyter kernel and the VS Code interpreter point at it (see ML_TOOLING.md). *Still
-  open, needs Guilherme's Streamlit account:* **redeploy the Cloud app on 3.12**. Per
-  [Streamlit's docs](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app/upgrade-python),
-  the Python version can't be changed on a deployed app. Delete it, then deploy again from
-  `GuiPadinha/football-analytics-portfolio`, branch `main`, entrypoint `app.py`, with the custom
-  subdomain `gpfootball-analytics-portfolio` and Python 3.12 under Advanced settings. The app has
-  no secrets. Then drop 3.10 from the CI matrix and unpin the runner from `ubuntu-24.04`.
-  *Same pass (listed by the 2026-10-02 re-audit):* update what still calls 3.10 the live version:
-  the `tests.yml` matrix comments, README "Running it", CLAUDE.md (status + layout line),
-  PRODUCT_SPEC.md's intro, PITCH.md, and the Leaderboard item above ("pinned Python 3.10").
-  (The notebooks were already re-executed on 3.12 on 2026-10-02: identical results.)
 - **Data-engineering showcase: a cloud ELT layer** (flagged 2026-10-02 from a LinkedIn post
   Guilherme shared): [paolomagni/football-platform](https://github.com/paolomagni/football-platform)
   ingests football-data.org into GCP. The stack is Cloud Run ingestion → Cloud Storage → BigQuery →
@@ -442,6 +423,11 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
 - **2026-10-02 re-audit fixes** — the similarity-table cache now rebuilds when its columns change;
   the doc-lint also covers the per-tournament AUCs and the silhouette range; restructure leftovers
   (dead archive links, a Makefile mention) cleaned up; notebooks re-executed on 3.12.
+- **Off Python 3.10 before its 2026-10-31 end of life** (2026-10-01 → 03): local development on
+  3.12, the Cloud app on its default 3.14 (it can't change Python in place, so it was deleted and
+  redeployed), CI on both plus an `app-runtime` job on 3.14 that installs only
+  `requirements.txt`. numpy 2.2.6 had no 3.14 wheels, so it went to 2.3.5, which moved the GBM
+  importances in the third decimal (ML_LEARNING_LOG.md); `metrics.json` is unchanged.
 - **Faster `python -m src.app_data`** (2026-10-02): 636 s → 191 s with identical output. Two changes:
   one pass per competition for outfield and goalkeeper tables (`build_season_per90_tables`), and
   the cache moved out of OneDrive (`FAP_CACHE_DIR`), whose file filter slowed every read. It stays

@@ -54,8 +54,8 @@ colleague pitch (date TBD — today or the next day at the time of writing).
   tournaments it never trained on, **2 of them women's** — used to check it generalises.
 - **1,168** players matched to a real Transfermarkt market value (men's competitions only, each
   confirmed at the player's club that season — see the Roadmap section below for the coverage caveat).
-- **~150** automated tests, including smoke tests of every app view, run on every push on Python
-  3.10 and 3.12; a one-command rebuild (`python -m src.pipeline`) that reproduces every number and
+- **~170** automated tests, including smoke tests of every app view, run on every push on Python
+  3.12 and 3.14; a one-command rebuild (`python -m src.pipeline`) that reproduces every number and
   chart byte-for-byte; and a live deployed app.
 
 *(The first two lines are the app's "About & Roadmap" → "What's been built" tiles; market value
