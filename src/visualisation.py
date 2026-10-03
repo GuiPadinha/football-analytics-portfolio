@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from mplsoccer import Pitch, Radar
 
+from src.presentation import STAT_LABELS
 from src.similarity import LOWER_IS_BETTER_STATS
 
 # Fixed seed for mplsoccer's random grass texture, so the same shots always render the same PNG.
@@ -189,7 +190,7 @@ def _radar_axes(population, feature_columns):
     population's 5th-95th percentile (see `plot_player_radar` for why not min/max), with
     lower-is-better stats (goals conceded) reversed so "further out" always means "better".
     """
-    labels = [col.replace("_p90", "").replace("_", " ").title() for col in feature_columns]
+    labels = [STAT_LABELS.get(col, col.replace("_p90", "").replace("_", " ").title()) for col in feature_columns]
     lower_is_better = [
         label for col, label in zip(feature_columns, labels) if col in LOWER_IS_BETTER_STATS
     ]

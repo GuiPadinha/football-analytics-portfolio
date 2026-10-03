@@ -220,6 +220,9 @@ def extract_player_match_actions(events):
     shot_counts = shots.groupby(["player", "team"]).size().rename("shots")
 
     passes = events[events["type"] == "Pass"].copy()
+    # StatsBomb sets `pass_shot_assist` only when the shot didn't score; a pass that set up a goal
+    # gets `pass_goal_assist` instead. So key_passes and assists never overlap (no double count
+    # when clustering), and key_passes alone is lower than the usual "key passes" figure.
     key_passes = (
         passes[safe_bool_column(passes, "pass_shot_assist")]
         .groupby(["player", "team"]).size().rename("key_passes")

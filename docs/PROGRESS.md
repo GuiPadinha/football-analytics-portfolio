@@ -26,6 +26,10 @@ docs were read, and each suspicion was checked against real data before acting.
   76 of 1,244 matches removed, 1,168 kept (~87%), all stars still correct.
 
 **Also fixed:**
+- *"Key Passes" label:* StatsBomb flags a pass that set up a goal as an assist and never also as
+  a shot assist (0 overlaps in 120 matches), so the count excludes assists (Özil: 123 + 19). The
+  feature stays as is: disjoint is cleaner for clustering. The label now reads "Key Passes (excl.
+  Assists)" in the app and on the radar; only `player_radar_examples.png` changed.
 - A page crash when fewer than three radar axes were selected. Goals Conceded is now drawn
   reversed on the radar.
 - Cache writes are atomic (`net.write_atomically`). The manifest now pins the six similarity

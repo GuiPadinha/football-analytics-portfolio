@@ -138,6 +138,10 @@ Key gotchas and lessons — most recent first:
     loanees that became safe blanks). Data trap on the way: `player_valuations.current_club_id` is
     the club *today*; only `current_club_name` is the club at that date.
 
+  - *Key passes (label, not data).* Same family: `pass_shot_assist` is only set when the shot
+    didn't score, so "key passes" excluded assists. The definition was kept (no double counting
+    in clustering); the displayed name now says "excl. Assists".
+
   The habit to keep: for every derived stat, find one number it must equal or stay within (shots,
   20 teams, a ~70% save rate, a valuation from the right year) and assert it, ideally in a test
   that reads the shipped data.

@@ -421,3 +421,17 @@ def test_season_build_merges_a_club_named_two_ways_into_one_row(monkeypatch):
     ]
     assert set(actions["team"]) == {"Olympique de Marseille"}
 
+
+
+def test_a_pass_that_set_up_a_goal_is_an_assist_not_a_key_pass():
+    # StatsBomb flags it pass_goal_assist only (never also pass_shot_assist), so the two counts
+    # never overlap; the app labels key passes "excl. Assists" for that reason.
+    events = pd.DataFrame([
+        {"type": "Pass", "player": "Ozil", "team": "T", "pass_goal_assist": True,
+         "pass_shot_assist": np.nan, "pass_outcome": np.nan, "location": [80, 40], "pass_end_location": [100, 40]},
+        {"type": "Pass", "player": "Ozil", "team": "T", "pass_goal_assist": np.nan,
+         "pass_shot_assist": True, "pass_outcome": np.nan, "location": [80, 40], "pass_end_location": [85, 40]},
+    ])
+    row = extract_player_match_actions(events).set_index("player").loc["Ozil"]
+    assert row["assists"] == 1
+    assert row["key_passes"] == 1

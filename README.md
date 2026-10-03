@@ -122,7 +122,7 @@ a target player (for budget reasons, for a like-for-like replacement, for scouti
 league) using their actual on-pitch output rather than name recognition.
 
 ### Approach
-- Per-90 event metrics (non-penalty goals, shots, key passes, assists, progressive passes,
+- Per-90 event metrics (non-penalty goals, shots, key passes excluding assists, assists, progressive passes,
   dribbles, pressures, interceptions, tackles, clearances, blocks) built from StatsBomb event data,
   **Premier League 2015/16**, 300 players clearing a 900-minute appearance floor.
 - Clustering run **separately within each position group** (Defender / Midfielder / Forward,
