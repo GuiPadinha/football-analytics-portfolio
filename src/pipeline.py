@@ -8,7 +8,7 @@ replace the notebooks' narrative; it's the reproducibility path alongside them.
 
 Usage:
     python -m src.pipeline                # rebuild, reusing existing data/ caches
-    python -m src.pipeline --force        # ignore caches, re-pull from StatsBomb
+    python -m src.pipeline --force        # rebuild the processed tables from the per-match cache
     python -m src.pipeline --skip-plots   # data + manifest/metrics only, no PNGs
 
 Order matters: the shot tables and per-90 table must exist before `metrics.json` can
@@ -38,6 +38,8 @@ from src.models import (
     train_logistic_regression,
 )
 from src.similarity import (
+    CLUSTER_K,
+    OUTFIELD_GROUPS,
     PER90_FEATURE_COLUMNS,
     PER90_TABLE_COLUMNS,
     build_player_per90_features,
@@ -62,11 +64,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "data"
 OUTPUTS_DIR = REPO_ROOT / "outputs"
 
-# Position groups in doc order (Defender / Midfielder / Forward) and the K kept
-# deliberately against the silhouette metric's preferred K=2 (Phase 2, notebook 03 —
-# archetype granularity beats the metric's blob-separation preference).
-POSITION_GROUPS = ["Defender", "Midfielder", "Forward"]
-CLUSTER_K = 4
 ELBOW_K_RANGE = range(2, 9)
 
 # One example player per position group for the radar-chart deliverable (notebook 03, S7).
@@ -270,13 +267,13 @@ def run_similarity_pipeline(per90_features, outputs_dir=OUTPUTS_DIR):
     """Cluster each position group and regenerate every Module B output PNG (notebook 03)."""
     outputs_dir = Path(outputs_dir)
     groups = {}
-    for position_group in POSITION_GROUPS:
+    for position_group in OUTFIELD_GROUPS:
         subset = per90_features[per90_features["position_group"] == position_group].reset_index(drop=True)
         X_scaled, _ = scale_features(subset)
         groups[position_group] = {"data": subset, "X_scaled": X_scaled}
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
-    for ax, position_group in zip(axes, POSITION_GROUPS):
+    for ax, position_group in zip(axes, OUTFIELD_GROUPS):
         inertias = compute_elbow_scores(groups[position_group]["X_scaled"], k_range=ELBOW_K_RANGE)
         plot_elbow_curve(
             inertias, chosen_k=CLUSTER_K, ax=ax,
@@ -287,7 +284,7 @@ def run_similarity_pipeline(per90_features, outputs_dir=OUTPUTS_DIR):
     plt.close(fig)
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
-    for ax, position_group in zip(axes, POSITION_GROUPS):
+    for ax, position_group in zip(axes, OUTFIELD_GROUPS):
         silhouettes = compute_silhouette_scores(groups[position_group]["X_scaled"], k_range=ELBOW_K_RANGE)
         plot_silhouette_curve(
             silhouettes, ax=ax, title=f"{position_group} (n={len(groups[position_group]['data'])})",
@@ -296,14 +293,14 @@ def run_similarity_pipeline(per90_features, outputs_dir=OUTPUTS_DIR):
     fig.savefig(outputs_dir / "similarity_silhouette_curves.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
 
-    for position_group in POSITION_GROUPS:
+    for position_group in OUTFIELD_GROUPS:
         g = groups[position_group]
         _, labels = fit_kmeans(g["X_scaled"], n_clusters=CLUSTER_K)
         g["labels"] = labels
         g["data"]["cluster"] = labels
 
     fig, axes = plt.subplots(1, 3, figsize=(16, 5))
-    for ax, position_group in zip(axes, POSITION_GROUPS):
+    for ax, position_group in zip(axes, OUTFIELD_GROUPS):
         g = groups[position_group]
         components, pca = run_pca(g["X_scaled"])
         plot_pca_clusters(
@@ -353,7 +350,7 @@ def run(force=False, skip_plots=False, data_dir=DATA_DIR, outputs_dir=OUTPUTS_DI
 
     print("[6/6] Writing data/manifest.json and metrics.json...")
     write_manifest()
-    write_metrics()
+    write_metrics(data_dir=data_dir, per90_features=per90_features)
     print("Done.")
 
 
@@ -362,7 +359,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--force", action="store_true",
-        help="Ignore existing data/ caches and re-pull/re-engineer from raw StatsBomb data.",
+        help="Rebuild the processed tables from the per-match cache instead of reusing them "
+        "(downloads only matches the cache doesn't have yet).",
     )
     parser.add_argument(
         "--skip-plots", action="store_true",

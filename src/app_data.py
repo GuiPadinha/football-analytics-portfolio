@@ -24,9 +24,9 @@ Market value (Phase 9, same-day follow-up): `market_value.build_market_value_tab
 external Transfermarkt valuation per player, written as its own artifact
 (`app_data/market_value.parquet`) rather than joined into `player_per90.parquet` — it needs a
 network pull (cached under `data/transfermarkt/`, see that module), so keeping it a separate,
-independently-rebuildable step means a normal `python -m src.app_data` run doesn't need network
-access if the Transfermarkt cache is already warm, and a stale/missing market-value pull can't
-block the rest of the build. Only ever resolved for the four men's competitions in
+independently-rebuildable step means a warm cache is never re-downloaded, and a stale/missing
+market-value pull can't block the rest of the build. (StatsBomb match listings are fetched on
+every build either way; they aren't cached.) Only ever resolved for the four men's competitions in
 `market_value.MARKET_VALUE_AS_OF_DATES` — see that module's docstring for why.
 
 Usage:
@@ -40,9 +40,11 @@ import pandas as pd
 from src import config
 from src.market_value import build_market_value_table
 from src.models import build_feature_matrix, build_player_xg_table, train_logistic_regression
-from src.pipeline import CLUSTER_K, POSITION_GROUPS, build_shot_tables
+from src.pipeline import build_shot_tables
 from src.similarity import (
+    CLUSTER_K,
     GK_PER90_FEATURE_COLUMNS,
+    OUTFIELD_GROUPS,
     PER90_FEATURE_COLUMNS,
     build_season_per90_tables,
     fit_kmeans,
@@ -108,7 +110,7 @@ def _cluster_position_groups(per90_features, position_groups, feature_columns, n
     Args:
         per90_features (pandas.DataFrame): either table from `_build_combined_tables` — must
             carry `position_group` and `competition`.
-        position_groups (list[str]): groups to cluster, e.g. `POSITION_GROUPS` (outfield) or
+        position_groups (list[str]): groups to cluster, e.g. `OUTFIELD_GROUPS` or
             `["Goalkeeper"]`.
         feature_columns (list[str]): raw per-90 columns to normalise and cluster on (
             `PER90_FEATURE_COLUMNS` or `GK_PER90_FEATURE_COLUMNS`).
@@ -136,8 +138,8 @@ def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
     Args:
         app_data_dir (str | Path): destination directory, created if missing.
         with_market_value (bool): build/write `market_value.parquet` too. Defaults on, but
-            escapable (e.g. offline dev iteration, or if Transfermarkt's host is briefly down) —
-            `False` skips the one network-dependent step in an otherwise offline build; app.py
+            escapable (e.g. if Transfermarkt's host is briefly down) — `False` skips the
+            Transfermarkt step entirely; app.py
             already treats a missing/stale `market_value.parquet` as "no data for this player"
             rather than a hard failure.
 
@@ -150,7 +152,7 @@ def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
     shots_train, _ = build_shot_tables()
     outfield_table, goalkeeper_table = _build_combined_tables()
     outfield_per90 = _cluster_position_groups(
-        outfield_table, POSITION_GROUPS, PER90_FEATURE_COLUMNS
+        outfield_table, OUTFIELD_GROUPS, PER90_FEATURE_COLUMNS
     )
     gk_per90 = _cluster_position_groups(
         goalkeeper_table, ["Goalkeeper"], GK_PER90_FEATURE_COLUMNS

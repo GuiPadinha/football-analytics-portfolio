@@ -182,7 +182,7 @@ def test_logistic_regression_is_deterministic_given_fixed_data():
 def test_evaluate_by_competition_scores_each_dataset_separately():
     # Phase 4c: a combined held-out shot table spanning two competitions must be scored
     # per-competition, not pooled into one aggregate number.
-    from types import SimpleNamespace
+    from src.config import Dataset
 
     X, y = build_feature_matrix(_synthetic_shots(n=200, seed=7))
     model = train_logistic_regression(X, y)
@@ -194,9 +194,9 @@ def test_evaluate_by_competition_scores_each_dataset_separately():
     combined = pd.concat([shots_a, shots_b], ignore_index=True)
 
     datasets = [
-        SimpleNamespace(comp_id=111, label="Tournament A"),
-        SimpleNamespace(comp_id=222, label="Tournament B"),
-        SimpleNamespace(comp_id=333, label="Not present"),
+        Dataset(111, 0, "tournament", "Tournament A"),
+        Dataset(222, 0, "tournament", "Tournament B"),
+        Dataset(333, 0, "tournament", "Not present"),
     ]
     result = evaluate_by_competition(model, combined, datasets)
 

@@ -1,7 +1,5 @@
-"""xG model training and evaluation.
-
-Built out in Session S3 (logistic regression baseline) and Session S4
-(gradient boosting upgrade, feature importance, player xG rankings).
+"""xG model training and evaluation (Module A): the logistic regression model, its baselines
+and cross-validation, the gradient boosting comparison, and the per-player xG table.
 """
 
 import pandas as pd
@@ -25,6 +23,10 @@ BOOLEAN_FEATURES = ["is_header", "is_first_time", "under_pressure", "is_penalty"
 # as "vs. an unassisted shot" instead of sitting in an unidentifiable,
 # always-sums-to-1 block of dummies alongside the intercept.
 ASSIST_TYPES = ["None", "Standard Pass", "Cross", "Through Ball", "Cut Back"]
+
+# Gradient boosting settings from a small tuning sweep against overfitting (shallow trees, low
+# learning rate, row subsampling); shared by the plain and the calibrated GBM.
+GBM_PARAMS = {"n_estimators": 100, "max_depth": 2, "learning_rate": 0.05, "subsample": 0.8}
 
 
 def build_feature_matrix(shots):
@@ -171,8 +173,14 @@ def cross_validate_model(estimator, X, y, cv=5, scorings=("roc_auc", "neg_brier_
     refits it per fold, so any scaler is fit on each fold's training portion
     only — no leakage from validation rows into the scaling.
 
-    Important scope note: this estimates *in-distribution* stability (folds are
-    random slices of the league training data). It is a different question from
+    The folds are not shuffled, so each is a contiguous block of the training data in
+    match order: whole matches stay on one side of each split (no within-match leakage), and
+    the first fold holds the Leverkusen shots. A shuffled split grouped by match gives the same
+    mean ROC-AUC (0.783) with a wider spread (±0.016 vs ±0.009; checked 2026-10-02), so the
+    spread depends on how the folds are drawn and the mean doesn't.
+
+    Important scope note: this estimates *in-distribution* stability (folds are slices of
+    the league training data). It is a different question from
     the held-out EURO 2024 test, which measures *out-of-distribution*
     generalisation to tournament football. Both are reported; neither replaces
     the other.
@@ -280,10 +288,7 @@ def train_gradient_boosting(X_train, y_train, random_state=42):
     Returns:
         sklearn.ensemble.GradientBoostingClassifier: fitted model.
     """
-    model = GradientBoostingClassifier(
-        n_estimators=100, max_depth=2, learning_rate=0.05, subsample=0.8,
-        random_state=random_state,
-    )
+    model = GradientBoostingClassifier(**GBM_PARAMS, random_state=random_state)
     model.fit(X_train, y_train)
     return model
 
@@ -319,10 +324,7 @@ def train_calibrated_gbm(X_train, y_train, method="isotonic", cv=5, random_state
             baseline — if it now matches logistic on calibration but still
             doesn't beat it on ROC-AUC, the S4 "logistic stays" call holds.
     """
-    base_gbm = GradientBoostingClassifier(
-        n_estimators=100, max_depth=2, learning_rate=0.05, subsample=0.8,
-        random_state=random_state,
-    )
+    base_gbm = GradientBoostingClassifier(**GBM_PARAMS, random_state=random_state)
     model = CalibratedClassifierCV(estimator=base_gbm, method=method, cv=cv)
     model.fit(X_train, y_train)
     return model
@@ -375,7 +377,7 @@ def evaluate_by_competition(model, shots, datasets):
         eval_ = evaluate_model(model, X, y)
         out[str(dataset.comp_id)] = {
             "label": dataset.label,
-            "gender": getattr(dataset, "gender", "male"),
+            "gender": dataset.gender,
             "n_shots": int(len(y)),
             "goal_rate": round(float(y.mean()), 3),
             "roc_auc": round(float(eval_["roc_auc"]), 3),

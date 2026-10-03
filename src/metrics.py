@@ -41,6 +41,8 @@ from src.models import (
     train_logistic_regression,
 )
 from src.similarity import (
+    CLUSTER_K,
+    OUTFIELD_GROUPS,
     build_player_per90_features,
     compute_silhouette_scores,
     scale_features,
@@ -54,9 +56,6 @@ DATA_DIR = REPO_ROOT / "data"
 # ~80% of the full model's discrimination is already here — the honest "how much do the
 # fancier features actually add" reference (notebook 02, Phase 2).
 GEOMETRY_FEATURES = ["distance_to_goal", "angle_to_goal"]
-
-# Order the similarity groups the way the docs list them (Defender / Mid / Forward).
-POSITION_GROUP_ORDER = ["Defender", "Midfielder", "Forward"]
 
 # K sweep for the silhouette peak, matching src.similarity.compute_silhouette_scores' default.
 SILHOUETTE_K_RANGE = range(2, 11)
@@ -154,7 +153,7 @@ def compute_generalisation_metrics(shots_train, generalisation_shots, datasets):
     return evaluate_by_competition(model, generalisation_shots, datasets)
 
 
-def compute_similarity_metrics(per90_features, groups=POSITION_GROUP_ORDER, k_range=SILHOUETTE_K_RANGE):
+def compute_similarity_metrics(per90_features, groups=OUTFIELD_GROUPS, k_range=SILHOUETTE_K_RANGE):
     """Compute the Module B per-group silhouette peaks from a per-90 feature table.
 
     Pure: takes the output of ``build_player_per90_features`` and returns a dict. For each
@@ -203,7 +202,7 @@ def build_metrics(
             "comp_id": similarity_set.comp_id,
             "season_id": similarity_set.season_id,
             "min_minutes": SIMILARITY_MIN_MINUTES,
-            "kmeans_k_used": 4,
+            "kmeans_k_used": CLUSTER_K,
             "groups": compute_similarity_metrics(per90_features),
         },
     }
@@ -218,12 +217,12 @@ def build_metrics(
     return metrics
 
 
-def write_metrics(path=METRICS_PATH, data_dir=DATA_DIR, similarity_set=None):
+def write_metrics(path=METRICS_PATH, data_dir=DATA_DIR, similarity_set=None, per90_features=None):
     """Build the metrics for the in-use datasets and write ``metrics.json`` (sorted JSON).
 
-    Loads the processed parquet tables and rebuilds the per-90 similarity table (the latter
-    reads the cached event data for the similarity competition — the slow part), so this needs
-    ``data/`` present. Deterministic and timestamp-free like the manifest: an unchanged model
+    Loads the processed parquet tables, and builds the per-90 similarity table from the cached
+    event data unless the caller passes it (the pipeline does, since it has just built it), so
+    this needs ``data/`` present. Deterministic and timestamp-free like the manifest: an unchanged model
     regenerates byte-for-byte, so only a real metric move produces a diff.
 
     The Phase 4c generalisation section is included only if ``data/shots_generalisation.parquet``
@@ -235,9 +234,10 @@ def write_metrics(path=METRICS_PATH, data_dir=DATA_DIR, similarity_set=None):
 
     shots_train = pd.read_parquet(data_dir / "shots_train.parquet")
     shots_test = pd.read_parquet(data_dir / "shots_test.parquet")
-    per90_features = build_player_per90_features(
-        similarity_set.comp_id, similarity_set.season_id, min_minutes=SIMILARITY_MIN_MINUTES
-    )
+    if per90_features is None:
+        per90_features = build_player_per90_features(
+            similarity_set.comp_id, similarity_set.season_id, min_minutes=SIMILARITY_MIN_MINUTES
+        )
 
     generalisation_path = data_dir / "shots_generalisation.parquet"
     generalisation_shots = (

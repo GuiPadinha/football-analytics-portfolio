@@ -6,6 +6,45 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-10-02 → 10-03 — Deep audit: three shipped data bugs, then hardening
+
+Guilherme wasn't confident two health checks had found everything and asked for a ground-up
+audit until there's a clear green light. Every `src/` module, `app.py`, the tests, CI, configs and
+docs were read, and each suspicion was checked against real data before acting.
+
+**Wrong data the live app was showing (fixed, with tests that read the shipped tables):**
+- *Goalkeeper save %:* median 38% instead of ~70%. StatsBomb's "Shot Faced" is only the remainder
+  (off target/blocked), not all shots. Shots faced, saves (incl. penalty saves), goals conceded
+  (incl. penalties) and save % are now counted correctly, verified on 150 matches. Shots faced
+  became display-only (it measures the defence), like outfield `goals`.
+- *Ligue 1 had 21 teams:* "Marseille"/"Olympique de Marseille" and "Caen"/"Stade Malherbe Caen"
+  split players' seasons (Mandanda appeared twice). Team names are now mapped onto each match
+  sheet; the pool grew from 1,635 to 1,638 players, and from 124 to 123 keepers.
+- *Market value attached to the wrong people:* Dani Alves, Koke, Gabi, Danilo, Fernandinho, Jonny
+  Evans, David Silva (€100k from a 2024 valuation) and more. A club check now requires
+  Transfermarkt to place the player at the StatsBomb team's club within 12 months of the season:
+  76 of 1,244 matches removed, 1,168 kept (~87%), all stars still correct.
+
+**Also fixed:**
+- A page crash when fewer than three radar axes were selected. Goals Conceded is now drawn
+  reversed on the radar.
+- Cache writes are atomic (`net.write_atomically`). The manifest now pins the six similarity
+  leagues too: 13 datasets, 2,109 matches.
+- The game-state feature walks events in StatsBomb's own order; no shot was affected.
+- Doc-lint now also checks the app numbers (players, keepers, market values, match rate) against
+  `app_data/`.
+- Removed dead config (`PHASE_4_*` lists) and a dead tuple branch; one home for `CLUSTER_K` and
+  the outfield group list; shared GBM settings; corrected docstrings (CV "random slices",
+  `--force` "re-pull", "offline" builds) and six app statements wrongly saying Leverkusen
+  players have xG.
+- Checked and left alone: CV scheme (mean 0.783 under every scheme, logged), dependency audit (no
+  known vulnerabilities), statsbombpy row order (no impact).
+
+**Verified:** 170 tests pass. The pipeline run gives `metrics.json` and all 9 PNGs byte-identical
+(25 s now). `app_data/` was rebuilt with the fixes, and the notebooks re-executed.
+
+---
+
 ## 2026-10-02 (cont. 2) — Closing the open items
 
 Guilherme asked to close every open item (asking where needed). VS Code restarted, so both shells
