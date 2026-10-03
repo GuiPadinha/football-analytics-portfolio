@@ -1,7 +1,8 @@
-"""Feature engineering for the xG model and player similarity clustering.
+"""Shot feature engineering for the xG model (Module A).
 
-Built out in Session S2 (xG features: distance, angle, body part, assist
-type, game state) and Session S5 (per-90 player metrics).
+One row per shot: geometry (distance and angle to goal), how it was struck (header, first
+time, under pressure), set-piece flags, how it was created (assist type) and the game state.
+The per-90 player features for Module B live in `similarity.py`.
 """
 
 import numpy as np
@@ -83,6 +84,13 @@ def _compute_score_diff_before_shot(events):
     teams = events["team"].dropna().unique()
     goals_scored = {team: 0 for team in teams}
     score_diff_by_index = {}
+
+    # statsbombpy doesn't return rows in match order (e.g. second-half kickoff rows sit near the
+    # top), so walk them by StatsBomb's own `index`, the event's sequence number in the match.
+    # Shot rows happened to be in order in every match checked (2026-10-02), so this changed no
+    # result; it removes the dependence on an undocumented row order.
+    if "index" in events.columns:
+        events = events.sort_values("index", kind="stable")
 
     for idx, row in events.iterrows():
         if row.get("period") == 5:  # penalty shootout — not part of in-game score state
@@ -190,12 +198,9 @@ def build_training_dataset(datasets):
     """Build a combined shot-feature dataset across multiple competitions/seasons.
 
     Args:
-        datasets: iterable of `config.Dataset` objects (preferred), e.g.
-            `config.TRAIN_SETS`. The `context` ("league"/"tournament") is carried
-            through as `league_context` so the two can be separated later (see
-            CLAUDE.md's train/test split rationale). Plain
-            `(competition_id, season_id, context)` tuples are still accepted for
-            backward compatibility.
+        datasets: iterable of `config.Dataset` objects, e.g. `config.TRAIN_SETS`. Each one's
+            `context` ("league"/"tournament") is carried through as `league_context` so the
+            two can be separated later.
 
     Returns:
         pandas.DataFrame: one row per shot across all requested matches, with
@@ -203,20 +208,13 @@ def build_training_dataset(datasets):
     """
     all_shots = []
     for dataset in datasets:
-        # Accept either a config.Dataset or a legacy (comp_id, season_id, context) tuple.
-        competition_id = getattr(dataset, "comp_id", None)
-        if competition_id is None:
-            competition_id, season_id, league_context = dataset
-        else:
-            season_id, league_context = dataset.season_id, dataset.context
-
-        matches = load_matches(competition_id, season_id)
+        matches = load_matches(dataset.comp_id, dataset.season_id)
         for match_id in matches["match_id"]:
             events = load_events(match_id)
             events["match_id"] = match_id
             shots = extract_shot_features(events)
-            shots["league_context"] = league_context
-            shots["competition_id"] = competition_id
+            shots["league_context"] = dataset.context
+            shots["competition_id"] = dataset.comp_id
             all_shots.append(shots)
 
     return pd.concat(all_shots, ignore_index=True)

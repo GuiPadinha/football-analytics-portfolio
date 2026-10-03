@@ -94,8 +94,8 @@ LA_LIGA_2015_16_FULL = Dataset(11, 27, "league", "La Liga 2015/16 (full season)"
 SERIE_A_2015_16 = Dataset(12, 27, "league", "Serie A 2015/16", has_360=False)
 LIGUE_1_2015_16 = Dataset(7, 27, "league", "Ligue 1 2015/16", has_360=False)
 
-# Women's football: full-season training data pairs with WOMENS_EURO_2025 as held-out test,
-# mirroring the existing league-train/tournament-test structure for a fresh generalisation angle.
+# Women's football leagues: the newest full seasons in the open data, used in the similarity pool
+# (`SIMILARITY_SETS`). The xG model is trained on men's football only.
 FRAUEN_BUNDESLIGA_2023_24 = Dataset(
     135, 281, "league", "Frauen Bundesliga 2023/24", has_360=False, gender="female"
 )
@@ -107,14 +107,6 @@ FA_WSL_2023_24 = Dataset(
 COPA_AMERICA_2024 = Dataset(223, 282, "tournament", "Copa América 2024", has_360=False)
 WORLD_CUP_2022 = Dataset(43, 106, "tournament", "FIFA World Cup 2022", has_360=True)
 AFCON_2023 = Dataset(1267, 107, "tournament", "Africa Cup of Nations 2023", has_360=True)
-
-# Events-only pull (Module A shape: xG training/test volume, no lineups needed).
-PHASE_4_EVENTS_ONLY = BARCELONA_SEASONS + [
-    LA_LIGA_2015_16_FULL, SERIE_A_2015_16, LIGUE_1_2015_16,
-    COPA_AMERICA_2024, WORLD_CUP_2022, AFCON_2023,
-]
-# Events + lineups pull (Module B shape: per-90 features need minutes-played from lineups too).
-PHASE_4_EVENTS_AND_LINEUPS = [FRAUEN_BUNDESLIGA_2023_24, FA_WSL_2023_24]
 
 
 # Default xG split (Module A). League shots train; the held-out tournament tests generalisation.

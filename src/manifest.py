@@ -127,15 +127,23 @@ def build_manifest(datasets, matches_loader=load_matches, data_dir=None, cache_d
     }
 
 
+def in_use_datasets():
+    """Every dataset a model, a metric or the app reads, each listed once.
+
+    xG train/test, the held-out tournaments and the app's similarity pool. The lists overlap
+    (EURO 2024 is both the test set and a held-out tournament; PL 2015/16 trains xG and is in the
+    pool), so duplicates are dropped in order. The similarity pool was missing until 2026-10-02,
+    which left the six leagues `app_data/` is built from unpinned.
+    """
+    return list(dict.fromkeys(
+        config.TRAIN_SETS + config.TEST_SETS + config.GENERALISATION_TEST_SETS + config.SIMILARITY_SETS
+    ))
+
+
 def write_manifest(path=MANIFEST_PATH, datasets=None):
     """Build the manifest for the in-use datasets and write it to ``path`` as sorted JSON."""
     if datasets is None:
-        in_use = config.TRAIN_SETS + config.TEST_SETS
-        # GENERALISATION_TEST_SETS overlaps TEST_SETS (both include EURO_2024) — add only the
-        # Phase 4c tournaments not already pinned above, so each dataset gets one manifest entry.
-        datasets = in_use + [ds for ds in config.GENERALISATION_TEST_SETS if ds not in in_use]
-    else:
-        in_use = datasets
+        datasets = in_use_datasets()
     manifest = build_manifest(datasets)
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)

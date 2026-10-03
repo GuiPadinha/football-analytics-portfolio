@@ -121,3 +121,19 @@ def test_extract_shot_features_drops_shootout_and_null_location():
     assert len(result) == 1  # only the normal in-game shot survives
     assert bool(result.iloc[0]["is_goal"]) is True
     assert result.iloc[0]["distance_to_goal"] == pytest.approx(12.0)
+
+
+def test_game_state_follows_statsbomb_event_order_not_row_order():
+    # statsbombpy doesn't return rows in match order. Here a second-half shot sits above the
+    # first-half goal it came after; the score it faced must still include that goal.
+    events = pd.DataFrame([
+        {"id": "s2", "index": 2000, "type": "Shot", "period": 2, "location": [100.0, 40.0], "team": "A",
+         "minute": 60, "shot_outcome": "Saved", "shot_type": "Open Play", "shot_body_part": "Right Foot",
+         "shot_key_pass_id": np.nan, "shot_statsbomb_xg": 0.1},
+        {"id": "s1", "index": 500, "type": "Shot", "period": 1, "location": [108.0, 40.0], "team": "A",
+         "minute": 30, "shot_outcome": "Goal", "shot_type": "Open Play", "shot_body_part": "Right Foot",
+         "shot_key_pass_id": np.nan, "shot_statsbomb_xg": 0.3},
+    ])
+    result = extract_shot_features(events).set_index("minute")
+    assert result.loc[30, "game_state_score_diff"] == 0
+    assert result.loc[60, "game_state_score_diff"] == 1

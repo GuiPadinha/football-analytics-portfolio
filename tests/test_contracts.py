@@ -50,3 +50,12 @@ def test_per90_feature_columns_derived_from_action_columns():
     # ARCHITECTURE.md's Data Contracts section) — it must stay a pure function of
     # ACTION_COLUMNS, not a second hand-maintained list that can drift from it.
     assert PER90_FEATURE_COLUMNS == [f"{col}_p90" for col in ACTION_COLUMNS]
+
+
+def test_all_datasets_lists_every_dataset_defined_in_config():
+    # Derived lists (SETS_WITH_360) read ALL_DATASETS, so a new Dataset constant left out of it
+    # would silently drop out of them.
+    from src import config
+
+    defined = {value for value in vars(config).values() if isinstance(value, config.Dataset)}
+    assert defined == set(config.ALL_DATASETS)

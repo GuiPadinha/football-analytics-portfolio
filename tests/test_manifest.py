@@ -69,3 +69,13 @@ def test_build_manifest_hashes_present_processed_table(tmp_path):
     assert train["exists"] is True
     assert train["sha256"] is not None
     assert train["bytes"] == len(b"parquet-bytes")
+
+
+def test_in_use_datasets_cover_every_list_once():
+    from src import config
+    from src.manifest import in_use_datasets
+
+    datasets = in_use_datasets()
+    for group in (config.TRAIN_SETS, config.TEST_SETS, config.GENERALISATION_TEST_SETS, config.SIMILARITY_SETS):
+        assert set(group) <= set(datasets)
+    assert len(datasets) == len(set(datasets))

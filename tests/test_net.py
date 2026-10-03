@@ -116,3 +116,13 @@ def test_use_os_trust_store_injects_when_truststore_is_available(monkeypatch):
 def test_use_os_trust_store_is_a_noop_without_truststore(monkeypatch):
     monkeypatch.setitem(sys.modules, "truststore", None)  # makes `import truststore` fail
     assert net.use_os_trust_store() is False
+
+
+def test_write_atomically_replaces_the_file_and_leaves_no_partial_behind(tmp_path):
+    from src.net import write_atomically
+
+    target = tmp_path / "events_1.pkl"
+    target.write_bytes(b"old")
+    write_atomically(target, b"new contents")
+    assert target.read_bytes() == b"new contents"
+    assert [p.name for p in tmp_path.iterdir()] == ["events_1.pkl"]

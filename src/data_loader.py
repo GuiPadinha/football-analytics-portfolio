@@ -25,7 +25,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.net import use_os_trust_store, with_retries
+from src.net import use_os_trust_store, with_retries, write_atomically
 
 use_os_trust_store()
 
@@ -130,8 +130,7 @@ def _disk_cached(kind, match_id, producer, use_cache=True):
     _announce_first_download()
     result = with_retries(producer, describe=f"{kind} {match_id}")
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    with open(path, "wb") as cache_file:
-        pickle.dump(result, cache_file)
+    write_atomically(path, pickle.dumps(result))
     return result
 
 

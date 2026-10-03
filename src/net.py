@@ -1,6 +1,6 @@
 """Network plumbing shared by every module that downloads data (`data_loader`, `market_value`).
 
-Two problems this project has actually hit, solved once here rather than per caller:
+Three problems this project has actually hit, solved once here rather than per caller:
 
 1. **TLS verification behind an HTTPS-intercepting antivirus.** Avast re-signs every HTTPS
    certificate with its own root, which Windows trusts but Python's bundled `certifi` doesn't —
@@ -13,6 +13,8 @@ Two problems this project has actually hit, solved once here rather than per cal
    and, separately, `429 Too Many Requests`. `with_retries` retries exactly those failure
    classes with exponential backoff (honouring `Retry-After`), and fails fast on everything else
    — a 404 (e.g. a match with no 360 file) or a certificate error will not fix itself by waiting.
+3. **Half-written cache files.** A run killed mid-write would leave a truncated file that every
+   later run trusts; `write_atomically` makes each cache write all-or-nothing.
 
 Deliberately no import of `requests` at module level: the deployed Streamlit app imports
 `data_loader` (via `similarity`) but never downloads anything, so this module must stay cheap and
@@ -20,9 +22,11 @@ dependency-free to import.
 """
 
 import http.client
+import os
 import random
 import time
 import urllib.error
+from pathlib import Path
 
 # Status codes worth waiting out: rate limiting and the usual "server/CDN hiccup" family.
 RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
@@ -32,6 +36,24 @@ CONNECTION_BASE_DELAY_SECS = 2.0
 RATE_LIMIT_BASE_DELAY_SECS = 30.0
 MAX_DELAY_SECS = 300.0
 DEFAULT_ATTEMPTS = 5
+
+
+def write_atomically(path, data):
+    """Write `data` (bytes) to `path` so an interrupted run never leaves a half-written file.
+
+    Both download caches trust a file just for existing, so a truncated one (a run killed
+    mid-write) would break every later run that reads it. Writing to a temporary sibling and then
+    renaming it over `path` (`os.replace`, atomic on one filesystem) means `path` is either the
+    old file, absent, or complete.
+
+    Args:
+        path (str | Path): destination file.
+        data (bytes): the full contents.
+    """
+    path = Path(path)
+    temp_path = path.with_name(path.name + ".partial")
+    temp_path.write_bytes(data)
+    os.replace(temp_path, path)
 
 
 def use_os_trust_store():

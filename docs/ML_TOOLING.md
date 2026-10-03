@@ -406,6 +406,29 @@ time, and pytest imports every test file before running any test. Running only s
 without that one, crashed. Fix: `tests/conftest.py` forces `matplotlib.use("Agg")` for every run.
 That replaced the per-file switch and CI's `MPLBACKEND` env lines.
 
+## A new environment variable only reaches processes started after it is set
+
+Hit 2026-10-02 right after moving the cache: `FAP_CACHE_DIR` was set for the user account, but
+this session's shells (and VS Code, restarted just *before* the variable existed) still didn't
+see it. One audit script therefore re-downloaded 966 files into the old `data/cache` inside
+OneDrive. They were duplicates and were deleted. Same mechanism as the PATH entry above: restart VS
+Code after setting a user variable, and until then pass it explicitly
+(`FAP_CACHE_DIR=... python ...`). The first download in a run now prints the folder it downloads
+into, so this can no longer happen silently.
+
+## Auditing dependencies for known vulnerabilities (pip-audit behind Avast)
+
+`pip-audit` uses `requests` with certifi, so it fails with `CERTIFICATE_VERIFY_FAILED` like
+everything else here. Run it from a throwaway venv under a short path, with the OS trust store
+injected first:
+```powershell
+py -3.12 -m venv $env:TEMP\fapaudit
+& $env:TEMP\fapaudit\Scripts\python.exe -m pip install pip-audit truststore
+& $env:TEMP\fapaudit\Scripts\python.exe -c "import sys, truststore; truststore.inject_into_ssl(); sys.argv=['pip-audit','-r','requirements-dev.txt']; from pip_audit._cli import audit; audit()"
+```
+Result on 2026-10-02: no known vulnerabilities in any pinned package, transitive ones included.
+Delete the venv afterwards.
+
 ## How to use this file
 
 - Hit a real environment/tooling obstacle this session (network, encoding, kernel, caching, a silent tool failure)? Add it here **before** the session ends, dated only if the fix might later change — most of these don't need a date, just the symptom and the fix. Don't wait for a retrospective "were there any obstacles?" question to write them down.
