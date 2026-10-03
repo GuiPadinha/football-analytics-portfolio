@@ -597,9 +597,10 @@ def render_about_and_roadmap(per90, metrics):
         "**Transfermarkt** market values via a maintained open mirror. No paid licence, nothing "
         "scraped live; the app only reads precomputed tables built by `python -m src.pipeline` / "
         "`python -m src.app_data`.\n\n"
-        "- **Similarity pool, 6 competitions:** Premier League, La Liga, Serie A, Ligue 1 (all "
-        "2015/16), Frauen-Bundesliga and the FA Women's Super League (both 2023/24) — the newest "
-        "full season StatsBomb's free tier has for each league.\n"
+        f"- **Similarity pool, {per90['competition'].nunique()} competitions:** Premier League, "
+        "La Liga, Serie A, Ligue 1 (all 2015/16); Frauen-Bundesliga, FA Women's Super League, "
+        "Liga F, Serie A Women (all 2023/24) and NWSL 2023 — every full league season StatsBomb's "
+        "free tier has.\n"
         "- **xG training set:** Premier League 2015/16 + Bayer Leverkusen 2023/24 — a different "
         "league and country from the test set below, on purpose.\n"
         "- **xG generalisation tests, 6 tournaments never trained on:** UEFA EURO 2024 (the "
@@ -641,7 +642,8 @@ def render_about_and_roadmap(per90, metrics):
 
     st.subheader("What's already shipped, and what's next")
     st.markdown(
-        "**Done:** the full similarity + xG pipeline across 6 competitions, a leaderboard view "
+        f"**Done:** the full similarity + xG pipeline across {per90['competition'].nunique()} "
+        "competitions, a leaderboard view "
         "with name/position filters, clickable similar-player drill-down, penalty-aware goal "
         "totals, goalkeepers wired in with their own feature set (saves, goals conceded, claims, "
         "punches, sweeper actions, plus save %) and K-means clustered into style archetypes like the outfield "
@@ -729,7 +731,7 @@ outfield groups (Defender/Midfielder/Forward), on the notebook/pipeline's single
 them ({min(peaks):.2f}–{max(peaks):.2f}) — reported honestly rather than hidden: play styles within a position are a
 soft continuum, not sharply separated blobs. K=4 is used anyway, for archetype granularity,
 against the metric's own preference. Goalkeepers now get the same treatment on the app's wider
-6-competition pool ({n_goalkeepers} keepers): silhouette also peaks low, and K=4 is kept for the
+multi-league pool ({n_goalkeepers} keepers): silhouette also peaks low, and K=4 is kept for the
 same archetype-granularity reason.
 
 **Known limitations, stated plainly:** cross-league normalisation is a *relative*, data-only fix

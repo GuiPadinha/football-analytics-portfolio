@@ -199,9 +199,9 @@ done: HTTPS works through the OS trust store, downloads retry with backoff, and 
 rebuild themselves (`src/net.py`, `pipeline._cache_matches_datasets`).
 
 **More StatsBomb open data (same schema, so "a config line, not code"):**
-- *Liga F 2023/24* (240 matches, 16 teams), *Serie A Women 2023/24* (130 matches, 10 teams) and
-  *NWSL 2023* (137 matches, 12 teams). All three are genuine full seasons, women's football, no
-  360. They would roughly double the women's similarity pool (needs lineups pulls).
+- **Done 2026-10-03:** *Liga F 2023/24* (240 matches, 16 teams), *Serie A Women 2023/24* (130
+  matches, 10 teams) and *NWSL 2023* (137 matches, 12 teams), all genuine full seasons. The pool
+  grew from 6 to 9 competitions and 1,638 to 2,170 players (17.5 min to download and rebuild).
 - *Not* usable as leagues: MLS 2023 (6 matches, Inter Miami only) and Ligue 1 2022/23 (32
   matches, PSG only). These are the same single-club trap as La Liga = Barcelona.
 - Women's EURO 2025 + Women's World Cup 2023: wired into Phase 4c on 2026-10-01.
@@ -296,7 +296,7 @@ StatsBomb `three-sixty` data gives freeze-frames (every visible player's positio
 
 Minimal v1 built 2026-07-04, ahead of strict phase order — a friend demo (~2026-07-11) made
 "something clickable" more valuable than finishing 4–6 first. Since then it has grown to four
-views over a 6-competition pool (1,638 players incl. goalkeepers). What the app does today, and
+views over a 9-competition pool (2,170 players incl. goalkeepers). What the app does today, and
 the UX decisions behind it, are in [PRODUCT_SPEC.md](PRODUCT_SPEC.md).
 
 **Deployed 2026-07-09** to Streamlit Community Cloud:

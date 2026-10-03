@@ -12,6 +12,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from src import config
+
 APP_DATA_DIR = Path(__file__).resolve().parent.parent / "app_data"
 
 # The real number of clubs in each competition's season.
@@ -22,6 +24,9 @@ TEAMS_PER_COMPETITION = {
     "Ligue 1 2015/16": 20,
     "Frauen Bundesliga 2023/24": 12,
     "FA Women's Super League 2023/24": 12,
+    "Liga F 2023/24": 16,
+    "Serie A Women 2023/24": 10,
+    "NWSL 2023": 12,
 }
 
 
@@ -59,7 +64,8 @@ def test_market_values_are_unique_mens_only_and_from_around_the_season(per90, ma
         per90[["player", "team", "competition"]], on=["player", "team"], how="left"
     )["competition"]
     assert competitions.notna().all()
-    assert not competitions.str.contains("Women|Frauen").any()
+    womens = {ds.label for ds in config.SIMILARITY_SETS if ds.gender == "female"}
+    assert not competitions.isin(womens).any()
     # The club check only keeps players valued around 2015/16, so the nearest valuation is too.
     as_of = pd.to_datetime(market_value["market_value_as_of"])
     assert as_of.between("2015-01-01", "2017-01-01").all()

@@ -133,7 +133,7 @@ def in_use_datasets():
     xG train/test, the held-out tournaments and the app's similarity pool. The lists overlap
     (EURO 2024 is both the test set and a held-out tournament; PL 2015/16 trains xG and is in the
     pool), so duplicates are dropped in order. The similarity pool was missing until 2026-10-02,
-    which left the six leagues `app_data/` is built from unpinned.
+    which left the leagues `app_data/` is built from unpinned.
     """
     return list(dict.fromkeys(
         config.TRAIN_SETS + config.TEST_SETS + config.GENERALISATION_TEST_SETS + config.SIMILARITY_SETS

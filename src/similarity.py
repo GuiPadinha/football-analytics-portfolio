@@ -785,8 +785,8 @@ def scale_features(features, feature_columns=PER90_FEATURE_COLUMNS):
 def normalize_within_competition(features, feature_columns, group_columns=("competition",)):
     """League-adjust per-90 features by z-scoring each one within its own competition.
 
-    The app's similarity pool spans six competitions of very different competitiveness (PL
-    2015/16 down to FA WSL 2023/24) — `scale_features` alone standardises against the *pooled*
+    The app's similarity pool spans nine competitions of very different competitiveness (PL
+    2015/16 down to the women's leagues of 2023/24) — `scale_features` alone standardises against the *pooled*
     mean/std across all of them, so a per-90 rate is compared raw across leagues (Phase 4b's
     original open item, see MODULES.md/DATA.md). There is no external league-strength rating in
     this project's data (no scraped competitiveness index, see DATA.md's SofaScore/FlashScore

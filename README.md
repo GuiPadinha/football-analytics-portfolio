@@ -277,9 +277,10 @@ python -m src.app_data             # only to rebuild app_data/ (needs requiremen
 
 **Live and deployed** at
 [gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app)
-(Streamlit Community Cloud, since 2026-07-09). The player pool spans **6 competitions** — Premier
-League, La Liga, Serie A, Ligue 1 (all 2015/16), plus Frauen Bundesliga and FA Women's Super League
-(both 2023/24) — **1,638 players total, including 123 goalkeepers** with their own feature set,
+(Streamlit Community Cloud, since 2026-07-09). The player pool spans **9 competitions** — Premier
+League, La Liga, Serie A, Ligue 1 (all 2015/16), plus five women's leagues: Frauen Bundesliga, FA
+Women's Super League, Liga F, Serie A Women (all 2023/24) and NWSL 2023 — **2,170 players total,
+including 168 goalkeepers** with their own feature set,
 K-means clustered into style archetypes like the outfield groups. The app also has a full player
 **leaderboard** (sortable, goals incl. penalties + xG where available), a **Compare players** view
 (any two players, side by side), a **Transfermarkt market value** matched onto "players like X" and

@@ -31,8 +31,8 @@ Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, 
 dropped). Five more held-out tournaments rank as well (0.76–0.81): World Cup 2022 0.808, AFCON 2023
 0.807, Women's World Cup 2023 0.777, Copa América 2024 0.763, Women's EURO 2025 0.763. EURO 2024 is
 near the bottom, not "the floor". Similarity: K=4 per position group, silhouette ~0.22–0.26 (a
-soft continuum) on the notebook's PL 2015/16 scope; the app's pool is 6 competitions and
-1,638 players, league-normalised, with goalkeepers clustered too. **1,327** players matched to a
+soft continuum) on the notebook's PL 2015/16 scope; the app's pool is 9 competitions and
+2,170 players, league-normalised, with goalkeepers clustered too. **1,327** players matched to a
 Transfermarkt market value (men's competitions, ~99%, each confirmed at the right club).
 *(xG/similarity numbers come from
 [metrics.json](metrics.json) via `python -m src.metrics`. A doc-lint test fails the build if a

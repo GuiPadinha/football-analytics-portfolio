@@ -23,7 +23,7 @@ colleague pitch (date TBD — today or the next day at the time of writing).
 
 ## Demo script (suggested order)
 
-1. **Leaderboard** — scale (6 competitions, 1,638 players), sort by Goals, point out a
+1. **Leaderboard** — scale (9 competitions, 2,170 players), sort by Goals, point out a
    penalty-inflated total (e.g. a defender whose goals are mostly penalties) — shows why "raw
    goals" is a misleading stat on its own. Mention the name/position filters above the table if
    asked how to find a specific player quickly.
@@ -47,7 +47,7 @@ colleague pitch (date TBD — today or the next day at the time of writing).
 
 ## Key numbers to lead with (whole numbers — say these without notes)
 
-- **6** competitions, **1,638 players** in the similarity pool (incl. **123 goalkeepers**, wired in
+- **9** competitions (5 of them women's), **2,170 players** in the similarity pool (incl. **168 goalkeepers**, wired in
   2026-07-13 with their own feature set — saves, goals conceded, claims, punches, sweeper actions,
   plus save % — and K-means clustered into style archetypes like the outfield groups).
 - **10,824** shots trained the xG model; a further **7,215** held-out shots — across **6**
@@ -110,7 +110,7 @@ lists).
 ## If asked "why isn't X done yet"
 
 - **Cross-league normalisation (Phase 4b):** resolved 2026-07-13 — per-90 rates are now
-  league-adjusted (z-scored within each competition) before comparing across the 6-competition
+  league-adjusted (z-scored within each competition) before comparing across the 9-competition
   pool. Still a relative, data-only fix, not a true competitiveness rating — flagged honestly
   in-app, not oversold as a full solution.
 - **Market value modelling** (not *displaying* one — that's done, see above): still out of scope

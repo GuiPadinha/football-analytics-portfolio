@@ -102,6 +102,13 @@ FRAUEN_BUNDESLIGA_2023_24 = Dataset(
 FA_WSL_2023_24 = Dataset(
     37, 281, "league", "FA Women's Super League 2023/24", has_360=False, gender="female"
 )
+# Added 2026-10-03 (Phase 4e): the other full women's seasons in the open data, each checked by
+# match and team count (Liga F 240/16, Serie A Women 130/10, NWSL 137/12).
+LIGA_F_2023_24 = Dataset(182, 281, "league", "Liga F 2023/24", has_360=False, gender="female")
+SERIE_A_WOMEN_2023_24 = Dataset(
+    131, 281, "league", "Serie A Women 2023/24", has_360=False, gender="female"
+)
+NWSL_2023 = Dataset(49, 107, "league", "NWSL 2023", has_360=False, gender="female")
 
 # Additional held-out tournament test contexts for Module A generalisation (Phase 4c).
 COPA_AMERICA_2024 = Dataset(223, 282, "tournament", "Copa América 2024", has_360=False)
@@ -134,7 +141,8 @@ GENERALISATION_TEST_SETS = [
 ALL_DATASETS = [
     LEVERKUSEN_2023_24, PL_2015_16, EURO_2024, WOMENS_EURO_2025, WOMENS_WORLD_CUP_2023,
     *BARCELONA_SEASONS, LA_LIGA_2015_16_FULL, SERIE_A_2015_16, LIGUE_1_2015_16,
-    FRAUEN_BUNDESLIGA_2023_24, FA_WSL_2023_24, COPA_AMERICA_2024, WORLD_CUP_2022, AFCON_2023,
+    FRAUEN_BUNDESLIGA_2023_24, FA_WSL_2023_24, LIGA_F_2023_24, SERIE_A_WOMEN_2023_24, NWSL_2023,
+    COPA_AMERICA_2024, WORLD_CUP_2022, AFCON_2023,
 ]
 SETS_WITH_360 = [ds for ds in ALL_DATASETS if ds.has_360]
 
@@ -161,5 +169,5 @@ SIMILARITY_SET = PL_2015_16
 # a competitiveness rating — there is no external league-strength data in this project.
 SIMILARITY_SETS = [
     PL_2015_16, LA_LIGA_2015_16_FULL, SERIE_A_2015_16, LIGUE_1_2015_16,
-    FRAUEN_BUNDESLIGA_2023_24, FA_WSL_2023_24,
+    FRAUEN_BUNDESLIGA_2023_24, FA_WSL_2023_24, LIGA_F_2023_24, SERIE_A_WOMEN_2023_24, NWSL_2023,
 ]

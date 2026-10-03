@@ -43,6 +43,9 @@ tournaments are additional, separately-reported evidence, not folded into the he
 | Ligue 1 2015/16 | 377 matches, events + lineups (lineups pulled 2026-07-05) | In `SIMILARITY_SETS` — same-era full league as PL 2015/16 |
 | Frauen Bundesliga 2023/24 | 132 matches, events + lineups | In `SIMILARITY_SETS` — women's-football expansion, newest full-season data in this project |
 | FA Women's Super League 2023/24 | 132 matches, events + lineups | In `SIMILARITY_SETS` — women's-football expansion, newest full-season data in this project |
+| Liga F 2023/24 | 240 matches, 16 teams, events + lineups | In `SIMILARITY_SETS` since 2026-10-03 (Phase 4e) |
+| Serie A Women 2023/24 | 130 matches, 10 teams, events + lineups | In `SIMILARITY_SETS` since 2026-10-03 (Phase 4e) |
+| NWSL 2023 | 137 matches, 12 teams, events + lineups | In `SIMILARITY_SETS` since 2026-10-03 (Phase 4e) |
 | Women's EURO 2025 | 31 matches, events + 360 | xG test — women's held-out tournament; **wired 2026-10-01** (the July 429 had cleared): ROC-AUC 0.763, goals ÷ xG 0.98 |
 | FIFA Women's World Cup 2023 | 64 matches, events + 360 | xG test — women's held-out tournament; **wired 2026-10-01**: ROC-AUC 0.777, goals ÷ xG 0.83 |
 | Copa América 2024 | 32 matches, events | xG test — additional held-out tournament; **wired 2026-07-09** (Phase 4c), scored separately in `metrics.json`'s `xg_generalisation`: ROC-AUC 0.763 |

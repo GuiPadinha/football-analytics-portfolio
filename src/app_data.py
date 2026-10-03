@@ -102,8 +102,8 @@ def _cluster_position_groups(per90_features, position_groups, feature_columns, n
     X" in the same corrected space, without recomputing it live.
 
     K=4 for goalkeepers (2026-07-13, first real K decision for them) matches the outfield
-    groups' choice for the same reason: silhouette on the league-normalised 123-keeper pool
-    peaks at K=2 (~0.24, the same soft-continuum shape the outfield groups show), and K=4 is
+    groups' choice for the same reason: silhouette on the league-normalised 168-keeper pool
+    peaks at K=2 (~0.21, the same soft-continuum shape the outfield groups show), and K=4 is
     kept anyway for archetype granularity rather than the metric's own preference — see
     ML_LEARNING_LOG.md for the real elbow/silhouette numbers behind this call.
 

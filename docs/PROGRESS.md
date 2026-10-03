@@ -6,6 +6,27 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-10-03 (cont.) — Product rethink; three more women's leagues
+
+Guilherme, after seeing the redeployed app: lots of numbers, no insights, cheap-looking UI,
+jargon (σ, "Euclidean distance"), legal names, and no reason to block midfielder-vs-forward
+comparisons. Agreed plan, in order:
+1. **More data (done here).** Checked what exists before deciding: StatsBomb open data has no
+   further full men's league seasons (Bundesliga 15/16 and Ligue 1 21/22–22/23 are one club's 34
+   games each). It does have three unused full women's seasons. **Liga F 2023/24, Serie A Women
+   2023/24 and NWSL 2023** are now in `SIMILARITY_SETS`: 9 competitions, **2,170 players** (168
+   keepers), team counts checked in `test_app_data.py`. Download + rebuild took 17.5 min, and
+   market values are unchanged. Keeper silhouette is now 0.214 at K=2 and 0.198 at K=4 (outfield
+   0.133–0.141 at K=4). Larger men's expansion = Wyscout 2017/18 (Phase 4e), and Kaggle's "all
+   World Cups" sets are results-only (already noted in ROADMAP 4e on 10-01).
+2. **Redesign** (next): Streamlit kept. A mockup (Home with findings, a three-question player
+   page, Compare with a verdict) was approved as the direction. Lookalikes come in separate men's
+   and women's top-5 lists, both ways. The short version and verdict sentences will be generated
+   by tested rules, not an LLM.
+3. Wyscout 2017/18, then Phase 5a.
+
+---
+
 ## 2026-10-03 — Live app moved to Python 3.14
 
 Guilherme deleted the 3.10 app and redeployed. The new app crashed with `ModuleNotFoundError:
