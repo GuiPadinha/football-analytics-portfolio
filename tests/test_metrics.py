@@ -85,7 +85,7 @@ def test_compute_xg_metrics_structure_and_invariants():
 
 
 def test_compute_generalisation_metrics_scores_each_tournament_separately():
-    from types import SimpleNamespace
+    from src.config import Dataset
 
     train = _synth_shots(200, seed=10)
     tournament_a = _synth_shots(60, seed=11)
@@ -95,8 +95,8 @@ def test_compute_generalisation_metrics_scores_each_tournament_separately():
     generalisation_shots = pd.concat([tournament_a, tournament_b], ignore_index=True)
 
     datasets = [
-        SimpleNamespace(comp_id=55, label="UEFA EURO 2024"),
-        SimpleNamespace(comp_id=223, label="Copa América 2024"),
+        Dataset(55, 0, "tournament", "UEFA EURO 2024"),
+        Dataset(223, 0, "tournament", "Copa América 2024"),
     ]
     result = compute_generalisation_metrics(train, generalisation_shots, datasets)
 
@@ -117,13 +117,13 @@ def test_build_metrics_omits_generalisation_section_by_default():
 
 
 def test_build_metrics_includes_generalisation_section_when_provided():
-    from types import SimpleNamespace
+    from src.config import Dataset
 
     train, test = _synth_shots(200, seed=4), _synth_shots(80, seed=5)
     per90 = _synth_per90(["Defender", "Midfielder", "Forward"], per_group=12, seed=6)
     generalisation_shots = _synth_shots(50, seed=13)
     generalisation_shots["competition_id"] = 55
-    datasets = [SimpleNamespace(comp_id=55, label="UEFA EURO 2024")]
+    datasets = [Dataset(55, 0, "tournament", "UEFA EURO 2024")]
 
     metrics = build_metrics(
         train, test, per90,
@@ -210,3 +210,28 @@ def test_current_state_docs_match_metrics_json():
                 failures.append(f"{doc} does not contain metrics.json value '{value}'")
 
     assert not failures, "Docs drifted from metrics.json:\n  " + "\n  ".join(failures)
+
+
+def test_current_state_docs_match_app_data():
+    """The app-pool numbers docs quote (players, goalkeepers, market values, match rate) must equal
+    the committed `app_data/` tables: they are hand-copied too, and changed with the 2026-10-02
+    data fixes. Same idea as the metrics.json check above, for the app's own data."""
+    from src.market_value import MARKET_VALUE_AS_OF_DATES
+
+    per90 = pd.read_parquet(REPO_ROOT / "app_data" / "player_per90.parquet")
+    market_value = pd.read_parquet(REPO_ROOT / "app_data" / "market_value.parquet")
+    n_goalkeepers = int((per90["position_group"] == "Goalkeeper").sum())
+    n_mens_players = int(per90["competition"].isin(MARKET_VALUE_AS_OF_DATES).sum())
+    match_rate = round(100 * len(market_value) / n_mens_players)
+
+    expectations = [
+        (f"{len(per90):,} players", ["CLAUDE.md", "README.md", "docs/PITCH.md"]),
+        (f"{n_goalkeepers} goalkeepers", ["README.md", "docs/PITCH.md"]),
+        (f"{len(market_value):,}", ["CLAUDE.md", "docs/DATA.md", "docs/PITCH.md"]),
+        (f"~{match_rate}%", ["CLAUDE.md", "README.md", "docs/DATA.md"]),
+    ]
+    failures = [
+        f"{doc} does not contain app_data value '{value}'"
+        for value, docs in expectations for doc in docs if value not in _doc_text(doc)
+    ]
+    assert not failures, "Docs drifted from app_data/:\n  " + "\n  ".join(failures)

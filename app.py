@@ -7,8 +7,8 @@ StatsBomb pulls, no live model training: a hosted demo has to respond to a click
 
 Things worth knowing before editing a view:
 - The similarity pool spans every competition in `config.SIMILARITY_SETS` (see src/app_data.py),
-  but the xG "Finishing" panel only has data for Module A's training set (Premier League 2015/16 +
-  Bayer Leverkusen 2023/24), so most players hit its "no logged shots" fallback — expected.
+  but the xG "Finishing" panel only has data for Premier League 2015/16 (the one competition in
+  both the xG training set and this pool), so most players hit its "no logged shots" fallback.
 - Goalkeepers have their own, disjoint feature set (`presentation.feature_columns_for`), so views
   branch on position group rather than assuming the three outfield groups.
 - Clustering and "players like X" run on league-normalised (`_lz`) features; radar axes,
@@ -92,6 +92,8 @@ def _diverging_css(value, span):
 BRAND_ICON = "⚽"
 SLOGAN = "Scout by data, not by reputation."
 
+MIN_RADAR_AXES = 3
+
 # Applied once at import time — this is its own process (a `streamlit run` script), so mutating
 # rcParams here can't bleed into the notebooks/pipeline.py's own matplotlib usage, which stays on
 # the light/paper-friendly default look on purpose (see visualisation.py's docstring notes).
@@ -121,8 +123,8 @@ def load_artifacts():
     per user interaction — every widget change reruns this script top to bottom.
 
     `market_value.parquet` is loaded defensively (empty frame if missing) rather than assumed
-    present: `app_data.build_app_artifacts(with_market_value=False)` is a real, supported way to
-    run an otherwise-offline build (see that function's docstring), so a market-value-less
+    present: `app_data.build_app_artifacts(with_market_value=False)` is a supported way to build
+    without Transfermarkt (see that function's docstring), so a market-value-less
     `app_data/` is a legitimate state, not a broken one — every market-value UI element already
     treats "no row for this player" as "not resolved," so an entirely empty table just means
     everyone falls into that same, already-handled branch.
@@ -194,8 +196,8 @@ def render_leaderboard(pool, xg_table, market_value):
     centre-back tops the Goals column even though `non_penalty_goals` (the modelling stat) is
     modest. Goals here is the real total incl. penalties (see similarity.DISPLAY_COUNT_COLUMNS).
 
-    xG / G-xG are left-joined from the flagship xG table and blank for anyone outside Module A's
-    training set (PL 2015/16 + Leverkusen) — most of the wider similarity pool — rather than
+    xG / G-xG are left-joined from the flagship xG table and blank for anyone outside Premier
+    League 2015/16 — most of the wider similarity pool — rather than
     faked, matching the single-player panel's honesty about that gap. Market value (Phase 9) is
     left-joined the same way, blank for anyone Transfermarkt matching couldn't resolve (unmatched
     name, or a women's-league player — that data source only covers men's football, see
@@ -220,8 +222,8 @@ def render_leaderboard(pool, xg_table, market_value):
         "- **Goals vs. Non-pen goals** — Goals *includes* penalties, Non-pen goals is what the "
         "models actually use. Sort by Goals to find the outliers where the gap is biggest (a "
         "penalty-taking defender, a striker whose real output is lower than the headline number).\n"
-        "- **xG / G-xG** — only populated for the xG model's own training set (Premier League "
-        "2015/16 + Bayer Leverkusen 2023/24); blank elsewhere, not faked. Sort G-xG ascending for "
+        "- **xG / G-xG** — only populated for Premier League 2015/16 players (the one competition "
+        "in both the xG training set and this pool); blank elsewhere, not faked. Sort G-xG ascending for "
         "the biggest \"creating chances, not converting\" candidates; descending for the biggest "
         "likely finishing spikes.\n"
         "- **Position** — includes Goalkeeper now; their Goals/Assists columns are blank here "
@@ -322,8 +324,8 @@ def render_leaderboard(pool, xg_table, market_value):
         },
     )
     st.caption(
-        "xG and G-xG are blank for players outside the xG training set (Premier League 2015/16 + "
-        "Bayer Leverkusen 2023/24) — the similarity pool is wider than the xG model's, so most "
+        "xG and G-xG are blank for players outside Premier League 2015/16 (the one competition in "
+        "both the xG training set and this pool) — the similarity pool is wider, so most "
         "rows have no xG, shown blank rather than faked. Goalkeepers show blank Goals/Assists too "
         "— those columns come from the outfield feature set, which doesn't cover them; see a "
         "goalkeeper's own page (Player explorer) for their saves/goals-conceded/save % instead."
@@ -506,6 +508,8 @@ def render_about_and_roadmap(per90, metrics):
     """
     n_generalisation_shots = sum(v["n_shots"] for v in metrics["xg_generalisation"].values())
     n_tournaments = len(metrics["xg_generalisation"])
+    peaks = [group["best_silhouette"] for group in metrics["similarity"]["groups"].values()]
+    n_goalkeepers = int((per90["position_group"] == "Goalkeeper").sum())
 
     st.title(f"{BRAND_ICON} Player Evaluation Framework")
     st.caption(f"*{SLOGAN}*")
@@ -582,8 +586,8 @@ def render_about_and_roadmap(per90, metrics):
             "and the ranked **\"Players like X\"** list.\n"
             "5. **Click a row** in the \"players like X\" table to jump straight to that player — "
             "a recursive drill-down, not a static list.\n"
-            "6. If the player has logged shots in the xG training set (Premier League 2015/16 + "
-            "Bayer Leverkusen 2023/24), see their **Finishing** panel: goals vs. expected goals, "
+            "6. For a Premier League 2015/16 player (the one competition in both the xG training "
+            "set and this pool), see their **Finishing** panel: goals vs. expected goals, "
             "plus a shot map."
         )
 
@@ -616,8 +620,8 @@ def render_about_and_roadmap(per90, metrics):
     st.subheader("How each model works")
     st.markdown(
         "**Similarity (scouting lens).** Every player's per-90 stats — shots, key passes, "
-        "tackles, progressive passes, and more (a different set for goalkeepers: saves, shots "
-        "faced, claims) — are first **league-normalised** (each stat expressed as standard "
+        "tackles, progressive passes, and more (a different set for goalkeepers: saves, goals "
+        "conceded, claims, punches, sweeper actions) — are first **league-normalised** (each stat expressed as standard "
         "deviations above/below that player's own competition's average, so a Bundesliga rate "
         "isn't compared raw to a WSL one), then split by position group and grouped with "
         "**K-means clustering** — outfield players and goalkeepers alike. \"Players like X\" "
@@ -637,8 +641,8 @@ def render_about_and_roadmap(per90, metrics):
     st.markdown(
         "**Done:** the full similarity + xG pipeline across 6 competitions, a leaderboard view "
         "with name/position filters, clickable similar-player drill-down, penalty-aware goal "
-        "totals, goalkeepers wired in with their own feature set (saves, shots faced, goals "
-        "conceded, claims, save %) and K-means clustered into style archetypes like the outfield "
+        "totals, goalkeepers wired in with their own feature set (saves, goals conceded, claims, "
+        "punches, sweeper actions, plus save %) and K-means clustered into style archetypes like the outfield "
         "groups, league-normalised similarity (each stat compared to the player's own competition "
         "before it's compared across leagues), a **side-by-side player comparison view**, "
         "**Transfermarkt market value** matched onto \"players like X\" and the Leaderboard, and "
@@ -647,8 +651,9 @@ def render_about_and_roadmap(per90, metrics):
         "competitiveness rating — there's no external league-strength data behind it, so it "
         "assumes each league's stat distribution is roughly comparable in shape, not that the "
         "leagues are equally strong. Market-value matching is name-based (no shared player ID "
-        "exists between StatsBomb and Transfermarkt) — a real match can be missed (left blank, "
-        "never guessed) when two different real players share a name and broad position; women's-"
+        "exists between StatsBomb and Transfermarkt), and a match is kept only if Transfermarkt "
+        "also places the player at the same club that season. A real match can be missed (left "
+        "blank, never guessed), e.g. a loanee valued at his parent club; women's-"
         "league players have no market value at all, since the Transfermarkt mirror used here only "
         "covers men's football.\n\n"
         "**Bigger modelling upgrades:** uncertainty ranges on the xG number instead of one point "
@@ -707,10 +712,10 @@ the full model (adds body part, assist type, game state) reaches
         st.pyplot(fig)
         plt.close(fig)
         st.caption(
-            "The ranking holds on every tournament checked (ROC-AUC 0.76–0.81), including two "
-            "women's tournaments — a men's-trained model meeting a second distribution shift. The "
-            "higher Brier on Women's EURO 2025 mostly reflects its higher goal rate, not a bias: it "
-            "scored 98% of its expected goals."
+            f"The ranking holds on every tournament checked (ROC-AUC {gen_table['roc_auc'].min():.2f}"
+            f"–{gen_table['roc_auc'].max():.2f}), including two women's tournaments — a men's-trained "
+            "model meeting a second distribution shift. A higher Brier score mostly tracks a higher "
+            "goal rate, not a bias (see MODULES.md for goals vs. expected goals per tournament)."
         )
 
         st.markdown(
@@ -719,10 +724,10 @@ the full model (adds body part, assist type, game state) reaches
 group, minimum {metrics['similarity']['min_minutes']} minutes played to qualify — for the three
 outfield groups (Defender/Midfielder/Forward), on the notebook/pipeline's single-competition (PL
 2015/16) scope. Silhouette score (cluster tightness, −1 to 1) peaks low at K=2 for every one of
-them (~0.22–0.26) — reported honestly rather than hidden: play styles within a position are a
+them ({min(peaks):.2f}–{max(peaks):.2f}) — reported honestly rather than hidden: play styles within a position are a
 soft continuum, not sharply separated blobs. K=4 is used anyway, for archetype granularity,
 against the metric's own preference. Goalkeepers now get the same treatment on the app's wider
-6-competition pool (124 keepers): silhouette also peaks at K=2 (~0.22) and K=4 is kept for the
+6-competition pool ({n_goalkeepers} keepers): silhouette also peaks low, and K=4 is kept for the
 same archetype-granularity reason.
 
 **Known limitations, stated plainly:** cross-league normalisation is a *relative*, data-only fix
@@ -863,9 +868,13 @@ def render_player_explorer(per90, searchable, xg_table, shots, market_value, pos
     # display-only `goals` column (incl. penalties, never fed to a model — see
     # DISPLAY_COUNT_COLUMNS) gets its own caption. Goalkeepers have no `goals`; save % is theirs.
     if position_group == "Goalkeeper":
-        shots_faced = int(round(player_row_full["shots_faced"]))
         saves = int(round(player_row_full["saves"]))
-        st.caption(f"**Save %: {player_row_full['save_pct']:.0%}** ({saves}/{shots_faced} shots faced)")
+        on_target = saves + int(round(player_row_full["goals_conceded"]))
+        shots_faced = int(round(player_row_full["shots_faced"]))
+        st.caption(
+            f"**Save %: {player_row_full['save_pct']:.0%}** ({saves} saves from {on_target} shots on "
+            f"target, penalties included · {shots_faced} shots faced in total)"
+        )
     elif pd.notna(player_row_full.get("goals")):
         total_goals = int(round(player_row_full["goals"]))
         non_penalty_goals = int(round(player_row_full["non_penalty_goals"]))
@@ -962,10 +971,11 @@ def render_player_explorer(per90, searchable, xg_table, shots, market_value, pos
         plt.close(fig)
         if position_group == "Goalkeeper":
             st.caption(
-                "Counts are from StatsBomb's `Goal Keeper` event sub-types (Shot Faced, Shot Saved, "
-                "Goal Conceded, Collected, Punch, Keeper Sweeper) — save % isn't shown here since "
-                "it's already above, as a ratio rather than a per-90 rate. Goals Conceded's "
-                "percentile is flipped so fewer conceded reads as higher, not lower."
+                "Counts come from StatsBomb's `Goal Keeper` events (saves, goals conceded incl. "
+                "penalties, claims, punches, sweeper actions). Save % is above, as a ratio rather "
+                "than a per-90 rate; shots faced isn't ranked, since it mostly measures the defence "
+                "in front of the keeper. Goals Conceded's percentile is flipped so fewer conceded "
+                "reads as higher, not lower."
             )
         else:
             st.caption(
@@ -993,7 +1003,8 @@ def render_player_explorer(per90, searchable, xg_table, shots, market_value, pos
 
     with col_radar:
         st.subheader(f"Radar vs. {position_group.lower()} peers")
-        if radar_axes:
+        # mplsoccer's Radar raises below three axes, so fewer would crash the page.
+        if len(radar_axes) >= MIN_RADAR_AXES:
             fig, ax = plt.subplots(figsize=(6, 6))
             plot_player_radar(
                 player_row_full, population=group_df, feature_columns=radar_axes, ax=ax,
@@ -1002,7 +1013,7 @@ def render_player_explorer(per90, searchable, xg_table, shots, market_value, pos
             st.pyplot(fig)
             plt.close(fig)
         else:
-            st.info("Pick at least one radar axis in the sidebar.")
+            st.info(f"Pick at least {MIN_RADAR_AXES} radar axes in the sidebar.")
 
     with col_similar:
         st.subheader(f"Players like {player_name}")
@@ -1059,10 +1070,10 @@ def render_player_explorer(per90, searchable, xg_table, shots, market_value, pos
             st.info(f"{player_name} has no logged shots — goalkeepers don't take them.")
         else:
             st.info(
-                f"{player_name} ({competition_name}) has no logged shots in the xG training set "
-                "(Premier League 2015/16 + Bayer Leverkusen 2023/24). The similarity pool is wider "
-                "than the xG training set (see \"About & Roadmap\" in the sidebar), so this is "
-                "expected for most players outside those two competitions, not a bug."
+                f"{player_name} ({competition_name}) has no xG data: the Finishing panel covers "
+                "Premier League 2015/16 only, the one competition in both the xG training set and "
+                "this player pool (see \"About & Roadmap\" in the sidebar). Expected for every "
+                "other competition, not a bug."
             )
     else:
         row = xg_row.iloc[0]
@@ -1092,8 +1103,8 @@ def render_player_explorer(per90, searchable, xg_table, shots, market_value, pos
             "sidebar. Below: how tightly this specific position group's players cluster."
         )
         st.caption(
-            f"Silhouette score by K — {position_group} (league-normalised features; peaks low, "
-            "~0.2-0.25 for every group including goalkeepers: play-styles within a position are a "
+            f"Silhouette score by K — {position_group} (league-normalised features; it peaks low "
+            "for every group, goalkeepers included: play-styles within a position are a "
             "soft continuum, not crisp blobs; K=4 is kept deliberately above the metric's preferred "
             "K=2 for archetype granularity)."
         )

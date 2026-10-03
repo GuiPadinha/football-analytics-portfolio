@@ -93,3 +93,15 @@ def test_compare_players_same_and_cross_position(per90):
         _label(per90, keeper["player"], keeper["team"])
     ).run()
     _assert_clean(at)
+
+
+def test_radar_with_too_few_axes_shows_a_hint_instead_of_crashing(per90):
+    # mplsoccer's Radar raises below three axes; deselecting down to two used to crash the page.
+    at = _run()
+    at.selectbox(key="player_pick_All_All").set_value(
+        _label(per90, "Harry Kane", "Tottenham Hotspur")
+    ).run()
+    radar_axes = at.sidebar.multiselect(key="radar_axes_Forward")
+    radar_axes.set_value(radar_axes.value[:2]).run()
+    _assert_clean(at)
+    assert any("radar axes" in i.value for i in at.info)

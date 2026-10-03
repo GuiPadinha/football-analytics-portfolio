@@ -258,7 +258,7 @@ every output PNG, `data/manifest.json`, and `metrics.json` in one go:
 
 ```bash
 python -m src.pipeline            # reuses the data/ cache where present
-python -m src.pipeline --force    # ignore the cache, re-pull/re-engineer from raw StatsBomb data
+python -m src.pipeline --force    # rebuild the processed tables from the per-match cache
 ```
 
 Downloaded matches are cached in `data/cache/` (~8.5 GB for everything). Set the `FAP_CACHE_DIR`
@@ -279,11 +279,11 @@ python -m src.app_data             # only to rebuild app_data/ (needs requiremen
 [gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app)
 (Streamlit Community Cloud, since 2026-07-09). The player pool spans **6 competitions** — Premier
 League, La Liga, Serie A, Ligue 1 (all 2015/16), plus Frauen Bundesliga and FA Women's Super League
-(both 2023/24) — **1,635 players total, including 124 goalkeepers** with their own feature set,
+(both 2023/24) — **1,638 players total, including 123 goalkeepers** with their own feature set,
 K-means clustered into style archetypes like the outfield groups. The app also has a full player
 **leaderboard** (sortable, goals incl. penalties + xG where available), a **Compare players** view
 (any two players, side by side), a **Transfermarkt market value** matched onto "players like X" and
-the Leaderboard (men's competitions only, ~90% match rate), and an **About & Roadmap** tab
+the Leaderboard (men's competitions only, ~87% match rate), and an **About & Roadmap** tab
 explaining the framework, the data, and what's next.
 
 ---

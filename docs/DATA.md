@@ -27,7 +27,7 @@
 | Bayer Leverkusen 2023/24 | 34 matches, events + 360 | xG training (league) — tactically unique unbeaten season |
 | Premier League 2015/16 | 380 matches, events | xG training (league) — volume + era benchmark |
 | UEFA EURO 2024 | 51 matches, events + 360 | xG test/validation (tournament) — out-of-distribution test |
-| SkillCorner 2024/25 | 10 matches, physical tracking | Physical layer for player similarity (Module B) |
+| SkillCorner 2024/25 | 10 matches, physical tracking | Standalone physical-metrics demo (no player overlap with the StatsBomb pool, so not joined into Module B) |
 
 **Pulled 2026-07-04, Phase 4 data expansion (see below) — wired into `config.SIMILARITY_SETS`
 (the app's player pool, 2026-07-05) or `config.GENERALISATION_TEST_SETS` (Module A held-out
@@ -160,13 +160,23 @@ common surnames) — see `_token_rarity_scores` and ML_LEARNING_LOG.md for the f
 including a second real bug (a name-construction particle like "de" winning by default when it was
 the *only* candidate, fixed by requiring at least one non-particle token). A name with zero or
 still-ambiguous candidates (e.g. two genuinely different real players who share a name and
-position) is left unmatched, never guessed — **~90% of the four men's competitions matched**
-(1,215 of ~1,344 players) on the real data, spot-checked on star players (Messi, Ronaldo, Neymar,
-Kane, Agüero, Ibrahimović, Higuaín... all resolve to plausible, era-correct valuations).
-**Correction (2026-10-01):** this list used to include Suárez, but **Luis Suárez (Barcelona) is
-unmatched**. Transfermarkt has two "Luis Suárez" profiles with the same broad position (born 1987
-and 1997), so the matcher's "ambiguous → leave blank" rule applies. A birth-date or club-at-date
-tiebreak would resolve it; see ROADMAP.md's Phase 9 list.
+position) is left unmatched, never guessed.
+
+**Club check (added 2026-10-02):** a name match is kept only if Transfermarkt valued that player
+at the StatsBomb team's club within 12 months of the season (`keep_matches_at_the_right_club`).
+Name matching alone had attached other people's valuations to famous players with long legal
+names: Dani Alves, Koke, Gabi, Danilo, Fernandinho, Jonny Evans and David Silva (€100k from a 2024
+valuation). The check removes 76 of 1,244 name matches; reviewing them by hand, about two-thirds
+were wrong identities and the rest real players on loan or a mid-season move. Two data traps: the sources name clubs differently
+("Barcelona" vs "FC Barcelona"), so each team's Transfermarkt club is learned by majority vote
+over its matched players; and `player_valuations.current_club_id` is the player's club *today*,
+so only `current_club_name` (the club at the valuation date) can be used. Result: **~87% of the
+four men's competitions matched (1,168 of 1,347 players)**, every kept valuation from 2015–16.
+Spot-checked: Messi, Ronaldo, Neymar, Kane, Agüero, Ibrahimović and Higuaín all resolve to
+era-correct valuations; the players above are now honest blanks. Loanees valued at their parent
+club also become blanks, the accepted cost. **Luis Suárez (Barcelona) is still unmatched:**
+Transfermarkt has two same-position "Luis Suárez" profiles (born 1987 and 1997) and ambiguous
+names are dropped before the club check runs; see ROADMAP.md's Phase 9 list.
 
 **Valuation is dated, not one number:** uses `player_valuations`' history, picking the entry
 nearest a representative "as of" date per competition (`market_value.MARKET_VALUE_AS_OF_DATES` —

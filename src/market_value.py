@@ -19,10 +19,12 @@ cache rather than re-pulling.
    player's full legal name, Transfermarkt uses their popular/shirt name" case — e.g. StatsBomb's
    "Cristiano Ronaldo dos Santos Aveiro" vs Transfermarkt's "Cristiano Ronaldo"), filtered to a
    compatible broad position, and **only accepted if exactly one Transfermarkt candidate
-   survives** — an unresolved or ambiguous name gets no market value shown, never a guess. This
-   is a real simplification (no club/season cross-check, since StatsBomb and Transfermarkt's club
-   naming/season conventions don't line up cleanly enough to gate matching reliably) — false
-   negatives (a real match missed) are the expected failure mode, not false positives.
+   survives** — an unresolved or ambiguous name gets no market value shown, never a guess. A
+   name match must then pass a club check (`keep_matches_at_the_right_club`: Transfermarkt must
+   value the player at the StatsBomb team's club around that season), added 2026-10-02 after
+   name matching alone attached wrong identities to famous players. False negatives (a real
+   match missed, e.g. a loanee valued at his parent club) are the expected failure mode, not
+   false positives.
 2. **This mirror only covers men's football** (verified directly against the real data before
    relying on it — every `current_club_domestic_competition_id` in the `players` table is a
    men's league code; zero rows matched any known women's club name). So market value is only
@@ -43,7 +45,7 @@ from pathlib import Path
 import pandas as pd
 import urllib.request
 
-from src.net import use_os_trust_store, with_retries
+from src.net import use_os_trust_store, with_retries, write_atomically
 
 TRANSFERMARKT_BASE_URL = "https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data/"
 CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "transfermarkt"
@@ -62,6 +64,11 @@ MARKET_VALUE_AS_OF_DATES = {
     "Serie A 2015/16": pd.Timestamp("2016-01-01"),
     "Ligue 1 2015/16": pd.Timestamp("2016-01-01"),
 }
+
+# How far from the season's anchor date a valuation may be and still confirm which club a matched
+# player was at (see `keep_matches_at_the_right_club`). Twelve months either side spans the season
+# plus each transfer window around it, so a January signing still shows his new club.
+CLUB_CHECK_WINDOW = pd.DateOffset(months=12)
 
 # Transfermarkt's broad `position` category maps onto this project's four position groups
 # almost exactly (checked against the real data before relying on the mapping) — the one
@@ -138,7 +145,7 @@ def _download_csv(filename, cache_dir=CACHE_DIR):
             with urllib.request.urlopen(request, timeout=60) as response:
                 return response.read()
 
-        cache_path.write_bytes(with_retries(fetch, describe=f"Transfermarkt {filename}"))
+        write_atomically(cache_path, with_retries(fetch, describe=f"Transfermarkt {filename}"))
 
     return pd.read_csv(cache_path, compression="gzip")
 
@@ -279,6 +286,49 @@ def match_players_to_transfermarkt(per90_players, tm_players):
     return pd.DataFrame(matches, columns=["player", "team", "tm_player_id", "tm_name"])
 
 
+def keep_matches_at_the_right_club(matched_players, tm_valuations, as_of_date, window=CLUB_CHECK_WINDOW):
+    """Drop name matches that Transfermarkt doesn't place at the player's team around the season.
+
+    Name matching alone produced confident wrong identities for players with long legal names
+    (found 2026-10-02): StatsBomb's "Daniel Alves da Silva" (Barcelona) matched a "Alves Da Silva"
+    valued at Royale Union Saint-Gilloise, and "Jorge Resurrección Merodio" (Koke, Atlético) matched
+    a "Jorge" at Flamengo. Here a match is kept only if Transfermarkt valued that player at the
+    StatsBomb team's club within `window` of `as_of_date`. A wrong identity almost never passes;
+    the cost is that loanees valued at their parent club become misses, which is the safe failure.
+
+    The two sources name clubs differently ("Barcelona" vs "FC Barcelona"), so each StatsBomb team's
+    Transfermarkt club is learned from the data: the club most of that team's matched players were
+    valued at in the window (most matches are right, so the majority is the real club). Club names
+    are compared, not ids: in `player_valuations`, `current_club_id` is the player's club *today*,
+    and only `current_club_name` is the club at the valuation date (checked on De Bruyne's history).
+
+    Args:
+        matched_players (pandas.DataFrame): output of `match_players_to_transfermarkt`.
+        tm_valuations (pandas.DataFrame): `player_valuations` with `player_id`, `date` (datetime),
+            `current_club_name`.
+        as_of_date (pandas.Timestamp): the season's anchor date.
+        window (pandas.DateOffset): how far either side of `as_of_date` a valuation may be.
+
+    Returns:
+        pandas.DataFrame: the rows of `matched_players` that pass the club check.
+    """
+    in_window = tm_valuations[
+        (tm_valuations["date"] >= as_of_date - window) & (tm_valuations["date"] <= as_of_date + window)
+    ]
+    clubs_by_player = in_window.groupby("player_id")["current_club_name"].agg(set).to_dict()
+    player_clubs = [clubs_by_player.get(pid, set()) for pid in matched_players["tm_player_id"]]
+
+    votes = Counter(
+        (team, club) for team, clubs in zip(matched_players["team"], player_clubs) for club in clubs
+    )
+    team_club = {}
+    for (team, club), _ in votes.most_common():  # highest count first, so the first seen wins
+        team_club.setdefault(team, club)
+
+    keep = [team_club.get(team) in clubs for team, clubs in zip(matched_players["team"], player_clubs)]
+    return matched_players[keep].reset_index(drop=True)
+
+
 def resolve_market_values(matched_players, tm_valuations, as_of_date):
     """Attach each matched player's Transfermarkt market value nearest to `as_of_date`.
 
@@ -337,6 +387,7 @@ def build_market_value_table(per90_features, cache_dir=CACHE_DIR):
     """
     tm_players = _download_csv("players.csv.gz", cache_dir)
     tm_valuations = _download_csv("player_valuations.csv.gz", cache_dir)
+    tm_valuations["date"] = pd.to_datetime(tm_valuations["date"])
 
     resolved_frames = []
     for competition, as_of_date in MARKET_VALUE_AS_OF_DATES.items():
@@ -344,6 +395,7 @@ def build_market_value_table(per90_features, cache_dir=CACHE_DIR):
         if pool.empty:
             continue
         matched = match_players_to_transfermarkt(pool, tm_players)
+        matched = keep_matches_at_the_right_club(matched, tm_valuations, as_of_date)
         if matched.empty:
             continue
         resolved_frames.append(resolve_market_values(matched, tm_valuations, as_of_date))

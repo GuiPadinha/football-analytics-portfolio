@@ -10,6 +10,19 @@ Companion to CLAUDE.md. Running record of ML/stats concepts exercised, gotchas h
 
 Key gotchas and lessons — most recent first:
 
+- **A CV mean can be robust while its spread isn't** (2026-10-02, deep audit). `cross_validate`
+  with `cv=5` doesn't shuffle, so the folds are contiguous blocks of the training data in match
+  order (fold 0 holds all the Leverkusen shots), not the "random slices" the docstring claimed.
+  Three schemes on the same data: unshuffled 0.783 ± 0.009, shuffled shot-level 0.782 ± 0.006,
+  shuffled and grouped by match 0.783 ± 0.016. Same mean, spread varying almost 3×. Kept as is
+  (whole matches already stay on one side of each split, so there's no within-match leakage) and
+  the docstring now says what the folds are. When comparing two models by CV, quote the scheme
+  with the ± or the ± means little.
+- **Don't rely on a data library's row order** (2026-10-02). statsbombpy returns a match's events
+  out of chronological order (second-half kickoff rows near the top), and the game-state feature
+  walked rows in that order. Measured: 0 of 12,140 shots affected, because shot rows happened to
+  be in order in every match checked. The function now sorts by StatsBomb's `index` (the event
+  sequence number) anyway, with a test that shuffles the rows.
 - **"Byte-reproducible" holds for rounded outputs, not raw floats** (2026-10-02, health-check
   re-audit). Rebuilding `app_data/` on Python 3.12 changed the bytes of
   `player_xg_table.parquet`/`shots_with_xg.parquet` (built on 3.10 in July). The frames are equal
@@ -103,6 +116,31 @@ Key gotchas and lessons — most recent first:
 
 Key gotchas and lessons — most recent first:
 
+- **Three shipped data bugs from one root cause: a field or key used without reconciling it
+  against a known total** (found 2026-10-02/03, deep audit). Each looked fine in code review and
+  was obvious once a number was checked against reality.
+  - *Goalkeeper save % (median 38% instead of ~70%).* StatsBomb's "Shot Faced" keeper event is the
+    *remainder* category (off target, blocked, post), not every shot faced: each shot creates one
+    keeper event, either a save type, a goal conceded, or "Shot Faced". Reconciliation proved it:
+    on 150 matches the keeper events equal the shot count, and saves and goals match the shot
+    outcomes exactly. A July note in MODULES.md had suspected the denominator, with the direction
+    backwards, and nobody checked. Fix: shots faced = all shot-linked types, save % = saves ÷
+    (saves + goals conceded), penalties included in goals conceded.
+  - *Ligue 1 had 21 teams.* StatsBomb names Marseille "Marseille" in some matches' lineups and
+    "Olympique de Marseille" elsewhere (Caen likewise), so a (player, team) group-by split those
+    players' seasons in two (Mandanda: 2,334 + 1,027 minutes). Fix: map each match's names onto its
+    match sheet. Check: every competition must have its real number of teams
+    (`tests/test_app_data.py`).
+  - *Market value: wrong identities for famous players.* Name-only entity resolution with a
+    token-subset fallback matched Dani Alves, Koke, Danilo, David Silva and others to different
+    people. Fix: confirm identity with an independent second signal, Transfermarkt's club at the
+    valuation date, which removed 76 of 1,244 matches (about two-thirds wrong, one-third real
+    loanees that became safe blanks). Data trap on the way: `player_valuations.current_club_id` is
+    the club *today*; only `current_club_name` is the club at that date.
+
+  The habit to keep: for every derived stat, find one number it must equal or stay within (shots,
+  20 teams, a ~70% save rate, a valuation from the right year) and assert it, ideally in a test
+  that reads the shipped data.
 - **The 2026-10-01 stale-cache fix covered the shot tables only; the similarity table still trusts
   "the file exists"** (found 2026-10-02, health-check re-audit). `pipeline.build_similarity_table`
   reuses `data/player_per90_pl_2015_16.pkl` whenever the file is present, and notebook 03 reads

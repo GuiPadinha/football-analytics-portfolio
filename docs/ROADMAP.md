@@ -296,7 +296,7 @@ StatsBomb `three-sixty` data gives freeze-frames (every visible player's positio
 
 Minimal v1 built 2026-07-04, ahead of strict phase order — a friend demo (~2026-07-11) made
 "something clickable" more valuable than finishing 4–6 first. Since then it has grown to four
-views over a 6-competition pool (1,635 players incl. goalkeepers). What the app does today, and
+views over a 6-competition pool (1,638 players incl. goalkeepers). What the app does today, and
 the UX decisions behind it, are in [PRODUCT_SPEC.md](PRODUCT_SPEC.md).
 
 **Deployed 2026-07-09** to Streamlit Community Cloud:
@@ -362,8 +362,9 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
 - **Market-value tiebreak for same-name players** (found 2026-10-01): Luis Suárez (Barcelona) is
   unmatched because Transfermarkt has two same-position "Luis Suárez" profiles (born 1987/1997).
   `players.csv` has `date_of_birth`, and `player_valuations` has the club at each date. Either one
-  breaks the tie deterministically: drop candidates too young for the season, or pick the one
-  valued at the StatsBomb team on the as-of date.
+  breaks the tie deterministically. Since 2026-10-02 the club check (`keep_matches_at_the_right_club`)
+  already learns each team's Transfermarkt club; applying it to tied candidates before the "exactly
+  one" rule, instead of after, would resolve this case with no new data.
 - **The live demo sleeps** (found 2026-10-01): Streamlit Community Cloud hibernates an app with no
   traffic, so the first visitor from a CV/LinkedIn link sees a "wake this app up" screen and waits
   ~1 min. Options: a scheduled GitHub Action that opens the app in a headless browser (a plain
@@ -433,8 +434,9 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
 ### Done
 
 - **Architecture / dependency doc** — [ARCHITECTURE.md](ARCHITECTURE.md), 2026-07-04.
-- **Market value (Transfermarkt) alongside "players like X"** — `src/market_value.py`, ~90% match
-  rate on the men's leagues, 2026-07-14 (see [DATA.md](DATA.md)).
+- **Market value (Transfermarkt) alongside "players like X"** — `src/market_value.py`, 2026-07-14;
+  club check against wrong identities added 2026-10-02, ~87% match rate on the men's leagues (see
+  [DATA.md](DATA.md)).
 - **Side-by-side "Compare players" view** — 2026-07-14.
 - **Auto-generated scouting-report blurb** — `build_scouting_blurb`, 2026-07-14.
 - **2026-10-02 re-audit fixes** — the similarity-table cache now rebuilds when its columns change;

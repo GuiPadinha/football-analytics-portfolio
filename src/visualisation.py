@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 from mplsoccer import Pitch, Radar
 
+from src.similarity import LOWER_IS_BETTER_STATS
+
 # Fixed seed for mplsoccer's random grass texture, so the same shots always render the same PNG.
 GRASS_TEXTURE_SEED = 0
 
@@ -182,6 +184,24 @@ def plot_pca_clusters(components, cluster_labels, ax=None, title=None):
     return ax
 
 
+def _radar_axes(population, feature_columns):
+    """The mplsoccer `Radar` both radar charts draw on: one axis per feature, scaled to the
+    population's 5th-95th percentile (see `plot_player_radar` for why not min/max), with
+    lower-is-better stats (goals conceded) reversed so "further out" always means "better".
+    """
+    labels = [col.replace("_p90", "").replace("_", " ").title() for col in feature_columns]
+    lower_is_better = [
+        label for col, label in zip(feature_columns, labels) if col in LOWER_IS_BETTER_STATS
+    ]
+    return Radar(
+        labels,
+        population[feature_columns].quantile(0.05).tolist(),
+        population[feature_columns].quantile(0.95).tolist(),
+        lower_is_better=lower_is_better,
+        num_rings=4,
+    )
+
+
 def plot_player_radar(
     player_row, population, feature_columns, ax=None, title=None,
     circle_facecolor="#f0f0f0", circle_edgecolor="#cccccc", radar_facecolor="#1a78cf",
@@ -219,11 +239,7 @@ def plot_player_radar(
     Returns:
         matplotlib.axes.Axes: the axes the radar was drawn on.
     """
-    labels = [col.replace("_p90", "").replace("_", " ").title() for col in feature_columns]
-    min_range = population[feature_columns].quantile(0.05).tolist()
-    max_range = population[feature_columns].quantile(0.95).tolist()
-
-    radar = Radar(labels, min_range, max_range, num_rings=4)
+    radar = _radar_axes(population, feature_columns)
 
     if ax is None:
         _, ax = plt.subplots(figsize=(8, 8))
@@ -278,11 +294,7 @@ def plot_player_radar_comparison(
     Returns:
         matplotlib.axes.Axes: the axes the radar was drawn on.
     """
-    labels = [col.replace("_p90", "").replace("_", " ").title() for col in feature_columns]
-    min_range = population[feature_columns].quantile(0.05).tolist()
-    max_range = population[feature_columns].quantile(0.95).tolist()
-
-    radar = Radar(labels, min_range, max_range, num_rings=4)
+    radar = _radar_axes(population, feature_columns)
 
     if ax is None:
         _, ax = plt.subplots(figsize=(8, 8))

@@ -23,7 +23,7 @@ colleague pitch (date TBD — today or the next day at the time of writing).
 
 ## Demo script (suggested order)
 
-1. **Leaderboard** — scale (6 competitions, 1,635 players), sort by Goals, point out a
+1. **Leaderboard** — scale (6 competitions, 1,638 players), sort by Goals, point out a
    penalty-inflated total (e.g. a defender whose goals are mostly penalties) — shows why "raw
    goals" is a misleading stat on its own. Mention the name/position filters above the table if
    asked how to find a specific player quickly.
@@ -47,13 +47,13 @@ colleague pitch (date TBD — today or the next day at the time of writing).
 
 ## Key numbers to lead with (whole numbers — say these without notes)
 
-- **6** competitions, **1,635** players in the similarity pool (incl. **124 goalkeepers**, wired in
-  2026-07-13 with their own feature set — saves, shots faced, goals conceded, claims, save % — and
-  K-means clustered into style archetypes like the outfield groups).
+- **6** competitions, **1,638 players** in the similarity pool (incl. **123 goalkeepers**, wired in
+  2026-07-13 with their own feature set — saves, goals conceded, claims, punches, sweeper actions,
+  plus save % — and K-means clustered into style archetypes like the outfield groups).
 - **10,824** shots trained the xG model; a further **7,215** held-out shots — across **6**
   tournaments it never trained on, **2 of them women's** — used to check it generalises.
-- **1,215** players matched to a real Transfermarkt market value (2026-07-14, men's competitions
-  only — see the Roadmap section below for the honest coverage caveat).
+- **1,168** players matched to a real Transfermarkt market value (men's competitions only, each
+  confirmed at the player's club that season — see the Roadmap section below for the coverage caveat).
 - **~150** automated tests, including smoke tests of every app view, run on every push on Python
   3.10 and 3.12; a one-command rebuild (`python -m src.pipeline`) that reproduces every number and
   chart byte-for-byte; and a live deployed app.
@@ -115,6 +115,7 @@ lists).
   in-app, not oversold as a full solution.
 - **Market value modelling** (not *displaying* one — that's done, see above): still out of scope
   by design. This tool informs a human's valuation, it doesn't price players itself.
-- **If a specific player's market value is missing:** either a genuine name-matching miss (no
-  shared player ID exists between StatsBomb and Transfermarkt — see DATA.md) or a women's-league
-  player (that data source has zero coverage there) — never a silently faked number.
+- **If a specific player's market value is missing:** either no confident match (no shared player
+  ID exists between StatsBomb and Transfermarkt, and a name match must also show the player at the
+  same club that season — see DATA.md) or a women's-league player (zero coverage there). Never a
+  guessed number.

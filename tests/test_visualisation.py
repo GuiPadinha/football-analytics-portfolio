@@ -37,3 +37,12 @@ def test_shot_map_leaves_the_callers_random_state_untouched():
     np.random.seed(123)
     _render_shot_map()
     assert np.random.random() == expected
+
+
+def test_radar_reverses_lower_is_better_axes_only():
+    from src.visualisation import _radar_axes
+
+    columns = ["saves_p90", "goals_conceded_p90", "claims_p90"]
+    population = pd.DataFrame({col: np.linspace(0.5, 5, 20) for col in columns})
+    radar = _radar_axes(population, columns)
+    assert list(radar.greater_is_better) == [True, False, True]

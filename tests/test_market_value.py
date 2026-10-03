@@ -13,6 +13,7 @@ import pandas as pd
 import pytest
 
 from src.market_value import (
+    keep_matches_at_the_right_club,
     match_players_to_transfermarkt,
     normalize_name,
     resolve_market_values,
@@ -161,3 +162,45 @@ def test_resolve_market_values_drops_players_with_no_valuation_history():
 
     result = resolve_market_values(matched, valuations, pd.Timestamp("2016-01-01"))
     assert list(result["player"]) == ["Has History"]
+
+
+def _club_valuations(rows):
+    frame = pd.DataFrame(rows, columns=["player_id", "date", "current_club_name"])
+    frame["date"] = pd.to_datetime(frame["date"])
+    return frame
+
+
+def test_club_check_drops_a_name_match_valued_at_another_club():
+    # Three real Barcelona players outvote the one wrong identity, so "FC Barcelona" is learned as
+    # the team's club and the namesake valued at Union Saint-Gilloise is dropped (the Dani Alves case).
+    matched = pd.DataFrame({
+        "player": ["Messi", "Neymar", "Busquets", "Daniel Alves da Silva"],
+        "team": ["Barcelona"] * 4,
+        "tm_player_id": [1, 2, 3, 99],
+        "tm_name": ["Lionel Messi", "Neymar", "Sergio Busquets", "Alves Da Silva"],
+    })
+    valuations = _club_valuations([
+        (1, "2015-10-01", "FC Barcelona"), (2, "2016-02-01", "FC Barcelona"),
+        (3, "2015-08-01", "FC Barcelona"), (99, "2016-01-15", "Royale Union Saint-Gilloise"),
+    ])
+    kept = keep_matches_at_the_right_club(matched, valuations, pd.Timestamp("2016-01-01"))
+    assert list(kept["player"]) == ["Messi", "Neymar", "Busquets"]
+
+
+def test_club_check_keeps_a_mid_season_signing_and_drops_out_of_window_valuations():
+    matched = pd.DataFrame({
+        "player": ["A", "B", "January signing", "Long retired namesake"],
+        "team": ["Sampdoria"] * 4,
+        "tm_player_id": [1, 2, 3, 4],
+        "tm_name": ["A", "B", "C", "D"],
+    })
+    valuations = _club_valuations([
+        (1, "2015-09-01", "UC Sampdoria"), (2, "2016-03-01", "UC Sampdoria"),
+        # Valued at his old club before the move and at Sampdoria after it: both in the window.
+        (3, "2015-09-01", "Torino FC"), (3, "2016-07-01", "UC Sampdoria"),
+        # Right club name, but years away from the season: not evidence about 2015/16.
+        (4, "2010-01-01", "UC Sampdoria"),
+    ])
+    kept = keep_matches_at_the_right_club(matched, valuations, pd.Timestamp("2016-01-01"))
+    assert list(kept["player"]) == ["A", "B", "January signing"]
+

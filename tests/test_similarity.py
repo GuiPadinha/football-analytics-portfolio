@@ -9,6 +9,8 @@ from src.similarity import (
     ACTION_COLUMNS,
     DISPLAY_COUNT_COLUMNS,
     GK_ACTION_COLUMNS,
+    GK_DISPLAY_COUNT_COLUMNS,
+    _goalkeeper_per90_table,
     _parse_clock,
     compute_minutes_played,
     compute_silhouette_scores,
@@ -17,6 +19,7 @@ from src.similarity import (
     build_goalkeeper_per90_features,
     build_player_per90_features,
     build_season_per90_tables,
+    canonical_team_names,
     find_similar_players,
     goodness_percentiles,
     normalize_within_competition,
@@ -136,26 +139,44 @@ def test_find_similar_players_omits_competition_column_when_absent():
 
 
 def test_extract_goalkeeper_match_actions_counts_by_type():
-    events = pd.DataFrame([
-        {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Shot Faced"},
-        {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Shot Saved"},
-        {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Shot Faced"},
-        {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Goal Conceded"},
-        {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Collected"},
-        {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Punch"},
-        {"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": "Keeper Sweeper"},
-        # A different team's outfield event in the same match must not be counted as a GK action.
-        {"type": "Pass", "player": "Midfielder B", "team": "T", "goalkeeper_type": np.nan},
-    ])
+    # StatsBomb logs one keeper event per shot: saved, conceded, or "Shot Faced" for the rest
+    # (off target, blocked). Shots faced is all of them; penalties count as saves/goals too.
+    shot_outcomes = [
+        "Shot Faced", "Shot Faced", "Shot Saved", "Shot Saved to Post", "Penalty Saved",
+        "Goal Conceded", "Penalty Conceded",
+    ]
+    other_actions = ["Collected", "Punch", "Keeper Sweeper", "Save"]  # "Save" isn't shot-linked
+    events = pd.DataFrame(
+        [{"type": "Goal Keeper", "player": "Keeper A", "team": "T", "goalkeeper_type": t}
+         for t in shot_outcomes + other_actions]
+        # An outfield event in the same match must not be counted as a GK action.
+        + [{"type": "Pass", "player": "Midfielder B", "team": "T", "goalkeeper_type": np.nan}]
+    )
     result = extract_goalkeeper_match_actions(events).set_index(["player", "team"])
     row = result.loc[("Keeper A", "T")]
-    assert row["shots_faced"] == 2
-    assert row["saves"] == 1
-    assert row["goals_conceded"] == 1
+    assert row["shots_faced"] == 7
+    assert row["saves"] == 3
+    assert row["goals_conceded"] == 2
     assert row["claims"] == 1
     assert row["punches"] == 1
     assert row["sweeper_actions"] == 1
     assert "Midfielder B" not in result.index.get_level_values("player")
+
+
+def test_goalkeeper_save_pct_is_saves_over_on_target_shots():
+    season_minutes = pd.DataFrame({
+        "player": ["Keeper A", "Keeper B"], "team": ["T", "U"],
+        "position_group": ["Goalkeeper", "Goalkeeper"], "minutes_played": [1800.0, 1800.0],
+    })
+    actions = pd.DataFrame({
+        "player": ["Keeper A", "Keeper B"], "team": ["T", "U"],
+        "shots_faced": [20, 5], "saves": [6, 0], "goals_conceded": [2, 0],
+        "claims": [0, 0], "punches": [0, 0], "sweeper_actions": [0, 0],
+    })
+    table = _goalkeeper_per90_table(season_minutes, actions, min_minutes=900).set_index("player")
+    assert table.loc["Keeper A", "save_pct"] == 0.75  # 6 of 8 on target, not 6 of 20 faced
+    assert table.loc["Keeper B", "save_pct"] == 0.0  # nothing on target: 0, not NaN
+    assert "shots_faced_p90" not in table.columns  # display-only, never a feature
 
 
 def test_extract_goalkeeper_match_actions_handles_zero_gk_events():
@@ -167,7 +188,9 @@ def test_extract_goalkeeper_match_actions_handles_zero_gk_events():
     ])
     result = extract_goalkeeper_match_actions(events)
     assert len(result) == 0
-    assert list(result.columns) == ["player", "team", "shots_faced", "saves", "goals_conceded", "claims", "punches", "sweeper_actions"]
+    assert list(result.columns) == [
+        "player", "team", "shots_faced", "saves", "goals_conceded", "claims", "punches", "sweeper_actions",
+    ]
 
 
 def test_extract_player_match_actions_counts_clearances_and_blocks():
@@ -316,15 +339,17 @@ def test_goodness_percentiles_does_not_mutate_input():
 def _fake_season_sources(monkeypatch, loaded):
     """Patch every loader the season build touches: two matches, one outfielder over the
     minutes floor, one under it, one goalkeeper. `loaded` records each events load."""
-    monkeypatch.setattr(similarity, "load_matches", lambda comp, season: pd.DataFrame({"match_id": [1, 2]}))
+    monkeypatch.setattr(similarity, "load_matches", lambda comp, season: pd.DataFrame(
+        {"match_id": [1, 2], "home_team": ["T", "T"], "away_team": ["U", "U"]}))
 
     def fake_events(match_id):
         loaded.append(match_id)
-        return pd.DataFrame({"minute": [90]})
+        return pd.DataFrame({"minute": [90, 90], "team": ["T", "U"]})
 
     monkeypatch.setattr(similarity, "load_events", fake_events)
-    monkeypatch.setattr(similarity, "load_lineups", lambda match_id: None)
-    monkeypatch.setattr(similarity, "compute_minutes_played", lambda lineups, duration: pd.DataFrame({"player": ["x"]}))
+    monkeypatch.setattr(similarity, "load_lineups", lambda match_id: {"T": None, "U": None})
+    monkeypatch.setattr(similarity, "compute_minutes_played",
+                        lambda lineups, duration: pd.DataFrame({"player": ["x"], "team": ["T"]}))
     monkeypatch.setattr(similarity, "resolve_season_positions", lambda minutes: pd.DataFrame({
         "player": ["Striker", "Sub", "Keeper"],
         "team": ["T", "T", "T"],
@@ -335,7 +360,7 @@ def _fake_season_sources(monkeypatch, loaded):
     monkeypatch.setattr(similarity, "extract_player_match_actions", lambda events: pd.DataFrame(
         {"player": ["Striker", "Sub"], "team": ["T", "T"], **outfield_counts}))
     monkeypatch.setattr(similarity, "extract_goalkeeper_match_actions", lambda events: pd.DataFrame(
-        {"player": ["Keeper"], "team": ["T"], **{col: [2] for col in GK_ACTION_COLUMNS}}))
+        {"player": ["Keeper"], "team": ["T"], **{col: [2] for col in GK_ACTION_COLUMNS + GK_DISPLAY_COUNT_COLUMNS}}))
 
 
 def test_build_season_per90_tables_matches_the_separate_builders_in_one_pass(monkeypatch):
@@ -353,3 +378,46 @@ def test_build_season_per90_tables_matches_the_separate_builders_in_one_pass(mon
     pd.testing.assert_frame_equal(goalkeepers, goalkeepers_alone)
     assert list(outfield["player"]) == ["Striker"]  # floor and goalkeeper split still applied
     assert list(goalkeepers["player"]) == ["Keeper"]
+
+
+def test_canonical_team_names_keeps_sheet_names_and_maps_the_one_short_name():
+    sheet = ("Olympique de Marseille", "Lorient")
+    assert canonical_team_names(["Lorient", "Olympique de Marseille"], *sheet) == {
+        "Lorient": "Lorient", "Olympique de Marseille": "Olympique de Marseille",
+    }
+    assert canonical_team_names(["Marseille", "Lorient"], *sheet) == {
+        "Marseille": "Olympique de Marseille", "Lorient": "Lorient",
+    }
+
+
+def test_canonical_team_names_refuses_to_guess_when_both_names_differ():
+    with pytest.raises(ValueError):
+        canonical_team_names(["Marseille", "FC Lorient"], "Olympique de Marseille", "Lorient")
+
+
+def test_season_build_merges_a_club_named_two_ways_into_one_row(monkeypatch):
+    # The real case: StatsBomb's lineups say "Marseille" in some matches and the full name in
+    # others, which split Mandanda's season into two rows before the names were mapped.
+    sheet = {"home_team": "Olympique de Marseille", "away_team": "Lorient"}
+    monkeypatch.setattr(similarity, "load_matches", lambda comp, season: pd.DataFrame(
+        [{"match_id": 1, **sheet}, {"match_id": 2, **sheet}]))
+    marseille_name = {1: "Marseille", 2: "Olympique de Marseille"}
+    monkeypatch.setattr(similarity, "load_events", lambda match_id: pd.DataFrame(
+        {"minute": [90, 90], "team": [marseille_name[match_id], "Lorient"]}))
+    monkeypatch.setattr(similarity, "load_lineups", lambda match_id: {
+        marseille_name[match_id]: None, "Lorient": None})
+    monkeypatch.setattr(similarity, "compute_minutes_played", lambda lineups, duration: pd.DataFrame(
+        {"player": ["Steve Mandanda"], "team": [next(t for t in lineups if t != "Lorient")],
+         "position": ["Goalkeeper"], "minutes_played": [90.0]}))
+
+    def keeper_actions(events):
+        team = next(t for t in events["team"] if t != "Lorient")
+        return pd.DataFrame({"player": ["Steve Mandanda"], "team": [team], "saves": [3]})
+
+    season_minutes, (actions,) = similarity._build_season_minutes_and_actions(7, 27, keeper_actions)
+
+    assert season_minutes[["player", "team", "minutes_played"]].values.tolist() == [
+        ["Steve Mandanda", "Olympique de Marseille", 180.0]
+    ]
+    assert set(actions["team"]) == {"Olympique de Marseille"}
+

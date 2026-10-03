@@ -144,8 +144,8 @@ them again.
 - **Whole numbers up front, decimals in Methodology.** The headline tiles are things that can be
   said without notes; ROC-AUC/Brier/silhouette appear only with their explanation.
 - **Market value is displayed, never modelled.** It is a matched external Transfermarkt figure,
-  blank when the name match is ambiguous or the league isn't covered (women's football). It is
-  never guessed.
+  blank when the name match is ambiguous, when Transfermarkt doesn't place the player at that club
+  that season, or when the league isn't covered (women's football). It is never guessed.
 - **Goalkeepers get their own feature set**, not a branch of the outfield one (a keeper's tackles
   are noise).
 
