@@ -82,14 +82,28 @@ def percentile_tier(goodness_pct):
     return "Poor"
 
 
-def format_percentile(goodness_pct):
-    """"72nd", not "72th" — every percentile display in the app goes through this so the ordinal
-    suffix is never wrong (11th/12th/13th are the exception to 1st/2nd/3rd, handled by the
-    `10 <= n % 100 <= 20` guard below).
+def ordinal(n):
+    """"72nd", not "72th": 11th/12th/13th are the exception to 1st/2nd/3rd, handled by the
+    `10 <= n % 100 <= 20` guard below. Shared by percentiles and Compare's "5th-closest match".
     """
-    n = round(goodness_pct)
     suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
     return f"{n}{suffix}"
+
+
+def format_percentile(goodness_pct):
+    """A 0-100 percentile as an ordinal ("72nd"). Every percentile display in the app goes
+    through this, so the suffix is never wrong."""
+    return ordinal(round(goodness_pct))
+
+
+def popular_name(player, nickname):
+    """The name a fan knows: StatsBomb's `nickname` ("Koke", "Philippe Coutinho") when it has
+    one, else the full name, which for most players is already the popular one ("Harry Kane").
+
+    Never cut down to a surname. The last word is wrong too often: it would make "Geum-Min Lee"'s
+    given name her surname and turn "Kevin De Bruyne" into "Bruyne".
+    """
+    return nickname if isinstance(nickname, str) and nickname.strip() else player
 
 
 def style_intensity_label(z):

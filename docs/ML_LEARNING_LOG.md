@@ -10,6 +10,20 @@ Companion to CLAUDE.md. Running record of ML/stats concepts exercised, gotchas h
 
 Key gotchas and lessons — most recent first:
 
+- **A season of shots barely separates finishing skill from luck, and the normal approximation
+  overstates small samples** (2026-10-06, for the redesign's "are the goals real?" sentence). If
+  every shot goes in with its xG, independently, a player's goals follow a Poisson-binomial
+  distribution with variance Σ xG(1−xG). On PL 2015/16's 168 players with 20+ shots, (goals − xG)
+  divided by that SD has a spread of 0.94. Pure luck would give 1.0, so the season shows no more
+  spread than luck alone (in-sample xG shrinks it slightly). Exact tail odds, built by convolving
+  the shots one at a time (`narrative.goals_distribution`), give Agüero (+6.5) 1 in 22, Mahrez
+  (+4.5) 1 in 14, Kane 1 in 6 and Cameron Jerome (−4.2) 1 in 27 below. Only 5 of the 163 players
+  with 2+ xG beat 1 in 20 above, which is about what luck alone produces among ~160 players. The
+  normal approximation (z = gap ÷ SD) fails exactly where it matters. Townsend's 4 goals from 1.1
+  xG read as z = 2.8, but the exact tail is 1 in 44 (~1.9 SD): a low-xG count distribution is
+  skewed. So the app quotes exact odds ("about one season in 22"), words them in bands at 1 in 5
+  and 1 in 20, and gives no verdict under 1.0 xG. Two simplifications stay for 5a/5b: the xG is
+  in-sample, and shots aren't independent (a rebound exists only because the first shot missed).
 - **In-sample xG flatters finishing only slightly here, but Phase 5a should still use
   out-of-fold xG** (2026-10-03, measured for Guilherme's question). The app's Finishing panel
   scores PL 2015/16 shots with a model trained on those same shots. For a logistic regression
@@ -135,6 +149,38 @@ Key gotchas and lessons — most recent first:
 
 Key gotchas and lessons — most recent first:
 
+- **"Top 10% of midfielders" now ranks league standing, not the raw rate** (2026-10-06,
+  Guilherme's call). Ranking raw per-90 rates pooled across 9 leagues mixed league tempo into
+  every percentile. Men's midfielders make 9.6 progressive passes per 90 to women's 8.1, and
+  keepers' median save % runs from 66.7% (WSL) to 71.2% (PL). Ranking the `_lz` value instead
+  moves a percentile by ~6 points on average (p95 ~16, max ~50), and 12–50 midfielders per stat
+  cross the top-10% line. `similarity.league_adjusted_percentiles` is the new basis: the page
+  still shows raw rates, and only the rank changes. It also ranks lower-is-better stats in
+  reverse instead of flipping `1 − pct`, which left the best keeper one rank short of 1.0.
+- **`_lz` is position-relative, so it can't compare a midfielder with a forward** (2026-10-06,
+  Compare's verdict). `app_data._cluster_position_groups` z-scores each stat within competition
+  *and* position group. An average forward and an average midfielder both sit at the zero vector
+  there, so a distance between them measures nothing (a test now pins this). Mixed-position pairs
+  get their own space instead: each stat z-scored within its league across all outfielders
+  (`similarity.pair_closeness`), where position still shows: 79% of a player's top-5 neighbours
+  there share the position group. Same-position pairs keep the lookalike space, so Compare agrees
+  with the player page.
+- **Closeness is a rank, not a distance cutoff, because stars sit in sparse corners**
+  (2026-10-06). The calibration tried fixed bands first: within the median 5th-nearest-neighbour
+  distance (1.43) = like-for-like, within the median 50th (1.97) = similar. They failed on exactly
+  the players people compare. Benzema–Pajor (distance 2.49, yet 5th on Benzema's list) and
+  Mahrez–Dembélé (his #3 lookalike) both came out "different", as would 19% of all top-5
+  lookalikes. A rank adapts to local density: "B is A's 3rd-closest match among men's
+  midfielders". It's ranked within the other player's game, like the page's men's and women's
+  lists, and the better of the two directions is kept. Top 5 (the page's list) = like-for-like,
+  top 25 = similar.
+- **A league-adjusted gap and the raw rates can disagree, so a "lead" needs both** (2026-10-06).
+  On standing alone, Compare said Dembélé "leads on shooting: 2.5 shots per 90, to Mahrez's 2.5":
+  the same rate, a different standing in a different league. A lead now needs a 0.5 league-SD gap
+  *and* a raw rate at least 20% higher. Prices have the same trap. 75% of valued men have a top-5
+  lookalike at half their value or less, because a similar style isn't the same level, and age
+  moves values too (Buffon €2M and Luca Toni €1M, both 38). A cheaper lookalike is a lead to
+  check, not a bargain, and the page has to say so.
 - **Three shipped data bugs from one root cause: a field or key used without reconciling it
   against a known total** (found 2026-10-02/03, deep audit). Each looked fine in code review and
   was obvious once a number was checked against reality.

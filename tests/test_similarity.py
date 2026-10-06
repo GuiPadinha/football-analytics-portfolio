@@ -21,8 +21,14 @@ from src.similarity import (
     canonical_team_names,
     find_similar_players,
     goodness_percentiles,
+    league_adjusted_percentiles,
     normalize_within_competition,
+    pair_closeness,
+    rank_matches,
     resolve_season_positions,
+    GK_PER90_FEATURE_COLUMNS,
+    PER90_FEATURE_COLUMNS,
+    PER90_LEAGUE_Z_COLUMNS,
 )
 
 
@@ -449,3 +455,108 @@ def test_a_pass_that_set_up_a_goal_is_an_assist_not_a_key_pass():
     row = extract_player_match_actions(events).set_index("player").loc["Ozil"]
     assert row["assists"] == 1
     assert row["key_passes"] == 1
+
+
+def test_rank_matches_returns_the_whole_group_nearest_first():
+    ranked = rank_matches(_player_pool(), ["f1", "f2"], player="Target", team="T")
+    assert list(ranked["player"]) == ["Near", "Far"]
+    assert ranked["distance"].is_monotonic_increasing
+    everyone = rank_matches(_player_pool(), ["f1", "f2"], player="Target", team="T", within_position_group=False)
+    assert list(everyone["player"]) == ["WrongGroup", "Near", "Far"]
+
+
+def _lz_pool(**columns):
+    features = pd.DataFrame({"competition": ["A", "A", "A", "B", "B", "B"], **columns})
+    return features.join(normalize_within_competition(features, list(columns)))
+
+
+def test_league_adjusted_percentiles_rank_standing_within_the_league_not_the_raw_rate():
+    pool = _lz_pool(pressures_p90=[8.0, 10.0, 12.0, 80.0, 100.0, 105.0])
+    pct = league_adjusted_percentiles(pool, ["pressures_p90"])
+    assert pct.loc[2, "pressures_p90"] == 1.0                     # 12 tops its league by the most...
+    assert pool["pressures_p90"].rank(pct=True)[2] == pytest.approx(0.5)  # ...and is 3rd of 6 raw
+
+
+def test_league_adjusted_percentiles_give_the_best_on_a_lower_is_better_stat_a_full_one():
+    pool = _lz_pool(goals_conceded_p90=[1.0, 1.5, 2.0, 0.8, 1.2, 2.0])
+    pct = league_adjusted_percentiles(pool, ["goals_conceded_p90"])
+    assert pct.loc[0, "goals_conceded_p90"] == 1.0                # fewest relative to its league
+    assert pct.loc[5, "goals_conceded_p90"] == pytest.approx(1 / 6)
+
+
+def test_league_adjusted_percentiles_add_save_pct_only_when_the_group_has_it():
+    keepers = _lz_pool(saves_p90=[2.0, 3.0, 4.0, 2.0, 3.0, 4.0]).assign(
+        save_pct=[0.60, 0.70, 0.80, 0.70, 0.71, 0.78]
+    )
+    pct = league_adjusted_percentiles(keepers, ["saves_p90"])
+    assert list(pct.columns) == ["saves_p90", "save_pct"]
+    assert pct["save_pct"].idxmax() == 5                          # 0.78 stands further above its league than 0.80
+    outfield = _lz_pool(shots_p90=[1.0, 2.0, 3.0, 1.0, 2.0, 3.0]).assign(save_pct=np.nan)
+    assert list(league_adjusted_percentiles(outfield, ["shots_p90"]).columns) == ["shots_p90"]
+
+
+def _app_pool():
+    """A small pool shaped like app_data's: three outfield groups and keepers, two games, the real
+    stat columns, and `_lz` z-scored within competition and position group as app_data does."""
+    rng = np.random.default_rng(0)
+    rows = []
+    for gender, competition in (("male", "M"), ("female", "W")):
+        for group, columns, size in (("Defender", PER90_FEATURE_COLUMNS, 8), ("Midfielder", PER90_FEATURE_COLUMNS, 8),
+                                     ("Forward", PER90_FEATURE_COLUMNS, 8), ("Goalkeeper", GK_PER90_FEATURE_COLUMNS, 6)):
+            for i in range(size):
+                row = {"player": f"{competition}-{group}-{i}", "team": competition, "position_group": group,
+                       "competition": competition, "gender": gender}
+                row.update({col: rng.gamma(2.0, 1.0) for col in columns})
+                rows.append(row)
+    pool = pd.DataFrame(rows)
+    parts = []
+    for group, part in pool.groupby("position_group", sort=False):
+        columns = GK_PER90_FEATURE_COLUMNS if group == "Goalkeeper" else PER90_FEATURE_COLUMNS
+        parts.append(part.join(normalize_within_competition(part, columns)))
+    return pd.concat(parts).sort_index()
+
+
+def _place(pool, owner, other):
+    ranked = rank_matches(pool, PER90_LEAGUE_Z_COLUMNS, *owner)
+    same_game = ranked[ranked["gender"] == pool.loc[pool["player"] == other[0], "gender"].iloc[0]]
+    return list(same_game["player"]).index(other[0]) + 1
+
+
+def test_pair_closeness_same_group_agrees_with_the_lookalike_lists():
+    pool = _app_pool()
+    a, b = ("M-Midfielder-0", "M"), ("W-Midfielder-3", "W")
+    closeness = pair_closeness(pool, a, b)
+    assert closeness.rank == min(_place(pool, a, b), _place(pool, b, a))
+    assert closeness.list_position == "Midfielder"
+    assert closeness.list_size == 8                                # the other game's midfielders
+    assert closeness.list_gender == ("female" if closeness.from_a else "male")
+
+
+def test_pair_closeness_across_positions_keeps_what_lz_hides():
+    # A midfielder and a forward each exactly at their own group's average: identical (all-zero)
+    # `_lz` vectors, though one makes 12 progressive passes per 90 and the other 4.
+    pool = pd.DataFrame({
+        "player": ["M1", "M2", "M3", "F1", "F2", "F3"], "team": "T", "competition": "C", "gender": "male",
+        "position_group": ["Midfielder"] * 3 + ["Forward"] * 3,
+    })
+    for col in PER90_FEATURE_COLUMNS:
+        pool[col] = 1.0
+    pool["progressive_passes_p90"] = [10.0, 12.0, 14.0, 2.0, 4.0, 6.0]
+    pool = pd.concat([
+        part.join(normalize_within_competition(part, PER90_FEATURE_COLUMNS))
+        for _, part in pool.groupby("position_group", sort=False)
+    ]).sort_index()
+    assert (pool.loc[1, PER90_LEAGUE_Z_COLUMNS] == pool.loc[4, PER90_LEAGUE_Z_COLUMNS]).all()
+
+    closeness = pair_closeness(pool, ("M2", "T"), ("F2", "T"))
+    assert closeness.list_position == "Outfield"
+    assert closeness.standing_a["progressive_passes_p90"] > 0 > closeness.standing_b["progressive_passes_p90"]
+
+
+def test_pair_closeness_refuses_a_keeper_against_an_outfielder_and_unknown_players():
+    pool = _app_pool()
+    with pytest.raises(ValueError):
+        pair_closeness(pool, ("M-Goalkeeper-0", "M"), ("M-Forward-0", "M"))
+    with pytest.raises(ValueError):
+        pair_closeness(pool, ("Nobody", "M"), ("M-Forward-0", "M"))
+    assert pair_closeness(pool, ("M-Goalkeeper-0", "M"), ("M-Goalkeeper-1", "M")).list_position == "Goalkeeper"

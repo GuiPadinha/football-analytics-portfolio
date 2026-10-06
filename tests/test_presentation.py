@@ -15,7 +15,9 @@ from src.presentation import (
     format_market_value,
     format_percentile,
     lookup_market_value,
+    ordinal,
     percentile_tier,
+    popular_name,
     style_intensity_label,
 )
 from src.similarity import (
@@ -107,3 +109,16 @@ def test_build_scouting_blurb_without_market_value():
     )
     assert blurb.endswith("Market value not on record.")
     assert "50th percentile (Average)" in blurb
+
+
+def test_ordinal_handles_the_teens_and_large_ranks():
+    assert [ordinal(n) for n in (1, 2, 3, 11, 12, 13, 21, 112, 558)] == [
+        "1st", "2nd", "3rd", "11th", "12th", "13th", "21st", "112th", "558th",
+    ]
+
+
+def test_popular_name_prefers_the_nickname_and_never_shortens():
+    assert popular_name("Philippe Coutinho Correia", "Philippe Coutinho") == "Philippe Coutinho"
+    assert popular_name("Harry Kane", None) == "Harry Kane"
+    assert popular_name("Geum-Min Lee", float("nan")) == "Geum-Min Lee"
+    assert popular_name("Kevin De Bruyne", "  ") == "Kevin De Bruyne"

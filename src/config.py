@@ -171,3 +171,8 @@ SIMILARITY_SETS = [
     PL_2015_16, LA_LIGA_2015_16_FULL, SERIE_A_2015_16, LIGUE_1_2015_16,
     FRAUEN_BUNDESLIGA_2023_24, FA_WSL_2023_24, LIGA_F_2023_24, SERIE_A_WOMEN_2023_24, NWSL_2023,
 ]
+
+# The game ("male"/"female") of each pool competition, keyed by the label the app's player table
+# carries in `competition`. The app keeps men's and women's lookalike lists apart, and Compare
+# ranks a player against the other player's game (`similarity.pair_closeness`).
+GENDER_BY_COMPETITION = {dataset.label: dataset.gender for dataset in SIMILARITY_SETS}

@@ -18,7 +18,8 @@ Layer 1 — feature build:   features.py (Module A), similarity.py (Module B),
                             market_value.py (external enrichment, Phase 9)
 Layer 2 — model/analysis:  models.py                (Module A only — Module B's clustering
                                                        already lives inside similarity.py)
-Layer 3 — presentation:    visualisation.py (charts), presentation.py (the app's text/labels)
+Layer 3 — presentation:    visualisation.py (charts), presentation.py (the app's text/labels),
+                            narrative.py (rule-based sentences: short version, Compare verdict)
 Layer 4 — orchestration:   manifest.py, metrics.py, pipeline.py, app_data.py
 ```
 
@@ -45,7 +46,8 @@ rebuilding every output PNG/manifest/metric.
 | `similarity.py` | `data_loader` | `metrics.py`, `pipeline.py`, `app_data.py`, `presentation.py`, `app.py` (+ notebook 03) |
 | `models.py` | — | `metrics.py`, `pipeline.py`, `app_data.py` (+ notebook 02) |
 | `visualisation.py` | — | `pipeline.py`, `app.py` (+ notebooks 02/03) |
-| `presentation.py` | `similarity` (column constants) | `app.py` |
+| `presentation.py` | `similarity` (column constants) | `app.py`, `narrative.py` |
+| `narrative.py` | `presentation` | — (`app.py` from redesign step 1b; reads `similarity.PairCloseness` by duck typing) |
 | `market_value.py` | `net` | `app_data.py` |
 | `manifest.py` | `config`, `data_loader` | `pipeline.py` |
 | `metrics.py` | `config`, `models`, `similarity` | `pipeline.py` |

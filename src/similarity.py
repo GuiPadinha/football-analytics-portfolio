@@ -9,6 +9,8 @@ StatsBomb competitions used here. The two are two standalone demonstrations of c
 DATA.md).
 """
 
+from dataclasses import dataclass
+
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
@@ -756,6 +758,44 @@ def goodness_percentiles(percentiles):
     return adjusted
 
 
+def league_adjusted_percentiles(features, per90_columns):
+    """Every player's percentile on every stat, ranked by standing within their own league
+    rather than by the raw per-90 rate. 1.0 is always the best in the group.
+
+    Ranking raw rates pooled across nine leagues mixes league tempo into "top 10%": men's
+    midfielders make ~9.6 progressive passes per 90 to women's ~8.1, and keepers' save % ranges
+    from 66.7% (WSL) to 71.2% (PL) by league median. Ranking the league-normalised `_lz` value
+    asks "how far above their own league's average", the same question clustering and the
+    lookalike lists already ask. Measured on 2026-10-06, the switch moves a percentile by ~6
+    points on average and up to ~50 (ML_LEARNING_LOG.md). The rate a reader sees stays the raw
+    per-90 one.
+
+    Lower-is-better stats are ranked in reverse instead of flipped with `1 - pct`, so the best
+    keeper on goals conceded scores 1.0 rather than one rank short of it. `save_pct`, a ratio
+    with no `_lz` column, is ranked on its z-score within each league when present.
+
+    Args:
+        features (pandas.DataFrame): one position group of the app pool, with `competition` and
+            the `_lz` column of every entry in `per90_columns`; optionally `save_pct`.
+        per90_columns (list[str]): the `_p90` stats to rank, e.g. `PER90_FEATURE_COLUMNS`.
+
+    Returns:
+        pandas.DataFrame: one column per `per90_columns` entry (plus `save_pct` when the group
+            has it), same index as `features`, values in (0, 1].
+    """
+    standing = features[[f"{col}{LEAGUE_Z_SUFFIX}" for col in per90_columns]].set_axis(
+        per90_columns, axis=1
+    )
+    if "save_pct" in features.columns and features["save_pct"].notna().any():
+        standing = standing.assign(
+            save_pct=normalize_within_competition(features, ["save_pct"])[f"save_pct{LEAGUE_Z_SUFFIX}"]
+        )
+    return pd.DataFrame({
+        col: standing[col].rank(pct=True, ascending=col not in LOWER_IS_BETTER_STATS)
+        for col in standing.columns
+    })
+
+
 def scale_features(features, feature_columns=PER90_FEATURE_COLUMNS):
     """Standardise features to mean 0, std 1 before clustering.
 
@@ -931,6 +971,139 @@ def profile_clusters(features, feature_columns, cluster_labels):
     return (cluster_means - population_mean) / population_std
 
 
+def rank_matches(features, feature_columns, player, team, within_position_group=True):
+    """Every other player, nearest first, by Euclidean distance to one player in standardised
+    `feature_columns` space: the full list `find_similar_players` takes its top `n` from.
+
+    Kept whole, not cut to a top n, so a caller can filter it without changing the space: the
+    app's men's and women's lookalike lists are this one ranking split by game, and Compare
+    reads one player's place on another's list. Re-ranking a filtered pool instead would
+    re-standardise on a different population and move every distance.
+
+    Args:
+        features (pandas.DataFrame): per-player feature table with `player`, `team`,
+            `position_group` and `feature_columns`.
+        feature_columns (list[str]): columns to compute distance on.
+        player (str): the player whose list this is.
+        team (str): that player's team (names aren't unique across teams).
+        within_position_group (bool): rank only the player's own position group (the default,
+            and what position-relative features like `_lz` need) or every row of `features`.
+
+    Returns:
+        pandas.DataFrame: every ranked row except the player, all of its columns plus
+            `distance`, nearest first, indexed 0..n-1.
+    """
+    target = features[(features["player"] == player) & (features["team"] == team)]
+    if target.empty:
+        raise ValueError(f"No player found matching player={player!r}, team={team!r}")
+
+    subset = features
+    if within_position_group:
+        subset = features[features["position_group"] == target["position_group"].iloc[0]]
+    subset = subset.reset_index(drop=True)
+    X_scaled, _ = scale_features(subset, feature_columns)
+    target_idx = subset.index[(subset["player"] == player) & (subset["team"] == team)][0]
+
+    distances = np.linalg.norm(X_scaled.values - X_scaled.loc[target_idx].values, axis=1)
+    ranked = subset.assign(distance=distances)
+    return ranked[ranked.index != target_idx].sort_values("distance").reset_index(drop=True)
+
+
+@dataclass(frozen=True)
+class PairCloseness:
+    """How alike two players are: one's place on the other's closest-matches list.
+
+    Attributes:
+        rank (int): 1 = the closest match. The better (smaller) of the two directions.
+        from_a (bool): True if `rank` is B's place on A's list, False if A's place on B's.
+        list_size (int): how many players that list ranks.
+        list_gender (str): the game ("male"/"female") that list is drawn from.
+        list_position (str): a position group, or "Outfield" when the two players' groups differ.
+        standing_a (pandas.Series): A's standing per stat, in league standard deviations, in the
+            space the rank was measured in (index = the `_p90` columns).
+        standing_b (pandas.Series): the same for B.
+    """
+
+    rank: int
+    from_a: bool
+    list_size: int
+    list_gender: str
+    list_position: str
+    standing_a: pd.Series
+    standing_b: pd.Series
+
+
+def pair_closeness(features, player_a, player_b):
+    """Rank how close two players are, in the space their positions allow.
+
+    Same position group: the lookalike space (`_lz` columns, exactly `find_similar_players`'),
+    so Compare agrees with the player page's lists. Two outfielders from different groups: each
+    stat z-scored within its league across *all* outfielders instead, because `_lz` is
+    position-relative. It's z-scored within competition *and* position group, so an average
+    forward and an average midfielder both sit at zero there and would look identical.
+
+    Closeness is a rank, not a distance cutoff. Stars sit in sparse corners of the space, so
+    measured on 2026-10-06 a fixed cutoff called Benzema's 5th-closest match "different". Each
+    player is ranked on the other's list within the *other's* game, mirroring the app's
+    separate men's and women's lookalike lists, and the better of the two directions is kept
+    (as close as either one's list says).
+
+    Args:
+        features (pandas.DataFrame): the app pool, with `player`, `team`, `position_group`,
+            `competition`, `gender`, the raw `_p90` columns and their `_lz` counterparts.
+        player_a (tuple[str, str]): (player, team).
+        player_b (tuple[str, str]): (player, team).
+
+    Returns:
+        PairCloseness
+
+    Raises:
+        ValueError: a goalkeeper paired with an outfielder (no stats in common), or an unknown
+            player.
+    """
+    rows = [features[(features["player"] == p) & (features["team"] == t)] for p, t in (player_a, player_b)]
+    if any(row.empty for row in rows):
+        raise ValueError(f"Unknown player in {player_a!r}, {player_b!r}")
+    row_a, row_b = (row.iloc[0] for row in rows)
+    group_a, group_b = row_a["position_group"], row_b["position_group"]
+    if (group_a == "Goalkeeper") != (group_b == "Goalkeeper"):
+        raise ValueError("A goalkeeper and an outfielder share no stats to compare.")
+
+    per90_columns = GK_PER90_FEATURE_COLUMNS if group_a == "Goalkeeper" else PER90_FEATURE_COLUMNS
+    if group_a == group_b:
+        pool = features[features["position_group"] == group_a]
+        standing = pool[[f"{col}{LEAGUE_Z_SUFFIX}" for col in per90_columns]]
+        list_position = group_a
+    else:
+        pool = features[features["position_group"].isin(OUTFIELD_GROUPS)]
+        standing = normalize_within_competition(pool, per90_columns)
+        list_position = "Outfield"
+    standing = standing.set_axis(per90_columns, axis=1)
+    space_columns = [f"{col}_space" for col in per90_columns]
+    pool = pool[["player", "team", "position_group", "gender"]].join(
+        standing.set_axis(space_columns, axis=1)
+    )
+
+    def place_on_list(owner, other_row):
+        ranked = rank_matches(pool, space_columns, *owner, within_position_group=False)
+        same_game = ranked[ranked["gender"] == other_row["gender"]].reset_index(drop=True)
+        hit = same_game.index[(same_game["player"] == other_row["player"]) & (same_game["team"] == other_row["team"])]
+        return int(hit[0]) + 1, len(same_game)
+
+    rank_b, size_b = place_on_list(player_a, row_b)
+    rank_a, size_a = place_on_list(player_b, row_a)
+    from_a = rank_b <= rank_a
+    return PairCloseness(
+        rank=rank_b if from_a else rank_a,
+        from_a=from_a,
+        list_size=size_b if from_a else size_a,
+        list_gender=row_b["gender"] if from_a else row_a["gender"],
+        list_position=list_position,
+        standing_a=standing.loc[row_a.name],
+        standing_b=standing.loc[row_b.name],
+    )
+
+
 def find_similar_players(features, feature_columns, player, team, n=5):
     """Find the `n` most similar players to a given player, by Euclidean distance
     in standardised feature space, restricted to the player's own position group.
@@ -956,19 +1129,7 @@ def find_similar_players(features, feature_columns, player, team, n=5):
         pandas.DataFrame: the `n` nearest players (excluding the player
             themselves), sorted by ascending distance, with a `distance` column.
     """
-    target = features[(features["player"] == player) & (features["team"] == team)]
-    if target.empty:
-        raise ValueError(f"No player found matching player={player!r}, team={team!r}")
-    position_group = target["position_group"].iloc[0]
-
-    subset = features[features["position_group"] == position_group].reset_index(drop=True)
-    X_scaled, _ = scale_features(subset, feature_columns)
-    target_idx = subset.index[(subset["player"] == player) & (subset["team"] == team)][0]
-
-    distances = np.linalg.norm(X_scaled.values - X_scaled.loc[target_idx].values, axis=1)
-    result = subset.copy()
-    result["distance"] = distances
-    result = result[result.index != target_idx].sort_values("distance")
+    result = rank_matches(features, feature_columns, player, team)
 
     keep_columns = ["player", "team", "position_group", "distance"] + feature_columns
     if "competition" in features.columns:

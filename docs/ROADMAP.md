@@ -313,10 +313,12 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
 
 ### Open — app / product
 
-- **Redesign: conclusions first** (agreed 2026-10-03, next session). Guilherme's verdict on the
-  live app: numbers and method everywhere, no insights, cheap-looking and buggy charts. Plan and
-  approved mockup (https://claude.ai/artifact/PjwLKvcswLnErrfBFaj1tR) are in CLAUDE.md's
-  "Next session". It replaces several items below (Leaderboard filter, visual pass).
+- **Redesign: conclusions first** (agreed 2026-10-03). Guilherme's verdict on the live app:
+  numbers and method everywhere, no insights, cheap-looking and buggy charts. Plan and approved
+  mockup (https://claude.ai/artifact/PjwLKvcswLnErrfBFaj1tR) are in CLAUDE.md's "Next session".
+  It replaces several items below (Leaderboard filter, visual pass). **Step 1a done 2026-10-06:**
+  the rule-based text (`src/narrative.py`) with league-adjusted percentiles and Compare's closeness
+  rank. **Next, 1b:** the pages.
 - **Leaderboard's name filter still needs Enter** — flagged 2026-07-14 (cont.), deliberately not
   fixed that session: it's an `st.text_input` feeding a multi-row `st.dataframe`, not a single-pick
   widget, so the live-filtering-selectbox trick that fixed the other three search boxes that

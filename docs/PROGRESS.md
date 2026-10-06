@@ -6,6 +6,39 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-10-06 — Redesign step 1a: the rule-based text
+
+Guilherme approved the plan, plus the league-adjusted ranking below ("go ahead, log all that").
+- **`src/narrative.py` (new).** The player page's short version: standout stats, then finishing
+  (or saves), then price. Without a price (women's football, unmatched men) the closest match in
+  each game takes the last slot. Compare's verdict: closeness rank, each side's leads, keepers'
+  save %, then the price gap. Every threshold is a named constant calibrated on the real pool.
+- **`similarity.py`:** `rank_matches` is the full ranking (`find_similar_players` is now its top n,
+  output unchanged). `league_adjusted_percentiles` is the new basis for "top N%".
+  `pair_closeness` is Compare's rank, in the right space for each position pair. Also
+  `config.GENDER_BY_COMPETITION`, `presentation.ordinal` and `presentation.popular_name`.
+- **Decisions, each measured first** (ML_LEARNING_LOG.md has the numbers):
+  - Percentiles rank league standing, not raw rates (a ~6-point mean shift, up to ~50).
+  - Finishing is quoted as exact odds for an average finisher ("about one season in 22").
+  - Closeness is a rank, not a distance cutoff.
+  - Mixed-position pairs get their own space, because `_lz` is position-relative.
+  - A lead needs both a league-SD gap and a visible raw gap.
+- **Checked on 16 players and 8 pairs:**
+  - Mahrez reads almost word for word like the mockup.
+  - Benzema–Pajor: "closest match among 194 women's forwards".
+  - Also checked: keepers, women, players with no xG, Kanté ("too few chances to judge"), and a
+    keeper against an outfielder (refused).
+  - Reading the output changed three rules: leads must be visible in the raw numbers, all-below-
+    median keepers are "quiet keepers", and women get the cross-game sentence.
+- **Verified:** 233 tests pass, and the pipeline's `metrics.json`, PNGs and manifest are
+  byte-identical. `app.py` is untouched, so the live app doesn't change until step 1b.
+- **Open for 1b:**
+  - 159 players have no nickname and a long legal name ("Mary Alexandra Earps", Liga F double
+    surnames).
+  - The page must say "similar style, not the same level" next to prices.
+
+---
+
 ## 2026-10-03 (cont.) — Product rethink; three more women's leagues
 
 Guilherme, after seeing the redeployed app: lots of numbers, no insights, cheap-looking UI,
