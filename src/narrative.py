@@ -543,8 +543,8 @@ def _lead_sentence(leader, other, stats):
     """"X leads on shooting and forward passing: 4.8 shots and 11.2 progressive passes per 90,
     to Y's 1.2 and 3.8." """
     activities = _join([STAT_WORDS[stat].activity for stat in stats])
-    leader_rates = _join([f"{_rate(leader.per90[stat])} {STAT_WORDS[stat].unit}" for stat in stats])
-    other_rates = _join([_rate(other.per90[stat]) for stat in stats])
+    leader_rates = _join([f"{format_rate(leader.per90[stat])} {STAT_WORDS[stat].unit}" for stat in stats])
+    other_rates = _join([format_rate(other.per90[stat]) for stat in stats])
     return f"{leader.name} leads on {activities}: {leader_rates} per 90, to {other.name}'s {other_rates}."
 
 
@@ -580,7 +580,7 @@ def _season_odds(p):
     return f"about one season in {round(one_in):,}"
 
 
-def _rate(value):
+def format_rate(value):
     """A per-90 rate as text: one decimal from 1 up, two below (0.34 goals), plain 0 for none."""
     if value == 0:
         return "0"

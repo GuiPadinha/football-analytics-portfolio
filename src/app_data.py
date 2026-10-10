@@ -38,6 +38,7 @@ from pathlib import Path
 import pandas as pd
 
 from src import config
+from src.findings import write_findings
 from src.market_value import build_market_value_table
 from src.models import build_feature_matrix, build_player_xg_table, train_logistic_regression
 from src.pipeline import build_shot_tables
@@ -133,7 +134,8 @@ def _cluster_position_groups(per90_features, position_groups, feature_columns, n
 
 
 def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
-    """Write the artifacts the app reads: per-90 features, player xG table, shots+xG, market value.
+    """Write the artifacts the app reads: per-90 features, player xG table, shots+xG, market value,
+    and the Home page's findings.
 
     Args:
         app_data_dir (str | Path): destination directory, created if missing.
@@ -194,6 +196,10 @@ def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
         market_value = build_market_value_table(per90_features)
         market_value.to_parquet(app_data_dir / "market_value.parquet")
         result["market_value_rows"] = len(market_value)
+        # The Home page's cards rank players with those tables, so they are rebuilt from them here
+        # (seconds) rather than left to go stale. Needs market values, hence inside this branch.
+        write_findings(app_data_dir)
+        result["findings"] = 4
 
     return result
 

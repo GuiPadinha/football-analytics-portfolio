@@ -34,6 +34,7 @@ STAT_LABELS = {
     for col in PER90_FEATURE_COLUMNS + GK_PER90_FEATURE_COLUMNS
 }
 STAT_LABELS["save_pct"] = "Save %"
+STAT_LABELS["non_penalty_goals_p90"] = "Non-Penalty Goals"
 # StatsBomb flags a pass that set up a goal as an assist and *not* as a shot assist, so this count
 # excludes assists (checked 2026-10-02: the two flags never overlap). The usual "key passes" figure
 # includes them; the label says so, so 123 for Özil isn't read as his full chance creation.

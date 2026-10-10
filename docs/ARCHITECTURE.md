@@ -19,7 +19,8 @@ Layer 1 — feature build:   features.py (Module A), similarity.py (Module B),
 Layer 2 — model/analysis:  models.py                (Module A only — Module B's clustering
                                                        already lives inside similarity.py)
 Layer 3 — presentation:    visualisation.py (charts), presentation.py (the app's text/labels),
-                            narrative.py (rule-based sentences: short version, Compare verdict)
+                            narrative.py (rule-based sentences: short version, Compare verdict),
+                            profile.py (what a page shows, per player / per pair), findings.py (Home cards)
 Layer 4 — orchestration:   manifest.py, metrics.py, pipeline.py, app_data.py
 ```
 
@@ -47,6 +48,8 @@ rebuilding every output PNG/manifest/metric.
 | `models.py` | — | `metrics.py`, `pipeline.py`, `app_data.py` (+ notebook 02) |
 | `visualisation.py` | — | `pipeline.py`, `app.py` (+ notebooks 02/03) |
 | `presentation.py` | `similarity` (column constants) | `app.py`, `narrative.py` |
+| `profile.py` | `config`, `narrative`, `presentation`, `similarity` | `findings.py`, `app.py` views (redesign step 1b) |
+| `findings.py` | `narrative`, `presentation`, `profile`, `similarity` | `app_data.py` (writes `app_data/findings.json`), `app.py` Home |
 | `narrative.py` | `presentation` | — (`app.py` from redesign step 1b; reads `similarity.PairCloseness` by duck typing) |
 | `market_value.py` | `net` | `app_data.py` |
 | `manifest.py` | `config`, `data_loader` | `pipeline.py` |

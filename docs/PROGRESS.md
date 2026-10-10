@@ -6,6 +6,27 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-10-10 — Redesign step 1b: the pages (in stages)
+
+Stages, one commit + push each: **A** view models (done) · B Player page + top navigation + theme ·
+C Compare · D Home, Leaderboard, How it works · E docs.
+- **A. `src/profile.py`:** `prepare_pool` (adds each player's game, ranks every position group
+  once), `build_player_profile` (strength/weakness bars, finishing or saves, price, men's and
+  women's top-5 lookalikes, the short version) and `build_compare_view` (verdict + one row per
+  stat). Pure functions, tested on the real tables (`tests/test_profile.py`); a profile builds in
+  ~0.05 s.
+- **A. `src/findings.py`:** the Home cards are computed, not typed (the mockup still said six
+  leagues). Biggest over/under-performer against their chances (Agüero +6.5, Jerome −4.2), the
+  share of valued men with a half-price top-3 lookalike (94% of 282 at €10M+; stated as a fact
+  about the pool with its caveat, because "the biggest gap" picks Ronaldo vs. Bony), and the most
+  valuable man whose closest woman has him as her closest man (Agüero ↔ Khadija Shaw, both Man
+  City). `python -m src.findings` writes `app_data/findings.json` in ~16 s, and `src.app_data`
+  calls it at the end of a rebuild.
+- Small: `format_rate` is public (two decimals under 1: "0.38 per 90"), and the label reads
+  "Non-Penalty Goals".
+
+---
+
 ## 2026-10-06 — Redesign step 1a: the rule-based text
 
 Guilherme approved the plan, plus the league-adjusted ranking below ("go ahead, log all that").

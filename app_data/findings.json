@@ -1,0 +1,46 @@
+[
+  {
+    "kind": "overperformer",
+    "kicker": "SCORING ABOVE HIS CHANCES",
+    "figure": "+6.5 goals",
+    "headline": "Sergio Agüero scored 24 from chances worth 17.5",
+    "body": "The biggest gap in the Premier League among players with 20+ shots. An average finisher scores that many from the same chances about one season in 22: some of it is likely skill, but don't pay for all of it.",
+    "link_label": "Open Sergio Agüero's profile →",
+    "player": "Sergio Leonel Agüero del Castillo",
+    "team": "Manchester City",
+    "tone": "up"
+  },
+  {
+    "kind": "underperformer",
+    "kicker": "SCORING BELOW HIS CHANCES",
+    "figure": "−4.2 goals",
+    "headline": "Cameron Jerome scored 3 from chances worth 7.2",
+    "body": "The biggest gap in the Premier League among players with 20+ shots. An average finisher scores that few from the same chances about one season in 27: more than bad luck usually explains.",
+    "link_label": "Open Cameron Jerome's profile →",
+    "player": "Cameron Jerome",
+    "team": "Norwich City",
+    "tone": "down"
+  },
+  {
+    "kind": "price",
+    "kicker": "SAME STYLE, SMALLER PRICE",
+    "figure": "94%",
+    "headline": "of men valued at €10.0M+ have a top-3 lookalike at half the price or less",
+    "body": "265 of 282 outfield players. Style is cheap to find. What the price adds is level, age and contract, so treat a cheaper lookalike as a lead to check.",
+    "link_label": "Find a player's lookalikes →",
+    "player": null,
+    "team": null,
+    "tone": "up"
+  },
+  {
+    "kind": "cross_game",
+    "kicker": "ACROSS THE GAME'S TWO HALVES",
+    "figure": "Sergio Agüero ↔ Khadija Shaw",
+    "headline": "Sergio Agüero's closest match in the women's game plays for Manchester City WFC",
+    "body": "Khadija Shaw (FA Women's Super League 2023/24) is Sergio Agüero's closest match among the women, and he is her closest among the men, out of 2,170 players ranked within their own leagues.",
+    "link_label": "Open Sergio Agüero's profile →",
+    "player": "Sergio Leonel Agüero del Castillo",
+    "team": "Manchester City",
+    "tone": "down"
+  }
+]
