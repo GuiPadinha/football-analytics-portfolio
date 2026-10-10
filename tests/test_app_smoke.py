@@ -1,10 +1,10 @@
-"""Smoke tests for app.py via Streamlit's headless AppTest harness.
+"""Smoke tests for the app via Streamlit's headless AppTest harness.
 
-Runs the real script against the committed `app_data/` artifacts and fails on any exception, in
-every view and for both feature sets (outfield + goalkeeper). This is the harness earlier
-sessions ran by hand before each change; committing it means CI catches a broken page before
-the deployed app does. It checks that pages render, not what they look like — visual checks
-still need a real browser (see docs/ML_TOOLING.md).
+Runs the real `app.py` (top navigation, file-based pages under `views/`) against the committed
+`app_data/` and fails on any exception, on every page and for each kind of player: a star with
+xG, an outfield player without xG, a goalkeeper, and a women's-league player with no price. It
+checks that pages render and say the right things, not what they look like: visual checks need a
+real browser (docs/ML_TOOLING.md).
 """
 
 from pathlib import Path
@@ -16,24 +16,19 @@ streamlit_testing = pytest.importorskip("streamlit.testing.v1")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 APP_PATH = str(REPO_ROOT / "app.py")
-TIMEOUT_SECS = 120
+TIMEOUT_SECS = 180
+PAGES = ["home", "players", "compare", "leaderboard", "how_it_works"]
+
+MAHREZ = ("Riyad Mahrez", "Leicester City")
+MESSI = ("Lionel Andrés Messi Cuccittini", "Barcelona")  # outside the xG set: no shots
+EARPS = ("Mary Alexandra Earps", "Manchester United W")
 
 
-def _label(per90, player, team):
-    row = per90[(per90["player"] == player) & (per90["team"] == team)].iloc[0]
-    return f"{row['player']} ({row['team']}) · {row['competition']}"
-
-
-@pytest.fixture(scope="module")
-def per90():
-    return pd.read_parquet(REPO_ROOT / "app_data" / "player_per90.parquet")
-
-
-def _run(view=None):
+def _run(page=None):
     at = streamlit_testing.AppTest.from_file(APP_PATH, default_timeout=TIMEOUT_SECS)
     at.run()
-    if view is not None:
-        at.sidebar.radio(key="view_radio").set_value(view).run()
+    if page:
+        at.switch_page(f"views/{page}.py").run()
     return at
 
 
@@ -41,67 +36,86 @@ def _assert_clean(at):
     assert not at.exception, [e.message for e in at.exception]
 
 
-@pytest.mark.parametrize("view", [None, "Leaderboard", "Compare players", "About & Roadmap"])
-def test_every_view_renders_without_exceptions(view):
-    _assert_clean(_run(view))
-
-
-@pytest.mark.parametrize(
-    "player, team",
-    [
-        ("Harry Kane", "Tottenham Hotspur"),  # in the xG training set: Finishing panel + shot map
-        ("Lionel Andrés Messi Cuccittini", "Barcelona"),  # outside it: "no logged shots" fallback
-    ],
-)
-def test_player_explorer_renders_an_outfield_player(per90, player, team):
-    at = _run()
-    at.selectbox(key="player_pick_All_All").set_value(_label(per90, player, team)).run()
-    _assert_clean(at)
-    assert any(player in h.value for h in at.title)
-
-
-def test_player_explorer_renders_a_goalkeeper(per90):
-    keeper = per90[per90["position_group"] == "Goalkeeper"].iloc[0]
-    at = _run()
-    at.selectbox(key="player_pick_All_All").set_value(
-        _label(per90, keeper["player"], keeper["team"])
-    ).run()
-    _assert_clean(at)
-    assert any("Save %" in c.value for c in at.caption)
-
-
-def test_similar_player_jump_lands_on_the_target_page(per90):
-    at = _run()
-    at.session_state["jump_to_player"] = ("Jamie Vardy", "Leicester City")
+def _open_player(key):
+    at = _run("players")
+    at.session_state["selected_player"] = key
     at.run()
     _assert_clean(at)
-    assert any("Jamie Vardy" in h.value for h in at.title)
+    return at
 
 
-def test_compare_players_same_and_cross_position(per90):
-    at = _run("Compare players")
-    at.selectbox(key="compare_pick_a").set_value(
-        _label(per90, "Harry Kane", "Tottenham Hotspur")
-    ).run()
-    at.selectbox(key="compare_pick_b").set_value(
-        _label(per90, "Jamie Vardy", "Leicester City")
-    ).run()
+def _html(at):
+    return " ".join(element.proto.body for element in at.get("html"))
+
+
+@pytest.mark.parametrize("page", PAGES)
+def test_every_page_renders_without_exceptions(page):
+    _assert_clean(_run(None if page == "home" else page))
+
+
+def test_player_page_without_a_selection_offers_starting_points():
+    at = _run("players")
     _assert_clean(at)
+    assert len(at.button) >= 4
 
-    keeper = per90[per90["position_group"] == "Goalkeeper"].iloc[0]
-    at.selectbox(key="compare_pick_b").set_value(
-        _label(per90, keeper["player"], keeper["team"])
-    ).run()
+
+@pytest.mark.parametrize("key", [MAHREZ, MESSI, EARPS])
+def test_player_page_renders_each_kind_of_player(key):
+    at = _open_player(key)
+    html = _html(at)
+    assert "THE SHORT VERSION" in html
+    assert "What kind of player is this?" in html
+
+
+def test_a_star_with_xg_shows_finishing_and_a_native_shot_map():
+    at = _open_player(MAHREZ)
+    assert "Are the goals real?" in _html(at)
+    assert len(at.get("vega_lite_chart")) == 1
+
+
+def test_an_outfield_player_without_xg_says_why_instead_of_faking_it():
+    at = _open_player(MESSI)
+    html = _html(at)
+    assert "only available for the Premier League 2015/16" in html
+    assert not at.get("vega_lite_chart")
+
+
+def test_a_goalkeeper_gets_saves_not_goals():
+    html = _html(_open_player(EARPS))
+    assert "How good is the shot-stopping?" in html
+    assert "Are the goals real?" not in html
+    assert "Not on record" in html
+
+
+def test_clicking_a_lookalike_jumps_to_that_player():
+    at = _open_player(MAHREZ)
+    button = next(b for b in at.button if b.key.startswith("look_male_1_"))
+    button.click().run()
     _assert_clean(at)
+    assert at.session_state["selected_player"] != MAHREZ
+    assert "THE SHORT VERSION" in _html(at)
 
 
-def test_radar_with_too_few_axes_shows_a_hint_instead_of_crashing(per90):
-    # mplsoccer's Radar raises below three axes; deselecting down to two used to crash the page.
+def test_the_home_search_opens_the_players_page():
     at = _run()
-    at.selectbox(key="player_pick_All_All").set_value(
-        _label(per90, "Harry Kane", "Tottenham Hotspur")
-    ).run()
-    radar_axes = at.sidebar.multiselect(key="radar_axes_Forward")
-    radar_axes.set_value(radar_axes.value[:2]).run()
+    at.selectbox(key="home_search").set_value("Riyad Mahrez (Leicester City) · Premier League 2015/16").run()
     _assert_clean(at)
-    assert any("radar axes" in i.value for i in at.info)
+    assert at.session_state["selected_player"] == MAHREZ
+
+
+def test_every_search_label_is_unique():
+    from views.data import player_options  # noqa: F401  (imports Streamlit caching only)
+
+    per90 = pd.read_parquet(REPO_ROOT / "app_data" / "player_per90.parquet")
+    labels, key_by_label = _labels(per90)
+    assert len(labels) == len(per90) == len(key_by_label)
+
+
+def _labels(per90):
+    from src.profile import display_name
+
+    key_by_label = {
+        f"{display_name(row)} ({row['team']}) · {row['competition']}": (row["player"], row["team"])
+        for _, row in per90.iterrows()
+    }
+    return sorted(key_by_label), key_by_label

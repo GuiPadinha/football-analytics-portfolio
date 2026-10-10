@@ -18,7 +18,7 @@
 
 staged=$(git diff --cached --name-only)
 
-touches_code=$(printf '%s\n' "$staged" | grep -E '^(src/|app\.py$|tests/|notebooks/)')
+touches_code=$(printf '%s\n' "$staged" | grep -E '^(src/|views/|app\.py$|tests/|notebooks/)')
 touches_log=$(printf '%s\n' "$staged" | grep -E '^(docs/PROGRESS\.md|docs/ML_TOOLING\.md|docs/ML_LEARNING_LOG\.md)$')
 
 if [ -n "$touches_code" ] && [ -z "$touches_log" ] && [ -z "$DOC_CHECK_ACK" ]; then

@@ -22,6 +22,17 @@ C Compare · D Home, Leaderboard, How it works · E docs.
   valuable man whose closest woman has him as her closest man (Agüero ↔ Khadija Shaw, both Man
   City). `python -m src.findings` writes `app_data/findings.json` in ~16 s, and `src.app_data`
   calls it at the end of a rebuild.
+- **B. The new shell, Home and Players pages.** `app.py` is now just the page frame and a top
+  `st.navigation` (Home, Players, Compare, Leaderboard, How it works); each page is a script under
+  `views/`. `views/components.py` holds the stylesheet (the mockup's palette, also in
+  `.streamlit/config.toml`), the escaped HTML builders and a native Altair shot map, cropped to
+  where the player shoots from. `views/data.py` caches the pool. Home shows the four computed
+  cards; Players is the three questions, with men's and women's lookalike tabs (own game first) and
+  a "similar style is not the same level" caveat next to prices. The old radar, percentile chart,
+  sidebar filters and Euclidean/σ captions are gone from player pages. Compare, Leaderboard and
+  How it works still run the old code, moved verbatim to `views/legacy.py` until C and D.
+  Checked in a real browser (Edge via Playwright): a star, a keeper and a women's player. The smoke
+  tests were rewritten for the new pages (15 AppTest cases, `tests/test_components.py`).
 - Small: `format_rate` is public (two decimals under 1: "0.38 per 90"), and the label reads
   "Non-Penalty Goals".
 

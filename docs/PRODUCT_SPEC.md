@@ -1,5 +1,8 @@
 # Product Layer — the Streamlit App (Phase 8)
 
+> **Mid-redesign (2026-10-10):** Home and Players are new, the rest is still the old code until
+> stages C and D. The Views and Component→backend sections below are rewritten in stage E.
+
 → [CLAUDE.md](../CLAUDE.md) | Framing: [FRAMEWORK.md](FRAMEWORK.md) | Phases: [ROADMAP.md](ROADMAP.md#phases)
 
 **Status:** live at

@@ -24,6 +24,7 @@ from src.narrative import (
     build_compare_verdict,
     build_short_version,
     describe_finishing,
+    describe_saves,
     finishing_from_shots,
     format_rate,
     top_share,
@@ -96,7 +97,8 @@ class PlayerProfile:
         goals, assists (int or None): season totals; `None` for goalkeepers.
         penalty_goals (int): goals from the spot.
         finishing (Finishing or None): outfield players with logged shots.
-        finishing_text (str or None): `narrative.describe_finishing` of it.
+        output_text (str or None): the section-2 sentence: `narrative.describe_finishing` for outfield
+            players with xG, `narrative.describe_saves` for goalkeepers.
         shots (pandas.DataFrame): the player's shots with `predicted_xg` (empty without xG).
         saves (Saves or None): goalkeepers.
         market_value_eur (float or None), tm_name (str or None), market_value_as_of (str or None).
@@ -118,7 +120,7 @@ class PlayerProfile:
     assists: int | None
     penalty_goals: int
     finishing: Finishing | None
-    finishing_text: str | None
+    output_text: str | None
     shots: pd.DataFrame
     saves: Saves | None
     market_value_eur: float | None
@@ -257,16 +259,17 @@ def build_player_profile(pool, player, team):
     lookalikes = _lookalikes(pool, row, value_eur)
     strengths, weaknesses = _stat_bars(row, percentiles, group_size)
 
-    finishing = saves = finishing_text = None
+    finishing = saves = output_text = None
     shots = pool.shots[0:0]
     if group == "Goalkeeper":
         saves = Saves(float(row["save_pct"]), int(round(row["saves"] + row["goals_conceded"])),
                       float(percentiles["save_pct"]))
+        output_text = describe_saves(saves, group_size)
     else:
         shots = pool.shots[(pool.shots["player"] == player) & (pool.shots["team"] == team)].reset_index(drop=True)
         if len(shots):
             finishing = finishing_from_shots(shots["predicted_xg"].values, shots["is_goal"].sum())
-            finishing_text = describe_finishing(finishing)
+            output_text = describe_finishing(finishing)
 
     gender = row["gender"]
     same_game = [Lookalike(m.name, m.market_value_eur) for m in lookalikes[gender]]
@@ -288,7 +291,7 @@ def build_player_profile(pool, player, team):
         short_version=short_version, strengths=strengths, weaknesses=weaknesses,
         goals=goals, assists=None if is_keeper else int(round(row["assists"])),
         penalty_goals=0 if is_keeper else goals - int(round(row["non_penalty_goals"])),
-        finishing=finishing, finishing_text=finishing_text, shots=shots, saves=saves,
+        finishing=finishing, output_text=output_text, shots=shots, saves=saves,
         market_value_eur=value_eur, tm_name=tm_name, market_value_as_of=as_of,
         lookalikes=lookalikes, group_size=group_size,
     )

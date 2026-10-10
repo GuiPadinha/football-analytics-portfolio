@@ -56,7 +56,7 @@ jobs:
             exit 0
           fi
           changed=$(git diff --name-only "$base" "${{ github.sha }}")
-          touches_code=$(printf '%s\n' "$changed" | grep -E '^(src/|app\.py$|tests/|notebooks/)' || true)
+          touches_code=$(printf '%s\n' "$changed" | grep -E '^(src/|views/|app\.py$|tests/|notebooks/)' || true)
           touches_log=$(printf '%s\n' "$changed" | grep -E '^(docs/PROGRESS\.md|docs/ML_TOOLING\.md|docs/ML_LEARNING_LOG\.md)$' || true)
           if [ -n "$touches_code" ] && [ -z "$touches_log" ]; then
             echo "::warning::Code/tests changed without touching docs/PROGRESS.md, docs/ML_TOOLING.md, or docs/ML_LEARNING_LOG.md. If this represents a real behaviour/finding/obstacle, add a log entry (see CLAUDE.md's Session Workflow)."
