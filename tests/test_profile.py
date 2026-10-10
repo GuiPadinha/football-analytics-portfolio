@@ -94,7 +94,7 @@ def test_compare_view_has_a_verdict_and_one_row_per_stat(pool):
     assert view.verdict.startswith("Not a like-for-like swap")
     assert len(view.rows) == 11
     assert all(max(row.a_width, row.b_width) == 100.0 for row in view.rows if row.a_text != "0")
-    assert view.a.finishing is not None and view.b.finishing_text is not None
+    assert view.a.finishing is not None and view.b.output_text is not None
 
 
 def test_compare_leader_flips_for_goals_conceded(pool):

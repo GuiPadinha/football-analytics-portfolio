@@ -33,6 +33,10 @@ C Compare · D Home, Leaderboard, How it works · E docs.
   How it works still run the old code, moved verbatim to `views/legacy.py` until C and D.
   Checked in a real browser (Edge via Playwright): a star, a keeper and a women's player. The smoke
   tests were rewritten for the new pages (15 AppTest cases, `tests/test_components.py`).
+- **C. Compare.** Two search boxes, a card per player (the colours run through the bars), the
+  verdict, a side-by-side per 90, then "are their goals real?" (or save % for keepers). Any two
+  outfielders, whatever their position; a keeper against an outfielder gets a plain warning. The
+  player page's "Compare X with another player" button prefills player A. Checked in Edge.
 - Small: `format_rate` is public (two decimals under 1: "0.38 per 90"), and the label reads
   "Non-Penalty Goals".
 

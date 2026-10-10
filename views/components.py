@@ -178,6 +178,25 @@ def closeness_bar(fraction, color=ORANGE):
     )
 
 
+def compare_card(name, sub, value, color):
+    """One side's header on Compare: the colour that runs through its bars, name, facts and price."""
+    return (
+        f'<div class="fap-panel" style="border-top:4px solid {color};display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px">'
+        f'<div><div class="fap-display" style="font-size:42px;line-height:1">{escape(name)}</div>'
+        f'<div class="fap-sub">{escape(sub)}</div></div>'
+        f'<div style="text-align:right"><div class="fap-display" style="font-size:38px;line-height:1">{escape(value)}</div>'
+        '<div class="fap-muted">market value</div></div></div>'
+    )
+
+
+def result_panel(figure, text, color):
+    """A big figure with its sentence: one side's finishing (or saves) on Compare."""
+    return (
+        f'<div class="fap-panel"><div class="fap-display" style="font-size:40px;color:{color}">{escape(figure)}</div>'
+        f'<p style="margin:6px 0 0;font-size:16px;line-height:1.5">{escape(text)}</p></div>'
+    )
+
+
 def pill(text):
     """The small "Cheaper" tag."""
     return f'<span class="fap-pill">{escape(text)}</span>'

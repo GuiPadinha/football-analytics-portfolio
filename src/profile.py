@@ -309,7 +309,7 @@ class ComparePlayer:
     minutes: float
     market_value_eur: float | None
     finishing: Finishing | None
-    finishing_text: str | None
+    output_text: str | None
     save_pct: float | None
 
 
@@ -343,7 +343,7 @@ def _compare_player(pool, row):
         player=row["player"], team=row["team"], name=display_name(row),
         position_group=row["position_group"], competition=row["competition"],
         minutes=float(row["minutes_played"]), market_value_eur=value, finishing=finishing,
-        finishing_text=describe_finishing(finishing) if finishing else None,
+        output_text=describe_finishing(finishing) if finishing else None,
         save_pct=float(row["save_pct"]) if row["position_group"] == "Goalkeeper" else None,
     )
 

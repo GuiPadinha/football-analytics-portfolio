@@ -103,6 +103,49 @@ def test_the_home_search_opens_the_players_page():
     assert at.session_state["selected_player"] == MAHREZ
 
 
+def _compare(label_a, label_b):
+    at = _run("compare")
+    at.selectbox(key="compare_pick_a").set_value(label_a).run()
+    at.selectbox(key="compare_pick_b").set_value(label_b).run()
+    return at
+
+
+KANE = "Harry Kane (Tottenham Hotspur) · Premier League 2015/16"
+VARDY = "Jamie Vardy (Leicester City) · Premier League 2015/16"
+COUTINHO = "Philippe Coutinho (Liverpool) · Premier League 2015/16"
+ZAHA = "Wilfried Zaha (Crystal Palace) · Premier League 2015/16"
+EARPS_LABEL = "Mary Alexandra Earps (Manchester United W) · FA Women's Super League 2023/24"
+
+
+def test_compare_gives_a_verdict_for_a_same_position_and_a_cross_position_pair():
+    for pair in ((KANE, VARDY), (COUTINHO, ZAHA)):
+        at = _compare(*pair)
+        _assert_clean(at)
+        assert "VERDICT" in _html(at)
+    assert "Not a like-for-like swap" in _html(at)
+
+
+def test_compare_refuses_a_keeper_against_an_outfielder_without_crashing():
+    at = _compare(KANE, EARPS_LABEL)
+    _assert_clean(at)
+    assert any("share no stats" in w.value for w in at.warning)
+
+
+def test_compare_prompts_until_two_different_players_are_picked():
+    at = _run("compare")
+    assert any("Pick two players" in i.value for i in at.info)
+    at.selectbox(key="compare_pick_a").set_value(KANE).run()
+    at.selectbox(key="compare_pick_b").set_value(KANE).run()
+    assert any("two different players" in i.value for i in at.info)
+
+
+def test_the_compare_button_on_a_player_page_prefills_player_a():
+    at = _open_player(MAHREZ)
+    next(b for b in at.button if "with another player" in b.label).click().run()
+    _assert_clean(at)
+    assert "Riyad Mahrez" in at.selectbox(key="compare_pick_a").value
+
+
 def test_every_search_label_is_unique():
     from views.data import player_options  # noqa: F401  (imports Streamlit caching only)
 

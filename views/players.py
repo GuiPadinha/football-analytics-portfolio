@@ -163,4 +163,8 @@ for tab, game in zip(tabs, (own, other)):
         else:
             st.caption("No market values exist for women's football in this data.")
 
+if st.button(f"Compare {profile.name} with another player", type="primary"):
+    st.session_state["compare_pick_a"] = label_of(selected)
+    st.session_state.pop("compare_pick_b", None)
+    st.switch_page("views/compare.py")
 st.page_link("views/how_it_works.py", label="How these numbers are made →")
