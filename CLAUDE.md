@@ -35,6 +35,18 @@ Environment: the live app runs Python 3.14 at gpfootball-analytics-portfolio.str
 is 3.12; CI tests both. `FAP_CACHE_DIR` (cache outside OneDrive) is visible after VS Code's
 2026-10-03 restart.
 
+**Where things live (since 2026-10-10, the OneDrive ISCTE → Google Drive migration):** the working
+tree is `G:\My Drive\Projetos\football-analytics-portfolio` (synced by Google Drive). Its **`.git`
+is deliberately outside Drive**, in `C:\dev\gitdirs\football-analytics-portfolio.git` (the `.git`
+file in the repo root points there): with `.git` inside Drive, the sync corrupted `.git/index`
+within minutes. Don't move it back. The venv is `C:\Users\guilh\venvs\football-analytics-portfolio`
+(outside Drive: thousands of files, not relocatable); run Python with `PYTHONDONTWRITEBYTECODE=1`
+so no `__pycache__` gets synced. The cache is `C:\Users\guilh\fap-cache` (11 GB, local only,
+re-downloadable). In a fresh clone run `git config core.hooksPath .githooks` once. The old
+OneDrive copy and `C:\dev\football-analytics-portfolio` are obsolete; a full snapshot of the old
+working copy is `OneDrive ISCTE (arquivo)\_snapshots\football-analytics-portfolio_2026-10-10.zip`
+in Drive.
+
 Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts
 dropped). Five more held-out tournaments rank as well (0.76–0.81): World Cup 2022 0.808, AFCON 2023
 0.807, Women's World Cup 2023 0.777, Copa América 2024 0.763, Women's EURO 2025 0.763. EURO 2024 is

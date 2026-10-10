@@ -6,6 +6,19 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-10-10 (evening) — Moved to Google Drive; no code changes
+
+OneDrive ISCTE is being archived into Google Drive, so the working tree now lives in
+`G:\My Drive\Projetos\football-analytics-portfolio` with `.git` kept **outside** Drive
+(`C:\dev\gitdirs\football-analytics-portfolio.git`, because Drive corrupted `.git/index`), the venv
+in `C:\Users\guilh\venvs\football-analytics-portfolio`, and the cache still in `C:\Users\guilh\fap-cache`.
+Details in CLAUDE.md ("Where things live") and ML_TOOLING.md. The 33 git-ignored `data/` files were
+copied and size-verified; a full snapshot of the old working copy is in Drive under
+`OneDrive ISCTE (arquivo)\_snapshots\`. 260 tests pass in the new location. Next steps are unchanged
+(CLAUDE.md "Next session, start here").
+
+---
+
 ## 2026-10-10 — Redesign step 1b: the pages (in stages)
 
 Stages, one commit + push each: **A** view models (done) · B Player page + top navigation + theme ·

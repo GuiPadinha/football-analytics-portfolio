@@ -24,6 +24,22 @@ Original PATH fix in `docs/PROGRESS_ARCHIVE.md` (2026-06-28 entry) if this needs
 
 ---
 
+## Never keep `.git` inside a Google Drive folder (2026-10-10)
+
+The repo moved from the OneDrive ISCTE folder to `G:\My Drive\Projetos\football-analytics-portfolio`.
+A plain `git clone` there left a stale `.git/index.lock` (the rename to `index` failed), and after
+rebuilding the index `git fsck` reported "index file corrupt" / "bad index file sha1 signature"
+within minutes: Drive for desktop was touching `.git/index` while git used it (cause inferred,
+not isolated). **Fix:** the real git directory lives outside Drive,
+`C:\dev\gitdirs\football-analytics-portfolio.git`, and the repo root holds a one-line `.git` file
+(`gitdir: C:/dev/gitdirs/football-analytics-portfolio.git`). Same reason the venv
+(`C:\Users\guilh\venvs\football-analytics-portfolio`) is outside Drive; set
+`PYTHONDONTWRITEBYTECODE=1` so no `__pycache__` is synced. A fresh clone also needs
+`git config core.hooksPath .githooks`. If the index ever breaks again: delete `index*` in the
+gitdir, then `git reset` (rebuilds it from HEAD, working tree untouched).
+
+---
+
 ## A venv under a very long path breaks pyarrow (2026-10-10)
 
 Symptom: in a throwaway venv created inside the Claude scratchpad (a ~170-character path),
