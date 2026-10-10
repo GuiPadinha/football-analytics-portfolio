@@ -146,6 +146,29 @@ def test_the_compare_button_on_a_player_page_prefills_player_a():
     assert "Riyad Mahrez" in at.selectbox(key="compare_pick_a").value
 
 
+def test_leaderboard_filters_by_game_and_name():
+    at = _run("leaderboard")
+    _assert_clean(at)
+    total = len(at.dataframe[0].value)
+    at.text_input(key="board_name").set_value("Mahrez").run()
+    _assert_clean(at)
+    assert 0 < len(at.dataframe[0].value) < total
+    assert any("Riyad Mahrez" in str(name) for name in at.dataframe[0].value["Player"])
+    at.text_input(key="board_name").set_value("zzzz-no-one").run()
+    assert any("No players match" in w.value for w in at.warning)
+
+
+def test_how_it_works_quotes_the_numbers_from_metrics_json():
+    import json
+
+    metrics = json.loads((REPO_ROOT / "metrics.json").read_text(encoding="utf-8"))
+    at = _run("how_it_works")
+    _assert_clean(at)
+    text = " ".join(m.value for m in at.markdown)
+    assert str(metrics["xg"]["logistic"]["test_roc_auc"]) in text
+    assert f"{metrics['xg']['n_train_shots']:,} shots" in text
+
+
 def test_every_search_label_is_unique():
     from views.data import player_options  # noqa: F401  (imports Streamlit caching only)
 

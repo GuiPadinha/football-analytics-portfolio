@@ -12,8 +12,11 @@
 import sys
 from pathlib import Path
 
-import matplotlib
-
-matplotlib.use("Agg")
+try:
+    import matplotlib
+except ImportError:  # the app-runtime CI job installs only requirements.txt, which has no matplotlib
+    matplotlib = None
+else:
+    matplotlib.use("Agg")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))

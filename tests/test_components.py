@@ -42,3 +42,10 @@ def test_shot_map_crops_to_the_shots_but_never_cuts_one_off():
     assert near_domain[0] > far_domain[0]
     assert far_domain[0] < 72
     assert near_domain[0] <= 108
+
+
+def test_score_bars_start_at_the_coin_flip_and_clamp():
+    html = ui.score_bars([("A & B", 0.675, "n"), ("floor", 0.4, "n"), ("ceiling", 0.99, "n")])
+    assert "width:50%" in html            # halfway between 0.5 and 0.85
+    assert "width:0%" in html and "width:100%" in html
+    assert "A &amp; B" in html and "0.675" in html

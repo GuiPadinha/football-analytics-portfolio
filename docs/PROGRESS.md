@@ -37,8 +37,24 @@ C Compare · D Home, Leaderboard, How it works · E docs.
   verdict, a side-by-side per 90, then "are their goals real?" (or save % for keepers). Any two
   outfielders, whatever their position; a keeper against an outfielder gets a plain warning. The
   player page's "Compare X with another player" button prefills player A. Checked in Edge.
+- **D. Leaderboard, How it works, cleanup.** The Leaderboard is one sortable table (game, position
+  and name filters; a row opens the player). How it works holds all the method, with every figure
+  from `metrics.json` or computed live (the per-tournament chart is native). `views/legacy.py`
+  (the old code) is deleted, and the app no longer imports matplotlib, so matplotlib, mplsoccer
+  and seaborn moved from `requirements.txt` to `requirements-dev.txt`; a runtime-only Python 3.14
+  environment runs the smoke tests (the CI `app-runtime` job does the same).
+- **E. Docs:** PRODUCT_SPEC rewritten (views, backend map, data flow, decision log, known gaps),
+  README, PITCH demo script, ARCHITECTURE, ROADMAP and CLAUDE.md updated.
 - Small: `format_rate` is public (two decimals under 1: "0.38 per 90"), and the label reads
-  "Non-Penalty Goals".
+  "Non-Penalty Goals" (so `outputs/player_radar_examples.png` was regenerated with the hyphen; the
+  other pipeline outputs and `metrics.json` are unchanged).
+- **Verified:** 260 tests pass on 3.12; a clean Python 3.14 environment with only
+  `requirements.txt` (no matplotlib) passes the smoke and presentation tests (57). Pages checked in
+  Edge: Home, Players (star, keeper, women's), Compare, Leaderboard, How it works. A Vega bar chart
+  drew shifted off-screen (a `translate(1485,0)` autosize quirk with long labels), so the shot-model
+  scores are HTML bars in the site's own style.
+- **Open:** the redesigned live app has not been looked at by Guilherme yet (see CLAUDE.md's next
+  steps).
 
 ---
 

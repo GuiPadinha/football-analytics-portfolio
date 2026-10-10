@@ -4,7 +4,7 @@ Project source of truth. Read this first every session, then load linked docs on
 
 ---
 
-## Current Status (updated 2026-10-06)
+## Current Status (updated 2026-10-10)
 
 **Where we are:** Phases 0–4 ✅ (4c closed 2026-10-01 with two women's tournaments; **4e**, new data
 sources + 360, started 2026-10-03 with the women's leagues), Phase 8 ✅ ([live app](https://gpfootball-analytics-portfolio.streamlit.app)),
@@ -16,26 +16,20 @@ names, wrong-identity market values) plus a radar crash. On 10-03 the live app m
 3.14, keepers started counting only on-target shots, and market values started matching on
 StatsBomb's nickname, with the club check breaking ties (Luis Suárez). Then the pool grew to 9
 competitions (three more women's leagues), and Guilherme judged the app "numbers, no insights,
-cheap-looking": a redesign was agreed. On 10-06 its first step landed: rule-based text in
-`src/narrative.py` (a player's short version, Compare's verdict), percentiles ranked by league
-standing, and Compare's closeness as a rank. It isn't wired into `app.py` yet. Session detail is in
+cheap-looking". The agreed redesign, **conclusions first**, then shipped in stages (10-06 → 10-10):
+rule-based text (`src/narrative.py`), league-adjusted percentiles, and new pages on top navigation
+(Home with computed findings, Players as three questions, Compare with a verdict, Leaderboard, How
+it works), with native charts and no matplotlib in the app. Session detail is in
 [docs/PROGRESS.md](docs/PROGRESS.md); phases and backlog are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 **Next session, start here (agreed order):**
-1. **App redesign, conclusions first** (Streamlit kept). Approved mockup:
-   https://claude.ai/artifact/PjwLKvcswLnErrfBFaj1tR (Home with findings; a player page as three
-   questions: style, are the goals real, who plays like this and cheaper; Compare with a verdict).
-   **1a done (10-06):** the text generators in `src/narrative.py`, fed by
-   `similarity.league_adjusted_percentiles`, `rank_matches` and `pair_closeness`. **Next, 1b, the
-   pages:** wire the short version and verdict in; popular names (`presentation.popular_name`; 159
-   no-nickname legal names still need a rule), separate men's/women's top-5 lookalikes both ways
-   (`rank_matches` split by `config.GENDER_BY_COMPETITION`), any two outfielders comparable, every
-   percentile on the league-adjusted basis, "similar style, not the same level" next to prices,
-   Home findings, no σ/Euclidean/silhouette on player pages (methodology page only), native charts
-   instead of matplotlib images, top navigation. Build and push in stages.
+1. **Look at the redesigned live app with Guilherme** and take his feedback (it was checked in a
+   real browser only locally, on a star, a keeper and a women's player). Known small gaps are in
+   PRODUCT_SPEC.md: no deep links, 159 long registered names, uneven Home card heights.
 2. **Wyscout 2017/18** (Phase 4e): the only route to more men's data and a second season.
 3. **Phase 5a** (uncertainty on goals−xG). Score each shot with a model that never saw it
-   (out-of-fold xG): see ML_LEARNING_LOG.md's 2026-10-03 entry.
+   (out-of-fold xG): see ML_LEARNING_LOG.md's 2026-10-03 entry. The page's exact-odds sentence
+   already assumes an average finisher; 5a replaces its in-sample xG.
 
 Environment: the live app runs Python 3.14 at gpfootball-analytics-portfolio.streamlit.app; local
 is 3.12; CI tests both. `FAP_CACHE_DIR` (cache outside OneDrive) is visible after VS Code's
@@ -71,9 +65,10 @@ Player Evaluation Framework — two modules on StatsBomb/SkillCorner open data:
 ## Repository Layout
 
 ```
-app.py                   ← Streamlit app (`streamlit run app.py`) — reads app_data/, never downloads
-requirements.txt         ← app runtime deps only (what Streamlit Cloud installs)
-requirements-dev.txt     ← + ingestion, truststore, jupyter, pytest (includes requirements.txt)
+app.py                   ← Streamlit entry: page frame + top navigation (`streamlit run app.py`)
+views/                   ← one script per page (home, players, compare, leaderboard, how_it_works) + components.py (stylesheet, HTML builders, shot map) + data.py (cached loaders); reads app_data/, never downloads
+requirements.txt         ← app runtime deps only (what Streamlit Cloud installs; no matplotlib)
+requirements-dev.txt     ← + ingestion, truststore, matplotlib/mplsoccer, jupyter, pytest (includes requirements.txt)
 metrics.json             ← headline numbers, single source (`python -m src.metrics`)
 src/
   config.py          ← named Dataset constants (competition/season ids, has_360, gender)
@@ -84,15 +79,17 @@ src/
   similarity.py      ← per-90 features, league normalisation, clustering, find_similar_players
   market_value.py    ← Transfermarkt entity resolution + valuation lookup
   visualisation.py   ← all charts (shot map, radar, calibration, PCA, ...)
-  presentation.py    ← the app's words around numbers: percentile tiers, blurb, labels
+  presentation.py    ← labels and formatters: stat names, popular_name, ordinals, market value
   narrative.py       ← rule-based sentences: a player's short version, Compare's verdict
+  profile.py         ← what a page shows: player profile, Compare view, leaderboard table (pure, tested)
+  findings.py        ← Home's four computed cards → app_data/findings.json (`python -m src.findings`)
   manifest.py        ← data provenance manifest (`python -m src.manifest`)
   metrics.py         ← writes metrics.json
   pipeline.py        ← headless rebuild: data → models → outputs → manifest/metrics
   app_data.py        ← writes app_data/*.parquet for the app (`python -m src.app_data`)
 app_data/                ← precomputed Parquet the app reads (small, committed)
 notebooks/               ← 01 exploration, 02 xG model, 03 similarity (the teaching surface)
-tests/                   ← pytest suite incl. AppTest smoke tests of every app view; conftest.py
+tests/                   ← pytest suite incl. AppTest smoke tests of every app page; conftest.py
 outputs/                 ← pipeline PNGs, committed (README embeds them; pipeline is the only writer)
 data/                    ← processed tables (gitignored) + manifest.json (committed); the ~8.5 GB
                            per-match cache is data/cache/, or $FAP_CACHE_DIR (outside OneDrive here)

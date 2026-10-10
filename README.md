@@ -213,10 +213,10 @@ profile, given that data.
 
 ```
 football-analytics-portfolio/
-├── app.py                  ← the Streamlit app (streamlit run app.py)
+├── app.py + views/         ← the Streamlit app: top navigation, one script per page (streamlit run app.py)
 ├── src/                    ← all logic: ingestion, features, models, similarity, charts, pipeline
 ├── notebooks/              ← 01 exploration · 02 xG model · 03 player similarity (narrated)
-├── tests/                  ← pytest suite, incl. smoke tests of every app view
+├── tests/                  ← pytest suite, incl. smoke tests of every app page
 ├── app_data/               ← precomputed tables the app reads (committed, ~1 MB)
 ├── outputs/                ← the charts shown in this README (written by the pipeline)
 ├── metrics.json            ← every headline number, generated — docs are tested against it
@@ -238,8 +238,8 @@ football-analytics-portfolio/
 
 ## Tech Stack
 
-Python · `statsbombpy` · `kloppy` · pandas · numpy · scikit-learn · `mplsoccer` · matplotlib ·
-`streamlit`
+Python · `statsbombpy` · `kloppy` · pandas · numpy · scikit-learn · `mplsoccer` · matplotlib
+(pipeline charts) · `streamlit` + Altair (the app)
 
 ## Running it
 
@@ -281,11 +281,13 @@ python -m src.app_data             # only to rebuild app_data/ (needs requiremen
 League, La Liga, Serie A, Ligue 1 (all 2015/16), plus five women's leagues: Frauen Bundesliga, FA
 Women's Super League, Liga F, Serie A Women (all 2023/24) and NWSL 2023 — **2,170 players total,
 including 168 goalkeepers** with their own feature set,
-K-means clustered into style archetypes like the outfield groups. The app also has a full player
-**leaderboard** (sortable, goals incl. penalties + xG where available), a **Compare players** view
-(any two players, side by side), a **Transfermarkt market value** matched onto "players like X" and
-the Leaderboard (men's competitions only, ~99% match rate), and an **About & Roadmap** tab
-explaining the framework, the data, and what's next.
+K-means clustered into style archetypes like the outfield groups. The app leads with
+conclusions: a **Home** page of computed findings, and a **player page** that answers three
+questions in plain words — what kind of player, are the goals real (exact odds against the shot
+model's chances), and who plays like this, in separate men's and women's lists next to their
+**Transfermarkt value** (men's competitions only, ~99% match rate). **Compare** puts any two
+outfield players side by side under a rule-based verdict; a **Leaderboard** sorts everyone; and
+**How it works** holds the method, the accuracy numbers and the limits.
 
 ---
 

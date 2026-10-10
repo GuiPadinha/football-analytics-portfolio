@@ -24,6 +24,30 @@ Original PATH fix in `docs/PROGRESS_ARCHIVE.md` (2026-06-28 entry) if this needs
 
 ---
 
+## A venv under a very long path breaks pyarrow (2026-10-10)
+
+Symptom: in a throwaway venv created inside the Claude scratchpad (a ~170-character path),
+`import pyarrow` failed with `ImportError: DLL load failed while importing lib: The filename or
+extension is too long`, so every test that imports `src.similarity` could not even be collected.
+Not a code problem: Windows' path-length limit plus pyarrow's nested DLL paths. Fix: build the
+runtime-only check venv at a short path (`py -3.14 -m venv C:apvenv`), run
+`pip install -r requirements.txt pytest` and `pytest tests/test_app_smoke.py`, then delete it.
+That check is how the app was shown to need no matplotlib.
+
+## Streamlit AppTest with `st.navigation` (2026-10-10)
+
+- `AppTest.switch_page()` needs **file-based** pages (`st.Page("views/x.py")`); a page built from a
+  function fails with "Unable to find script". Switch with `at.switch_page("views/players.py")`.
+- `st.html` elements are `UnknownElement`s without `.value`; read the markup from
+  `element.proto.body`. A native Altair chart has type `vega_lite_chart`.
+- Widget state is dropped for a widget not drawn in a run (including on another page), so anything
+  that must survive a page change lives in a plain `st.session_state` key (`selected_player`), and
+  the page seeds its widget from it before drawing it.
+- Don't stop a background Streamlit server with a process-name filter that includes its own
+  command line (`... | Where CommandLine -like "*server.port 8599*" | Stop-Process`): the filter
+  matches the shell running it and kills the tool call (exit 255). Find the PID by port with
+  `netstat -ano` and `taskkill //F //PID <pid>`.
+
 ## UnicodeEncodeError with accented player names
 
 PowerShell's default codepage is cp1252 — can't encode StatsBomb names (Kramarić, Šeško, Þór Sigurðsson, etc.). Fix before running any Python process that prints player names:

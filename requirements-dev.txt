@@ -11,5 +11,13 @@ kloppy==3.19.0
 # wherever something re-signs HTTPS traffic (antivirus scanning, a corporate proxy).
 truststore==0.10.4
 
+# Charts for the pipeline's PNGs and the notebooks. The app draws its own charts with Altair, which
+# Streamlit already installs, so none of these are app runtime dependencies (since 2026-10-10).
+matplotlib==3.10.9
+mplsoccer==1.6.1
+# seaborn: never imported by this project; pinned only because mplsoccer depends on it, so a
+# future seaborn release can't silently break the radar/pitch plots (and the deployed app).
+seaborn==0.13.2
+
 jupyter==1.1.1
 pytest==9.1.1

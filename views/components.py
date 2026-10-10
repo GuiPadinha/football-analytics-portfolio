@@ -197,6 +197,27 @@ def result_panel(figure, text, color):
     )
 
 
+def score_bars(rows, low=0.5, high=0.85, color=ORANGE):
+    """Horizontal bars for scores between `low` and `high`, in the site's own bar style.
+
+    Used for the shot model's ROC-AUC per tournament, where 0.5 is a coin flip: the bar starts
+    there, so its length is the skill above chance. Drawn as HTML rather than a Vega chart because
+    a Vega chart with long category labels rendered shifted off-screen in Streamlit (2026-10-10).
+
+    Args:
+        rows (list[tuple[str, float, str]]): `(label, score, note)`, drawn in the order given.
+        low, high (float): the scores at the empty and the full bar.
+    """
+    body = "".join(
+        '<div class="fap-bar-row"><div class="line">'
+        f'<span>{escape(label)}</span><span style="font-weight:600">{score:.3f}</span></div>'
+        f'<div class="fap-track"><div class="fap-fill" style="width:{max(0.0, min(1.0, (score - low) / (high - low))) * 100:.0f}%;'
+        f'background:{color}"></div></div><div class="fap-muted">{escape(note)}</div></div>'
+        for label, score, note in rows
+    )
+    return f'<div class="fap-panel">{body}</div>'
+
+
 def pill(text):
     """The small "Cheaper" tag."""
     return f'<span class="fap-pill">{escape(text)}</span>'

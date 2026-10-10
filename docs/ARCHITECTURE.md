@@ -44,19 +44,19 @@ rebuilding every output PNG/manifest/metric.
 | `net.py` | — | `data_loader.py`, `market_value.py` |
 | `data_loader.py` | `net` | `features.py`, `similarity.py`, `manifest.py` |
 | `features.py` | `data_loader` | `pipeline.py` (+ notebook 02) |
-| `similarity.py` | `data_loader` | `metrics.py`, `pipeline.py`, `app_data.py`, `presentation.py`, `app.py` (+ notebook 03) |
+| `similarity.py` | `data_loader` | `metrics.py`, `pipeline.py`, `app_data.py`, `presentation.py`, `profile.py`, `views/` (+ notebook 03) |
 | `models.py` | — | `metrics.py`, `pipeline.py`, `app_data.py` (+ notebook 02) |
-| `visualisation.py` | — | `pipeline.py`, `app.py` (+ notebooks 02/03) |
+| `visualisation.py` | — | `pipeline.py` (+ notebooks 02/03; the app no longer uses it) |
 | `presentation.py` | `similarity` (column constants) | `app.py`, `narrative.py` |
-| `profile.py` | `config`, `narrative`, `presentation`, `similarity` | `findings.py`, `app.py` views (redesign step 1b) |
-| `findings.py` | `narrative`, `presentation`, `profile`, `similarity` | `app_data.py` (writes `app_data/findings.json`), `app.py` Home |
-| `narrative.py` | `presentation` | — (`app.py` from redesign step 1b; reads `similarity.PairCloseness` by duck typing) |
+| `profile.py` | `config`, `narrative`, `presentation`, `similarity` | `findings.py`, `views/` |
+| `findings.py` | `narrative`, `presentation`, `profile`, `similarity` | `app_data.py` (writes `app_data/findings.json`) |
+| `narrative.py` | `presentation` | `profile.py`, `findings.py` |
 | `market_value.py` | `net` | `app_data.py` |
 | `manifest.py` | `config`, `data_loader` | `pipeline.py` |
 | `metrics.py` | `config`, `models`, `similarity` | `pipeline.py` |
 | `pipeline.py` | `config`, `features`, `manifest`, `metrics`, `models`, `similarity`, `visualisation` | `app_data.py` (reuses its constants + shot-table cache); also the entry point `python -m src.pipeline` |
 | `app_data.py` | `config`, `market_value`, `models`, `pipeline`, `similarity` | — (top-level entry point, `python -m src.app_data`) |
-| `app.py` (repo root) | `presentation`, `similarity`, `visualisation` | — (`streamlit run app.py`; reads `app_data/`, never downloads) |
+| `app.py` + `views/*.py` (repo root) | `profile`, `narrative`, `findings` data, `presentation`, `similarity` | — (`streamlit run app.py`; reads `app_data/`, never downloads; no matplotlib) |
 
 Two things worth noticing, because they're deliberate design choices, not accidents:
 

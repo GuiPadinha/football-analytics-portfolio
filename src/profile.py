@@ -386,3 +386,37 @@ def build_compare_view(pool, key_a, key_b):
 def price_line(value_eur):
     """A value as the pages show it, or "Not on record" when there is none."""
     return format_market_value(value_eur) or "Not on record"
+
+
+GAME_LABELS = {"male": "Men's", "female": "Women's"}
+
+
+def build_leaderboard(pool, xg_table):
+    """Every player in one table for the Leaderboard page.
+
+    Goals and assists are blank for goalkeepers, goals minus xG exists only for the Premier League
+    2015/16 and the value only for men with a Transfermarkt match: blank, never faked, so each
+    column still sorts numerically. `player` and `team` stay as the key for opening a row.
+
+    Args:
+        pool (Pool): from `prepare_pool`.
+        xg_table (pandas.DataFrame): `app_data/player_xg_table.parquet`.
+
+    Returns:
+        pandas.DataFrame: one row per player-season, in the pool's order.
+    """
+    per90 = pool.per90
+    outfield = per90["position_group"] != "Goalkeeper"
+    table = pd.DataFrame({
+        "player": per90["player"], "team": per90["team"],
+        "Player": [display_name(row) for _, row in per90.iterrows()],
+        "Team": per90["team"], "League": per90["competition"], "Position": per90["position_group"],
+        "Game": per90["gender"].map(GAME_LABELS), "Minutes": per90["minutes_played"].round(0),
+        "Goals": per90["goals"].where(outfield), "Assists": per90["assists"].where(outfield),
+    })
+    table = table.merge(
+        xg_table[["player", "team", "xg_diff"]].rename(columns={"xg_diff": "Goals − xG"}),
+        on=["player", "team"], how="left",
+    )
+    values = pool.market_values["market_value_eur"].div(1_000_000).rename("Value (€M)")
+    return table.merge(values, left_on=["player", "team"], right_index=True, how="left")

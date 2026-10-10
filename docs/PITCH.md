@@ -23,25 +23,22 @@ colleague pitch (date TBD — today or the next day at the time of writing).
 
 ## Demo script (suggested order)
 
-1. **Leaderboard** — scale (9 competitions, 2,170 players), sort by Goals, point out a
-   penalty-inflated total (e.g. a defender whose goals are mostly penalties) — shows why "raw
-   goals" is a misleading stat on its own. Mention the name/position filters above the table if
-   asked how to find a specific player quickly.
-2. **Player explorer, pick a well-known forward** — radar vs. position peers, signature stats.
-3. **Style archetype** (2026-07-13) — the chart right below signature stats: this player's cluster,
-   auto-described by which stats it over/under-indexes on (e.g. "high Key Passes, low Clearances").
-   Good line: "the model isn't just handed a role label — it *finds* the archetype from the stats,
-   then explains itself." Click into "Browse this archetype" to show a few other players in the
-   same style bucket.
-4. **"Players like X"** — click a row in the table, show the recursive drill-down (jumps to the
-   similar player, recomputes everything for them). Point out the **Market value** column
-   (2026-07-14) — this is the "who else plays like them, ideally cheaper?" pitch line answered
-   with a real number, not just a vibe.
-5. **"Finishing" panel** — goals vs. xG, shot map. This is the "is it real or luck" answer.
-6. **Compare players** (2026-07-14) — pick two well-known names (works across positions/
-   competitions), show the overlaid radar and the market-value delta line ("X is valued €Y less
-   than Z"). A good closer beat: it's the two lenses *and* the new valuation feature on one screen.
-7. Close on the credibility numbers below, then the roadmap.
+The app now leads with conclusions, so the demo does too (redesigned 2026-10-10).
+
+1. **Home** — scale (9 leagues, 2,170 players) and the four finding cards: the biggest finishing
+   gap in the Premier League (Agüero +6.5 goals, with the "about one season in 22" odds), the
+   buy-low mirror image (Jerome), the price card (94% of €10M+ men have a half-price lookalike,
+   and the caveat that style is not level) and the closest man-woman pair.
+2. **Open a well-known player** (search "Mahrez") — read the *short version* aloud: style, whether
+   the goals are real, who plays like him for less. Then scroll the three questions it summarises.
+3. **"Are the goals real?"** — the exact-odds sentence and the shot map (hover a shot). The line:
+   "one season of shots barely separates skill from luck, so the page quotes odds, not a verdict."
+4. **"Who plays like this?"** — men's and women's tabs, the "Cheaper" tags, the similar-style-is-
+   not-level note. Click a name: the whole page recomputes for them.
+5. **Compare** (button on the player page) — Coutinho vs Zaha: a verdict, then the bars. A good
+   closer: "it says they are not interchangeable, and why".
+6. **How it works** — only if asked how it's built: the accuracy table across 6 tournaments, the
+   limits section. Close on the credibility numbers below.
 
 ---
 
@@ -54,18 +51,18 @@ colleague pitch (date TBD — today or the next day at the time of writing).
   tournaments it never trained on, **2 of them women's** — used to check it generalises.
 - **1,327** players matched to a real Transfermarkt market value (men's competitions only, each
   confirmed at the player's club that season — see the Roadmap section below for the coverage caveat).
-- **~170** automated tests, including smoke tests of every app view, run on every push on Python
+- **~260** automated tests, including smoke tests of every app page, run on every push on Python
   3.12 and 3.14; a one-command rebuild (`python -m src.pipeline`) that reproduces every number and
   chart byte-for-byte; and a live deployed app.
 
-*(The first two lines are the app's "About & Roadmap" → "What's been built" tiles; market value
+*(The first two lines are on Home's stats strip; market value
 and test count aren't on-screen tiles but are just as safe to say from memory.)*
 
 ## Methodology backup — only if asked to justify the model
 
 Don't lead with this; it's here so the underlying claim can be defended if someone asks "how do
 you know the model is any good." Full detail + a per-tournament table also live in the app's
-**About & Roadmap** → **Methodology** expander (source: `metrics.json`, single source — regenerate
+**How it works** page (source: `metrics.json`, single source — regenerate
 via `python -m src.metrics`).
 
 - **What ROC-AUC means:** how often the model correctly ranks a more dangerous shot above a less

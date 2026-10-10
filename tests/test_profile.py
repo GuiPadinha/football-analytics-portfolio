@@ -14,6 +14,7 @@ from src.findings import FINDINGS_PATH, MIN_SHOTS_FOR_FINISHING_CARD
 from src.profile import (
     LOOKALIKES_PER_GAME,
     build_compare_view,
+    build_leaderboard,
     build_player_profile,
     find_player,
     market_value_of,
@@ -124,3 +125,16 @@ def test_findings_file_matches_the_tables(pool):
     assert man["gender"] == "male"
     assert f"{len(pool.per90):,} players" in findings["cross_game"]["body"]
     assert 0.5 < float(findings["price"]["figure"].rstrip("%")) / 100 <= 1.0
+
+
+def test_leaderboard_has_one_row_per_player_and_blanks_what_does_not_apply(pool):
+    xg = pd.read_parquet(APP_DATA_DIR / "player_xg_table.parquet")
+    board = build_leaderboard(pool, xg)
+    assert len(board) == len(pool.per90) and not board.duplicated(["player", "team"]).any()
+    keepers = board[board["Position"] == "Goalkeeper"]
+    assert keepers["Goals"].isna().all() and keepers["Assists"].isna().all()
+    assert board.loc[board["Game"] == "Women's", "Value (€M)"].isna().all()
+    # Only shooters with enough minutes to be in the pool (900+) get a row.
+    assert board["Goals − xG"].notna().sum() == len(xg.merge(pool.per90[["player", "team"]]))
+    assert board.loc[board["player"] == "Riyad Mahrez", "Value (€M)"].iloc[0] == 20.0
+    assert set(board["Game"]) == {"Men's", "Women's"}

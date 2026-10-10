@@ -316,9 +316,10 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
 - **Redesign: conclusions first** (agreed 2026-10-03). Guilherme's verdict on the live app:
   numbers and method everywhere, no insights, cheap-looking and buggy charts. Plan and approved
   mockup (https://claude.ai/artifact/PjwLKvcswLnErrfBFaj1tR) are in CLAUDE.md's "Next session".
-  It replaces several items below (Leaderboard filter, visual pass). **Step 1a done 2026-10-06:**
-  the rule-based text (`src/narrative.py`) with league-adjusted percentiles and Compare's closeness
-  rank. **Next, 1b:** the pages.
+  It replaces several items below (Leaderboard filter, visual pass). **Done 2026-10-06 → 10-10:**
+  the rule-based text (`src/narrative.py`), then the pages (Home, Players, Compare, Leaderboard,
+  How it works) on top navigation with native charts. Left: deep links, a rule for long
+  registered names, and the visual polish items in PRODUCT_SPEC.md's Known gaps.
 - **Leaderboard's name filter still needs Enter** — flagged 2026-07-14 (cont.), deliberately not
   fixed that session: it's an `st.text_input` feeding a multi-row `st.dataframe`, not a single-pick
   widget, so the live-filtering-selectbox trick that fixed the other three search boxes that
