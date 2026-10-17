@@ -32,7 +32,9 @@ FINAL_THIRD_START = 100
 STYLESHEET = f"""
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
 html, body, [class*="st-"], .stApp {{ font-family: 'IBM Plex Sans', sans-serif; }}
-.block-container {{ max-width: 1200px; padding-top: 2.5rem; }}
+.block-container {{ max-width: 1520px; padding-top: 3.75rem; padding-left: 3rem; padding-right: 3rem; }}
+/* Cards, tables and charts use the full width; running text stays readable (~110 characters). */
+.stMarkdown p, .stMarkdown li {{ max-width: 980px; }}
 .fap-display {{ font-family: 'Barlow Condensed', sans-serif; font-weight: 700; letter-spacing: 0.2px; }}
 .fap-kicker {{ margin: 0; font-size: 13px; letter-spacing: 1.8px; font-weight: 600; color: {ORANGE_LIGHT}; text-transform: uppercase; }}
 .fap-kicker.blue {{ color: {BLUE_LIGHT}; }}
@@ -74,6 +76,7 @@ html, body, [class*="st-"], .stApp {{ font-family: 'IBM Plex Sans', sans-serif; 
 .fap-versus .bar {{ width: 70%; display: flex; }}
 .fap-versus .side.a .bar {{ justify-content: flex-end; }}
 .fap-versus .bar > div {{ height: 14px; border-radius: 4px; }}
+@media (max-width: 640px) {{ .block-container {{ padding-left: 1rem; padding-right: 1rem; }} }}
 @media (max-width: 640px) {{ .fap-versus {{ grid-template-columns: 1fr; text-align: center; }} .fap-versus .side.a {{ justify-content: center; }} }}
 """
 

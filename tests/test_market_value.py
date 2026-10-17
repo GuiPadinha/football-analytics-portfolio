@@ -70,6 +70,25 @@ def test_candidates_use_the_statsbomb_nickname():
     assert list(result["tm_player_id"]) == [1, 2]
 
 
+def test_candidates_match_an_initial_and_surname_by_both():
+    # Wyscout's "D. Alli": the registered "Bamidele Alli" never says "Dele". Same surname and
+    # initial finds him; another Alli with another initial is not a candidate.
+    per90 = _sb_players([("Bamidele Alli · 2017/18", "Tottenham Hotspur", "D. Alli")])
+    tm = _tm_players([(1, "Dele Alli"), (2, "Bamidele Alli Junior"), (3, "Kevin Alli")])
+
+    result = find_name_candidates(per90, tm)
+    assert 1 in set(result["tm_player_id"])
+    assert 3 not in set(result["tm_player_id"])
+
+    # An apostrophe is spelled out on one side only (Wyscout "N'Diaye", Transfermarkt "Ndiaye"),
+    # but a surname must be whole words: "Alli" is not the end of "Gabalalli".
+    per90 = _sb_players([("Papa Alioune N'Diaye · 2017/18", "Stoke City", "B. N'Diaye")])
+    tm = _tm_players([(1, "Badou Ndiaye"), (2, "Bob Gabalalli")])
+    assert 1 in set(find_name_candidates(per90, tm)["tm_player_id"])
+    per90 = _sb_players([("Bamidele Alli · 2017/18", "Tottenham Hotspur", "D. Alli"), ("X", "Y", "B. Alli")])
+    assert 2 not in set(find_name_candidates(per90, tm)["tm_player_id"])
+
+
 def test_candidates_match_the_nickname_by_its_words_too():
     # Real cases: Transfermarkt's "Charly Musonda Jr." and "Mikel John Obi" (same words, another
     # order) are no exact match for StatsBomb's nicknames, and the full names share nothing.

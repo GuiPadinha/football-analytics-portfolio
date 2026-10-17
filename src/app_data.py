@@ -39,7 +39,7 @@ import pandas as pd
 
 from src import config
 from src.findings import write_findings
-from src.market_value import build_market_value_table
+from src.market_value import INITIAL_AND_SURNAME, build_market_value_table
 from src.models import build_feature_matrix, build_player_xg_table, train_logistic_regression
 from src.pipeline import build_shot_tables
 from src.similarity import (
@@ -159,6 +159,32 @@ def _cluster_position_groups(per90_features, position_groups, feature_columns, n
     return pd.concat(labelled_groups, ignore_index=True)
 
 
+def spell_out_initials(per90_features, market_value):
+    """Show a Wyscout player still named by an initial ("B. Keita") under his Transfermarkt name.
+
+    `wyscout.popular_name` spells out an initial from the player's given names, which fails when
+    he's known by a name his registered one doesn't show (Bamidele "Dele" Alli, Keita Baldé
+    Diao). Transfermarkt's display name is the popular one, and a market-value match has already
+    been confirmed at his club that season, so it is safe to show; unmatched players keep the
+    initial rather than a guess.
+
+    Args:
+        per90_features (pandas.DataFrame): the app's player table, with `provider`.
+        market_value (pandas.DataFrame): `build_market_value_table` output.
+
+    Returns:
+        pandas.DataFrame: a copy of `per90_features` with those `nickname`s replaced.
+    """
+    tm_names = market_value.set_index(["player", "team"])["tm_name"]
+    keys = pd.MultiIndex.from_frame(per90_features[["player", "team"]])
+    tm_name = pd.Series(tm_names.reindex(keys).to_numpy(), index=per90_features.index)
+    initial = per90_features["nickname"].fillna("").str.match(INITIAL_AND_SURNAME)
+    replace = (per90_features["provider"] == "wyscout") & initial & tm_name.notna()
+    result = per90_features.copy()
+    result.loc[replace, "nickname"] = tm_name[replace]
+    return result
+
+
 def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
     """Write the artifacts the app reads: per-90 features, player xG table, shots+xG, market value,
     and the Home page's findings.
@@ -225,6 +251,7 @@ def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
         market_value = build_market_value_table(per90_features)
         market_value.to_parquet(app_data_dir / "market_value.parquet")
         result["market_value_rows"] = len(market_value)
+        spell_out_initials(per90_features, market_value).to_parquet(app_data_dir / "player_per90.parquet")
         # The Home page's cards rank players with those tables, so they are rebuilt from them here
         # (seconds) rather than left to go stale. Needs market values, hence inside this branch.
         write_findings(app_data_dir)

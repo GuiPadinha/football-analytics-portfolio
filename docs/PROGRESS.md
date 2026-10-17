@@ -6,6 +6,35 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-10-17 (late afternoon) — Loose ends: Home price card, initials, page width, after-push check
+
+Guilherme asked for the two open items, a fix for the side margins ("I don't love the space on
+both sides of every page"), and an always-on look at the live app after each push.
+- **Home price card covers both men's seasons.** Each man is matched within his own provider,
+  as on his page. It now reads 91% (681 of 749). The other three cards can't include Wyscout:
+  finishing needs xG (PL 2015/16 only), and the cross-game card needs women's leagues.
+- **No Wyscout name is left as an initial.**
+  - `find_name_candidates` also matches "D. Alli" by surname and initial. The surname is
+    compared without spaces, because "N'Diaye" normalises to "n diaye" against Transfermarkt's
+    "Ndiaye", but it must be whole words.
+  - `app_data.spell_out_initials` then shows the confirmed Transfermarkt name: Dele Alli (who
+    also gained his €80M value), Badou Ndiaye, Keita Baldé.
+  - 2,911 values. StatsBomb's matches are unchanged.
+- **Wider pages.** Content max width went from 1200 px to 1520 px. Running text is capped at
+  ~980 px so it stays readable, and mobile padding shrinks. The page title no longer hides under
+  the top bar ("HOW IT WORKS" was cut off, live too).
+- **After-push check:**
+  - CI comes from GitHub's REST API (no `gh`). The live app is checked with the new
+    `tools/screenshot.py` (ML_TOOLING.md has why the plain approach failed).
+  - Anonymous visits to the live URL got "You do not have access… / 404" while Guilherme, signed
+    in, saw the app. He was asked to check in an incognito window, since it may be private.
+- **Verified:**
+  - 285 tests pass.
+  - Real-browser screenshots at 1900 px (local): Home, and How it works before and after.
+  - The rebuild's xG tables were float-noise only and restored from git.
+
+---
+
 ## 2026-10-17 (afternoon) — Wyscout 2017/18 (Phase 4e): xG test rejected, ingestion built
 
 Guilherme OK'd the redesigned live app by eye ("looked good"), then chose "xG first, then a
@@ -72,7 +101,7 @@ separate 2017/18 pool", in three stages (A ingestion, B pool plumbing, C pages),
   - Read by eye: Salah's lookalikes are Agüero, Immobile, Depay, Dybala and Mbappé. Coutinho
     shows twice in Messi's list (Liverpool + Barcelona, a January transfer), as for StatsBomb
     players.
-- **Unresolved:**
+- **Unresolved (handled in the next entry):**
   - Not checked in a real browser.
   - Home's finding cards stay StatsBomb-only.
   - A few Wyscout names stay as initials ("D. Alli").

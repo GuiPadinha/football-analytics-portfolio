@@ -55,7 +55,7 @@ dropped). Five more held-out tournaments rank as well (0.76–0.81): World Cup 2
 near the bottom, not "the floor". Similarity: K=4 per position group, silhouette ~0.22–0.26 (a
 soft continuum) on the notebook's PL 2015/16 scope; the app's pool is 14 competitions and
 3,794 players (2,170 StatsBomb + 1,624 Wyscout 2017/18, never mixed), league-normalised, with
-goalkeepers clustered too. **2,909** players matched to a Transfermarkt market value (men's
+goalkeepers clustered too. **2,911** players matched to a Transfermarkt market value (men's
 competitions, ~98%, each confirmed at the right club).
 *(xG/similarity numbers come from
 [metrics.json](metrics.json) via `python -m src.metrics`. A doc-lint test fails the build if a
@@ -123,6 +123,7 @@ docs/
   ML_TOOLING.md          ← Windows/environment gotchas
   CONTEXT.md             ← owner, learning goals, career context
   PITCH.md               ← pre-demo cheat sheet, refreshed by hand
+tools/screenshot.py          ← dev tool: screenshot a rendered (live or local) app page, for the after-push check
 .github/workflows/tests.yml  ← CI: pytest on 3.12 + 3.14, plus an app-runtime-only smoke job (3.14)
 .githooks/pre-commit         ← enforces the doc-log rule below
 .streamlit/config.toml       ← app theme
@@ -133,6 +134,11 @@ docs/
 ## Session Workflow
 
 **Git:** the CLI is used directly. Commit only when Guilherme asks, and when he does, commit **and push** (no separate confirmation). When executing a plan he approved, make one commit + push per plan item so history stays organised. Every push redeploys the live app, so verify before pushing. Never force-push; prefer new commits over amending.
+**After every push, check both and report them** (Guilherme, 2026-10-17: cheap, always do it):
+the CI run (`gh` isn't installed; the repo is public, so
+`curl https://api.github.com/repos/GuiPadinha/football-analytics-portfolio/actions/runs?per_page=4`)
+and the live app itself (`python tools/screenshot.py <url> out.png "<text on the page>"`, then look
+at the PNG; it waits for Streamlit to really render, which a plain headless `--screenshot` doesn't).
 
 **Start of session:**
 1. Read this file; check [docs/PROGRESS.md](docs/PROGRESS.md) for last session state

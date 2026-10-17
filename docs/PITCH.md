@@ -50,7 +50,7 @@ The app now leads with conclusions, so the demo does too (redesigned 2026-10-10)
   plus save % — and K-means clustered into style archetypes like the outfield groups).
 - **10,824** shots trained the xG model; a further **7,215** held-out shots — across **6**
   tournaments it never trained on, **2 of them women's** — used to check it generalises.
-- **2,909** players matched to a real Transfermarkt market value (men's competitions only, each
+- **2,911** players matched to a real Transfermarkt market value (men's competitions only, each
   confirmed at the player's club that season — see the Roadmap section below for the coverage caveat).
 - **~260** automated tests, including smoke tests of every app page, run on every push on Python
   3.12 and 3.14; a one-command rebuild (`python -m src.pipeline`) that reproduces every number and

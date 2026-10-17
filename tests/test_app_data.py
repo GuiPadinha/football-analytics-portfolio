@@ -80,6 +80,13 @@ def test_market_values_are_unique_mens_only_and_from_around_the_season(per90, ma
     assert wyscout.any()
 
 
+def test_no_valued_wyscout_player_is_shown_by_an_initial(per90, market_value):
+    # "B. Keita" is shown as Transfermarkt's "Keita Baldé" once his match is confirmed at his club;
+    # only an unmatched player may keep an initial.
+    wyscout = per90[per90["provider"] == "wyscout"].merge(market_value, on=["player", "team"])
+    assert not wyscout["nickname"].str.match(r"^[^\W\d_]\.\s").any()
+
+
 def test_two_providers_never_share_a_key_or_a_stat_they_dont_both_have(per90):
     # Wyscout keys carry the season: 329 (player, team) pairs would collide with 2015/16 otherwise.
     wyscout = per90[per90["provider"] == "wyscout"]

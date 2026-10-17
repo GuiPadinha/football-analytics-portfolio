@@ -6,6 +6,21 @@ Windows-specific friction hit while building this project. Written so they don't
 
 ---
 
+## Screenshotting the Streamlit app headlessly (2026-10-17)
+
+- **`--virtual-time-budget` doesn't wait for Streamlit.** It runs the browser's clock ahead,
+  but the app draws over a websocket in real time, so `chrome --headless --screenshot` mostly
+  caught the grey loading skeleton (an occasional success was timing luck).
+  `tools/screenshot.py` drives Chrome through the DevTools protocol instead and waits for a
+  text marker. It uses tornado's websocket client, which comes with Streamlit.
+- **Edge mid-update exits silently.** With two versions installed side by side (154 and 155),
+  `msedge.exe --headless ...` returned 0 in 0.1 s and wrote no file, whatever the headless mode.
+  Chrome works.
+- **`gh` isn't installed.** The repo is public, so the CI status comes from the REST API with no
+  auth: `curl https://api.github.com/repos/GuiPadinha/football-analytics-portfolio/actions/runs?per_page=4`.
+- A server's first page load builds the pool cache, so the first shot of a fresh `streamlit run`
+  can time out. Load once, then shoot.
+
 ## Python / pip not recognized in a fresh terminal
 
 **Since 2026-10-02 the project interpreter is Python 3.12**, at

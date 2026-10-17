@@ -17,7 +17,7 @@ import pandas as pd
 
 from src.narrative import CHEAPER_RATIO, describe_finishing, finishing_from_shots
 from src.presentation import feature_columns_for, format_market_value
-from src.profile import display_name, market_value_of, prepare_pool
+from src.profile import display_name, market_value_of, peers_of, prepare_pool
 from src.similarity import rank_matches
 
 APP_DATA_DIR = Path(__file__).resolve().parent.parent / "app_data"
@@ -85,7 +85,8 @@ def _finishing_findings(pool, xg_table):
 
 
 def _price_finding(pool):
-    """How often a valued man has a lookalike at half his value or less."""
+    """How often a valued man has a lookalike at half his value or less, in both men's seasons:
+    each man is matched within his own data provider, as on his player page."""
     per90 = pool.per90
     valued_men = [
         row for _, row in per90[(per90["gender"] == "male") & per90["position_group"].isin(OUTFIELD)].iterrows()
@@ -94,7 +95,8 @@ def _price_finding(pool):
     with_cheaper = 0
     for row in valued_men:
         value = market_value_of(pool, row["player"], row["team"])[0]
-        ranked = rank_matches(per90, feature_columns_for(row["position_group"])[2], row["player"], row["team"])
+        lz_columns = feature_columns_for(row["position_group"], row["provider"])[2]
+        ranked = rank_matches(peers_of(pool, row), lz_columns, row["player"], row["team"])
         closest = ranked[ranked["gender"] == "male"].head(PRICE_CARD_LIST_SIZE)
         values = [market_value_of(pool, p, t)[0] for p, t in zip(closest["player"], closest["team"])]
         with_cheaper += any(v is not None and v <= CHEAPER_RATIO * value for v in values)
@@ -103,8 +105,9 @@ def _price_finding(pool):
         kind="price", kicker="SAME STYLE, SMALLER PRICE", figure=f"{share:.0%}",
         headline=(f"of men valued at {format_market_value(MIN_VALUE_FOR_PRICE_CARD_EUR)}+ have a top-"
                   f"{PRICE_CARD_LIST_SIZE} lookalike at half the price or less"),
-        body=(f"{with_cheaper} of {len(valued_men)} outfield players. Style is cheap to find. What the price "
-              "adds is level, age and contract, so treat a cheaper lookalike as a lead to check."),
+        body=(f"{with_cheaper} of {len(valued_men)} outfield players across both men's seasons, each matched "
+              "within his own season's data. Style is cheap to find. What the price adds is level, age and "
+              "contract, so treat a cheaper lookalike as a lead to check."),
         link_label="Find a player's lookalikes →", player=None, team=None, tone="up",
     )
 
@@ -153,11 +156,11 @@ def build_findings(pool, xg_table):
     Returns:
         list[Finding]
     """
-    # The cards rank StatsBomb players only: they need the men's and women's games in one
-    # space, and goals against chances exists only for StatsBomb's Premier League 2015/16.
+    # The price card covers both men's seasons. The other three need StatsBomb: goals against
+    # chances exists only for its Premier League 2015/16, and only its data has women's leagues.
     statsbomb = replace(pool, per90=pool.per90[pool.per90["provider"] == "statsbomb"])
     over, under = _finishing_findings(statsbomb, xg_table)
-    return [over, under, _price_finding(statsbomb), _cross_game_finding(statsbomb)]
+    return [over, under, _price_finding(pool), _cross_game_finding(statsbomb)]
 
 
 def write_findings(app_data_dir=APP_DATA_DIR):

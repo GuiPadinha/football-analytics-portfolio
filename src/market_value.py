@@ -94,6 +94,10 @@ TRANSLITERATIONS = str.maketrans({
 })
 
 
+# "D. Alli": one initial, a dot, then the surname (see `find_name_candidates`).
+INITIAL_AND_SURNAME = re.compile(r"^([^\W\d_])\.\s+(.+)$")
+
+
 def normalize_name(name):
     """Fold a player name to a comparable canonical form: strip accents, lowercase, collapse
     punctuation/whitespace to single spaces.
@@ -196,6 +200,10 @@ def find_name_candidates(per90_players, tm_players):
        common tokens can't outvote a distinctive one (a "Júnior Santos" against "Neymar"), and a
        candidate made only of name particles ("de") never counts.
 
+    A name written as an initial and a surname ("D. Alli", kept by Wyscout when the full name
+    doesn't show the given name he's known by) also picks up every Transfermarkt name with that
+    surname and initial ("Dele Alli").
+
     Several candidates for one player are normal (Transfermarkt has two players named "Luis
     Suárez" and eight named "Danilo"): the club check tells them apart.
 
@@ -235,6 +243,27 @@ def find_name_candidates(per90_players, tm_players):
         scores = nearby["tokens"].map(lambda t: _rarity_score(t, token_rarity))
         return list(nearby.index[scores == scores.max()])
 
+    def initial_and_surname_rows(name):
+        # Wyscout keeps a few players as "D. Alli": the initial of a given name the full name
+        # doesn't show (Bamidele "Dele" Alli). Same surname, same initial is a weak name signal,
+        # so these rows are only candidates; the club check still has to confirm one.
+        match = INITIAL_AND_SURNAME.match(name) if isinstance(name, str) else None
+        if not match:
+            return []
+        initial, surname = normalize_name(match.group(1)), normalize_name(match.group(2)).replace(" ", "")
+        if not initial or not surname:
+            return []
+
+        # The surname is compared with its spaces dropped, because an apostrophe normalises to a
+        # space on one side only ("N'Diaye" -> "n diaye", Transfermarkt's "Ndiaye"). It must still
+        # be whole trailing words, never the end of one ("Alli" isn't the end of "Gabalalli").
+        def fits(tokens):
+            return tokens[0].startswith(initial) and any(
+                "".join(tokens[i:]) == surname for i in range(1, len(tokens))
+            )
+
+        return [idx for idx, norm in tm["norm_name"].items() if fits(norm.split())]
+
     sb_players = per90_players[["player", "team", "nickname"]].drop_duplicates(["player", "team"])
     candidates = []
     for row in sb_players.itertuples(index=False):
@@ -243,6 +272,7 @@ def find_name_candidates(per90_players, tm_players):
             norm_name = normalize_name(name)
             if norm_name:
                 rows += list(rows_by_name.get(norm_name, [])) + best_subset_rows(norm_name)
+            rows += initial_and_surname_rows(name)
         for idx in dict.fromkeys(rows):  # one row per candidate, first evidence first
             candidates.append({
                 "player": row.player, "team": row.team,
