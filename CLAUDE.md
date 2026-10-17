@@ -26,7 +26,8 @@ it works), with native charts and no matplotlib in the app. Session detail is in
 1. **Look at the redesigned live app with Guilherme** and take his feedback (it was checked in a
    real browser only locally, on a star, a keeper and a women's player). Known small gaps are in
    PRODUCT_SPEC.md: no deep links, 159 long registered names, uneven Home card heights.
-2. **Wyscout 2017/18** (Phase 4e): the only route to more men's data and a second season.
+2. **Wyscout 2017/18** (Phase 4e): the only route to more men's data and a second season. (MPG Stats
+   was looked at on 2026-10-17 and parked, see DATA.md.)
 3. **Phase 5a** (uncertainty on goals−xG). Score each shot with a model that never saw it
    (out-of-fold xG): see ML_LEARNING_LOG.md's 2026-10-03 entry. The page's exact-odds sentence
    already assumes an average finisher; 5a replaces its in-sample xG.
@@ -43,8 +44,8 @@ within minutes. Don't move it back. The venv is `C:\Users\guilh\venvs\football-a
 (outside Drive: thousands of files, not relocatable); run Python with `PYTHONDONTWRITEBYTECODE=1`
 so no `__pycache__` gets synced. The cache is `C:\Users\guilh\fap-cache` (11 GB, local only,
 re-downloadable). In a fresh clone run `git config core.hooksPath .githooks` once. The old
-OneDrive copy and `C:\dev\football-analytics-portfolio` are obsolete; a full snapshot of the old
-working copy is `OneDrive ISCTE (arquivo)\_snapshots\football-analytics-portfolio_2026-10-10.zip`
+OneDrive copy is obsolete (`C:\dev\football-analytics-portfolio` and the copy in the Drive archive were
+deleted on 2026-10-17); a full snapshot of the old working copy is `OneDrive ISCTE (arquivo)\_snapshots\football-analytics-portfolio_2026-10-10.zip`
 in Drive.
 
 Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts

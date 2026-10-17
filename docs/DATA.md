@@ -256,3 +256,27 @@ Honest assessment before reaching for this:
 - **Verdict:** worth a small spike (one competition, one season) if/when Phase 4's data-availability
   friction or Module C gets picked up — not a default assumption that it will work cleanly.
 
+### MPG Stats (mpgstats.fr), evaluated 2026-10-17 — not adopted
+
+A free French helper site for the Mon Petit Gazon fantasy game (the `old.mpgstats.fr` version was
+the one looked at; the current site is `mpgstats.fr`). Covers Ligue 1, Ligue 2, Premier League,
+Liga and Serie A, current seasons only. Guilherme was told the data is real and up to date;
+that was taken at face value, **not verified**. Only the front page, the About page and the new
+site's landing page were read; no player pages were opened.
+
+- **What it exposes:** the game's own player ratings, minutes, appearances, goals, auction prices,
+  injuries and cards, standings and fixtures, plus win probabilities credited to clubelo.com. No
+  shots, no xG, no x/y coordinates, so it cannot feed Module A or Module B's per-90 features
+  (same limit as the SofaScore / FlashScore note above).
+- **Source and licence unknown:** neither page names a data provider, and there is no API, export,
+  licence or terms of use. No terms is not permission to scrape. The app is public and ships
+  `app_data/`, so anything derived from this site would be published.
+- **If it is ever used:** ask the author for permission first (contacts are on the site) and keep
+  the data local in `data/` (gitignored) until the answer is yes. A plausible fit is a "current
+  form" column on Ligue 1 profiles, a nice-to-have that does not close the men's-data gap. A
+  spot check of about 10 players' goals and minutes against an independent source is the cheap
+  way to test "real and current" before trusting it.
+- **Side lead, unverified:** clubelo.com is credited for the win probabilities and may serve as
+  a team-strength / match-importance input for Module C. Check its terms before relying on it.
+- **Still the plan for more men's data:** Wyscout 2017/18 (Phase 4e) and, later, Understat
+  (see Phase 4 Data Expansion above).

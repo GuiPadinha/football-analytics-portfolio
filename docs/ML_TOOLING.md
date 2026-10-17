@@ -40,6 +40,19 @@ gitdir, then `git reset` (rebuilds it from HEAD, working tree untouched).
 
 ---
 
+## A leftover `.git` folder on Google Drive that cannot be deleted (2026-10-17)
+
+After deleting an old copy of this repo from `OneDrive ISCTE (arquivo)` on the Drive, one empty
+`.git` folder stayed behind. `Remove-Item -Recurse -Force`, `rmdir /s /q` and Explorer all failed
+with "Access is denied", and even `Get-Item` on it failed, although `icacls` on the parent showed
+full control. The copy's git was already corrupted (`bad object HEAD`). **Fix:** trash the parent
+folder through the Drive API (the Drive connector's `trash_file`; "Move to trash" in the Drive web
+UI does the same). It disappeared locally within seconds and stays in the Drive trash for 30 days.
+`takeown`/`icacls` were not tried. Lesson: delete old repo copies in Drive in one go, or leave them
+alone, since a half-deleted `.git` on the mount can get stuck.
+
+---
+
 ## A venv under a very long path breaks pyarrow (2026-10-10)
 
 Symptom: in a throwaway venv created inside the Claude scratchpad (a ~170-character path),
