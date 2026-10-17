@@ -28,6 +28,12 @@ both sides of every page"), and an always-on look at the live app after each pus
     `tools/screenshot.py` (ML_TOOLING.md has why the plain approach failed).
   - Anonymous visits to the live URL got "You do not have access… / 404" while Guilherme, signed
     in, saw the app. He was asked to check in an incognito window, since it may be private.
+  - `86cf569`: CI green.
+  - After Guilherme set the app to public, an anonymous rendered visit
+    (`tools/screenshot.py`, 4 min wait) **still** got "You do not have access to this app or it
+    does not exist". This is **open**, and the first job next session: re-check in an incognito
+    window, then in share.streamlit.io (Settings → Sharing, and whether the URL/subdomain
+    changed). The session stopped here (token limit).
 - **Verified:**
   - 285 tests pass.
   - Real-browser screenshots at 1900 px (local): Home, and How it works before and after.

@@ -23,10 +23,12 @@ it works), with native charts and no matplotlib in the app. Session detail is in
 [docs/PROGRESS.md](docs/PROGRESS.md); phases and backlog are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 **Next session, start here (agreed order):**
-1. **A quick look at the live app's 2017/18 Wyscout pool** (added 2026-10-17, tested headless
-   only): a Wyscout player page and a cross-provider Compare. Guilherme OK'd the redesign by eye
-   on 10-17. Known small gaps are in PRODUCT_SPEC.md: no deep links, 159 long registered names,
-   uneven Home card heights.
+1. **The live app is not reachable anonymously** (2026-10-17, still true after Guilherme set it
+   public): "You do not have access to this app or it does not exist". Re-check with
+   `tools/screenshot.py` and an incognito window. If it persists, Guilherme checks share.streamlit.io
+   (Sharing, subdomain). Then look at the live 2017/18 Wyscout pool, the wider pages and the Home
+   price card (all verified only locally). Known small gaps are in PRODUCT_SPEC.md: no deep links,
+   159 long registered names, uneven Home card heights.
 2. **Phase 5a** (uncertainty on goals−xG). Score each shot with a model that never saw it
    (out-of-fold xG): see ML_LEARNING_LOG.md's 2026-10-03 entry. The page's exact-odds sentence
    already assumes an average finisher; 5a replaces its in-sample xG.
