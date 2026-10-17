@@ -238,7 +238,8 @@ every dataset (it used to skip WC 2022/AFCON 2023).
      (0.7790 → 0.7773) and calibration; the model is feature-limited, not data-limited.
    - *Module B: only as a separate 2017/18 pool.* Key passes (0.29×) and interceptions (4.2×)
      mean different things, and pressures/blocks don't exist, so no mixing with StatsBomb
-     players. Next step: a Wyscout-only pool with its own feature set, and Compare refusing
+     players. **Done 2026-10-17** (`src/wyscout.py`, three commits): 1,624 players in the app
+     with nine stats of their own, ranked and matched within Wyscout only. Compare refuses
      cross-provider pairs.
 3. **PFF FC World Cup 2022** (free on request): broadcast tracking + events for all 64 matches,
    [PFF FC blog](https://www.blog.fc.pff.com/blog/pff-fc-release-2022-world-cup-data). kloppy

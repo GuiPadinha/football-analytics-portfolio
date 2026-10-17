@@ -46,7 +46,7 @@ event = st.dataframe(
             help="Goals minus the goals the shots were worth. Premier League 2015/16 only, the one competition with shot-by-shot data.",
         ),
         "Value (€M)": st.column_config.NumberColumn(
-            format="€%.1fM", help="Transfermarkt, around the 2015/16 season. Men's leagues only; blank where there is no confident match.",
+            format="€%.1fM", help="Transfermarkt, around the player's season (2015/16 or 2017/18). Men's leagues only; blank where there is no confident match.",
         ),
     },
 )

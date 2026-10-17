@@ -43,6 +43,39 @@ separate 2017/18 pool", in three stages (A ingestion, B pool plumbing, C pages),
     value. Wyscout's `player` key now carries " · 2017/18", pages show `nickname` (always filled),
     and `normalize_name` drops the suffix for Transfermarkt matching.
   - 273 tests pass.
+- **Stage C, the data and the pages (live):**
+  - Rebuild in ~9 min: **3,794 players** (2,170 StatsBomb + 1,624 Wyscout) and 2,909 market
+    values, ~98% of the men.
+  - The StatsBomb rows, their values and `findings.json` came out byte-identical to the previous
+    build. Wyscout values are dated 2017-06 to 2018-06, and the stars look right (Messi and
+    Neymar €180M, Kane €120M).
+  - Popular names were refined:
+    - a lone surname gets the first given name ("Iniesta" → "Andrés Iniesta", "Lombán" →
+      "David Lombán");
+    - an initial can match a hyphenated given name ("E. Choupo-Moting" → "Eric Choupo-Moting").
+  - Pages:
+    - the player page tags "(Wyscout data)", shows only the men's list, and its caption says
+      why;
+    - Compare refuses a cross-provider pair (Kane 2015/16 vs Kane 2017/18);
+    - How it works covers the second provider, its silhouettes (Wyscout 0.23–0.28 at K = 2) and
+      the updated limits;
+    - Leaderboard help text and the Home footer were updated.
+  - Pool numbers were updated in CLAUDE.md, the README, PITCH.md and DATA.md (the doc-lint
+    caught all of them).
+  - The rebuild also rewrote `player_xg_table` and `shots_with_xg`, differing only by float
+    noise (≤ 2.4e-13 in xG, same refit). They were restored from git so the commit carries only
+    real changes.
+- **Verified:**
+  - 283 tests pass, including new real-data tests: Salah 2017/18's profile, the provider
+    refusals, unique keys, and blank (not zero) pressures/blocks for Wyscout.
+  - App smoke tests open a Wyscout page and both kinds of Compare.
+  - Read by eye: Salah's lookalikes are Agüero, Immobile, Depay, Dybala and Mbappé. Coutinho
+    shows twice in Messi's list (Liverpool + Barcelona, a January transfer), as for StatsBomb
+    players.
+- **Unresolved:**
+  - Not checked in a real browser.
+  - Home's finding cards stay StatsBomb-only.
+  - A few Wyscout names stay as initials ("D. Alli").
 
 ---
 
@@ -76,91 +109,6 @@ Details in CLAUDE.md ("Where things live") and ML_TOOLING.md. The 33 git-ignored
 copied and size-verified; a full snapshot of the old working copy is in Drive under
 `OneDrive ISCTE (arquivo)\_snapshots\`. 260 tests pass in the new location. Next steps are unchanged
 (CLAUDE.md "Next session, start here").
-
----
-
-## 2026-10-10 — Redesign step 1b: the pages (in stages)
-
-Stages, one commit + push each: **A** view models (done) · B Player page + top navigation + theme ·
-C Compare · D Home, Leaderboard, How it works · E docs.
-- **A. `src/profile.py`:** `prepare_pool` (adds each player's game, ranks every position group
-  once), `build_player_profile` (strength/weakness bars, finishing or saves, price, men's and
-  women's top-5 lookalikes, the short version) and `build_compare_view` (verdict + one row per
-  stat). Pure functions, tested on the real tables (`tests/test_profile.py`); a profile builds in
-  ~0.05 s.
-- **A. `src/findings.py`:** the Home cards are computed, not typed (the mockup still said six
-  leagues). Biggest over/under-performer against their chances (Agüero +6.5, Jerome −4.2), the
-  share of valued men with a half-price top-3 lookalike (94% of 282 at €10M+; stated as a fact
-  about the pool with its caveat, because "the biggest gap" picks Ronaldo vs. Bony), and the most
-  valuable man whose closest woman has him as her closest man (Agüero ↔ Khadija Shaw, both Man
-  City). `python -m src.findings` writes `app_data/findings.json` in ~16 s, and `src.app_data`
-  calls it at the end of a rebuild.
-- **B. The new shell, Home and Players pages.** `app.py` is now just the page frame and a top
-  `st.navigation` (Home, Players, Compare, Leaderboard, How it works); each page is a script under
-  `views/`. `views/components.py` holds the stylesheet (the mockup's palette, also in
-  `.streamlit/config.toml`), the escaped HTML builders and a native Altair shot map, cropped to
-  where the player shoots from. `views/data.py` caches the pool. Home shows the four computed
-  cards; Players is the three questions, with men's and women's lookalike tabs (own game first) and
-  a "similar style is not the same level" caveat next to prices. The old radar, percentile chart,
-  sidebar filters and Euclidean/σ captions are gone from player pages. Compare, Leaderboard and
-  How it works still run the old code, moved verbatim to `views/legacy.py` until C and D.
-  Checked in a real browser (Edge via Playwright): a star, a keeper and a women's player. The smoke
-  tests were rewritten for the new pages (15 AppTest cases, `tests/test_components.py`).
-- **C. Compare.** Two search boxes, a card per player (the colours run through the bars), the
-  verdict, a side-by-side per 90, then "are their goals real?" (or save % for keepers). Any two
-  outfielders, whatever their position; a keeper against an outfielder gets a plain warning. The
-  player page's "Compare X with another player" button prefills player A. Checked in Edge.
-- **D. Leaderboard, How it works, cleanup.** The Leaderboard is one sortable table (game, position
-  and name filters; a row opens the player). How it works holds all the method, with every figure
-  from `metrics.json` or computed live (the per-tournament chart is native). `views/legacy.py`
-  (the old code) is deleted, and the app no longer imports matplotlib, so matplotlib, mplsoccer
-  and seaborn moved from `requirements.txt` to `requirements-dev.txt`; a runtime-only Python 3.14
-  environment runs the smoke tests (the CI `app-runtime` job does the same).
-- **E. Docs:** PRODUCT_SPEC rewritten (views, backend map, data flow, decision log, known gaps),
-  README, PITCH demo script, ARCHITECTURE, ROADMAP and CLAUDE.md updated.
-- Small: `format_rate` is public (two decimals under 1: "0.38 per 90"), and the label reads
-  "Non-Penalty Goals" (so `outputs/player_radar_examples.png` was regenerated with the hyphen; the
-  other pipeline outputs and `metrics.json` are unchanged).
-- **Verified:** 260 tests pass on 3.12; a clean Python 3.14 environment with only
-  `requirements.txt` (no matplotlib) passes the smoke and presentation tests (57). Pages checked in
-  Edge: Home, Players (star, keeper, women's), Compare, Leaderboard, How it works. A Vega bar chart
-  drew shifted off-screen (a `translate(1485,0)` autosize quirk with long labels), so the shot-model
-  scores are HTML bars in the site's own style.
-- **Open:** the redesigned live app has not been looked at by Guilherme yet (see CLAUDE.md's next
-  steps).
-
----
-
-## 2026-10-06 — Redesign step 1a: the rule-based text
-
-Guilherme approved the plan, plus the league-adjusted ranking below ("go ahead, log all that").
-- **`src/narrative.py` (new).** The player page's short version: standout stats, then finishing
-  (or saves), then price. Without a price (women's football, unmatched men) the closest match in
-  each game takes the last slot. Compare's verdict: closeness rank, each side's leads, keepers'
-  save %, then the price gap. Every threshold is a named constant calibrated on the real pool.
-- **`similarity.py`:** `rank_matches` is the full ranking (`find_similar_players` is now its top n,
-  output unchanged). `league_adjusted_percentiles` is the new basis for "top N%".
-  `pair_closeness` is Compare's rank, in the right space for each position pair. Also
-  `config.GENDER_BY_COMPETITION`, `presentation.ordinal` and `presentation.popular_name`.
-- **Decisions, each measured first** (ML_LEARNING_LOG.md has the numbers):
-  - Percentiles rank league standing, not raw rates (a ~6-point mean shift, up to ~50).
-  - Finishing is quoted as exact odds for an average finisher ("about one season in 22").
-  - Closeness is a rank, not a distance cutoff.
-  - Mixed-position pairs get their own space, because `_lz` is position-relative.
-  - A lead needs both a league-SD gap and a visible raw gap.
-- **Checked on 16 players and 8 pairs:**
-  - Mahrez reads almost word for word like the mockup.
-  - Benzema–Pajor: "closest match among 194 women's forwards".
-  - Also checked: keepers, women, players with no xG, Kanté ("too few chances to judge"), and a
-    keeper against an outfielder (refused).
-  - Reading the output changed three rules: leads must be visible in the raw numbers, all-below-
-    median keepers are "quiet keepers", and women get the cross-game sentence.
-- **Verified:** 233 tests pass, and the pipeline's `metrics.json`, PNGs and manifest are
-  byte-identical. `app.py` is untouched, so the live app doesn't change until step 1b.
-- **Open for 1b:**
-  - 159 players have no nickname and a long legal name ("Mary Alexandra Earps", Liga F double
-    surnames).
-  - The page must say "similar style, not the same level" next to prices.
 
 ---
 

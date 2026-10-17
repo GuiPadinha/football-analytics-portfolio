@@ -27,6 +27,11 @@ TEAMS_PER_COMPETITION = {
     "Liga F 2023/24": 16,
     "Serie A Women 2023/24": 10,
     "NWSL 2023": 12,
+    "Premier League 2017/18": 20,
+    "La Liga 2017/18": 20,
+    "Serie A 2017/18": 20,
+    "Bundesliga 2017/18": 18,
+    "Ligue 1 2017/18": 20,
 }
 
 
@@ -66,6 +71,21 @@ def test_market_values_are_unique_mens_only_and_from_around_the_season(per90, ma
     assert competitions.notna().all()
     womens = {ds.label for ds in config.SIMILARITY_SETS if ds.gender == "female"}
     assert not competitions.isin(womens).any()
-    # The club check only keeps players valued around 2015/16, so the nearest valuation is too.
+    # The club check only keeps players valued around their own season, so the nearest
+    # valuation is too: 2015/16 for StatsBomb's men, 2017/18 for Wyscout's.
     as_of = pd.to_datetime(market_value["market_value_as_of"])
-    assert as_of.between("2015-01-01", "2017-01-01").all()
+    wyscout = competitions.isin({ds.label for ds in config.WYSCOUT_SETS}).to_numpy()
+    assert as_of[~wyscout].between("2015-01-01", "2017-01-01").all()
+    assert as_of[wyscout].between("2017-01-01", "2019-01-01").all()
+    assert wyscout.any()
+
+
+def test_two_providers_never_share_a_key_or_a_stat_they_dont_both_have(per90):
+    # Wyscout keys carry the season: 329 (player, team) pairs would collide with 2015/16 otherwise.
+    wyscout = per90[per90["provider"] == "wyscout"]
+    assert wyscout["player"].str.endswith(" · 2017/18").all()
+    assert wyscout["nickname"].notna().all()
+    assert not per90.duplicated(["player", "team"]).any()
+    # Wyscout has no pressures or blocks: blank, never a filled-in zero.
+    assert wyscout["pressures_p90"].isna().all() and wyscout["blocks_p90"].isna().all()
+    assert set(per90["provider"]) == {"statsbomb", "wyscout"}

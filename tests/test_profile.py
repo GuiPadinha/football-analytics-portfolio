@@ -25,6 +25,8 @@ APP_DATA_DIR = Path(__file__).resolve().parent.parent / "app_data"
 MAHREZ = ("Riyad Mahrez", "Leicester City")
 EARPS = ("Mary Alexandra Earps", "Manchester United W")
 PAJOR = ("Ewa Pajor", "VfL Wolfsburg WFC")
+SALAH_2017_18 = ("Mohamed Salah Ghaly · 2017/18", "Liverpool")
+MAHREZ_2017_18 = ("Riyad Mahrez · 2017/18", "Leicester City")
 
 
 @pytest.fixture(scope="module")
@@ -116,6 +118,24 @@ def test_compare_refuses_a_keeper_against_an_outfielder(pool):
         build_compare_view(pool, EARPS, MAHREZ)
 
 
+def test_a_wyscout_season_stays_within_its_provider(pool):
+    profile = build_player_profile(pool, *SALAH_2017_18)
+    assert profile.name == "Mohamed Salah" and profile.provider == "wyscout"
+    assert profile.goals == 32 and profile.finishing is None              # no xG outside PL 2015/16
+    assert profile.market_value_eur is not None and profile.market_value_as_of.startswith(("2017", "2018"))
+    wyscout_forwards = (pool.per90["provider"] == "wyscout") & (pool.per90["position_group"] == "Forward")
+    assert profile.group_size == wyscout_forwards.sum()
+    assert len(profile.lookalikes["male"]) == LOOKALIKES_PER_GAME and profile.lookalikes["female"] == []
+    assert all(m.competition.endswith("2017/18") for m in profile.lookalikes["male"])
+    assert "Pressures" not in {bar.label for bar in profile.strengths + profile.weaknesses}
+
+
+def test_compare_refuses_two_providers_even_for_the_same_man(pool):
+    with pytest.raises(ValueError, match="different data providers"):
+        build_compare_view(pool, MAHREZ, MAHREZ_2017_18)
+    assert build_compare_view(pool, SALAH_2017_18, MAHREZ_2017_18).verdict
+
+
 def test_findings_file_matches_the_tables(pool):
     findings = {f["kind"]: f for f in json.loads(FINDINGS_PATH.read_text(encoding="utf-8"))}
     assert list(findings) == ["overperformer", "underperformer", "price", "cross_game"]
@@ -126,7 +146,9 @@ def test_findings_file_matches_the_tables(pool):
         assert abs(float(findings[kind]["figure"].replace("−", "-").split()[0])) == pytest.approx(abs(regulars.loc[pick, "xg_diff"]), abs=0.05)
     man = find_player(pool, findings["cross_game"]["player"], findings["cross_game"]["team"])
     assert man["gender"] == "male"
-    assert f"{len(pool.per90):,} players" in findings["cross_game"]["body"]
+    # The cards rank StatsBomb's pool only (the one with both games in one space).
+    statsbomb_players = int((pool.per90["provider"] == "statsbomb").sum())
+    assert f"{statsbomb_players:,} players" in findings["cross_game"]["body"]
     assert 0.5 < float(findings["price"]["figure"].rstrip("%")) / 100 <= 1.0
 
 

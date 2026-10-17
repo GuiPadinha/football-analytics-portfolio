@@ -4,7 +4,7 @@ Project source of truth. Read this first every session, then load linked docs on
 
 ---
 
-## Current Status (updated 2026-10-10)
+## Current Status (updated 2026-10-17)
 
 **Where we are:** Phases 0–4 ✅ (4c closed 2026-10-01 with two women's tournaments; **4e**, new data
 sources + 360, started 2026-10-03 with the women's leagues), Phase 8 ✅ ([live app](https://gpfootball-analytics-portfolio.streamlit.app)),
@@ -23,14 +23,15 @@ it works), with native charts and no matplotlib in the app. Session detail is in
 [docs/PROGRESS.md](docs/PROGRESS.md); phases and backlog are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 **Next session, start here (agreed order):**
-1. **Look at the redesigned live app with Guilherme** and take his feedback (it was checked in a
-   real browser only locally, on a star, a keeper and a women's player). Known small gaps are in
-   PRODUCT_SPEC.md: no deep links, 159 long registered names, uneven Home card heights.
-2. **Wyscout 2017/18** (Phase 4e): the only route to more men's data and a second season. (MPG Stats
-   was looked at on 2026-10-17 and parked, see DATA.md.)
-3. **Phase 5a** (uncertainty on goals−xG). Score each shot with a model that never saw it
+1. **A quick look at the live app's 2017/18 Wyscout pool** (added 2026-10-17, tested headless
+   only): a Wyscout player page and a cross-provider Compare. Guilherme OK'd the redesign by eye
+   on 10-17. Known small gaps are in PRODUCT_SPEC.md: no deep links, 159 long registered names,
+   uneven Home card heights.
+2. **Phase 5a** (uncertainty on goals−xG). Score each shot with a model that never saw it
    (out-of-fold xG): see ML_LEARNING_LOG.md's 2026-10-03 entry. The page's exact-odds sentence
    already assumes an average finisher; 5a replaces its in-sample xG.
+3. More men's data, if wanted, is Understat now (Phase 4e list). Wyscout's shots were tested for
+   xG on 10-17 and rejected (ML_LEARNING_LOG.md); MPG Stats was parked (DATA.md).
 
 Environment: the live app runs Python 3.14 at gpfootball-analytics-portfolio.streamlit.app; local
 is 3.12; CI tests both. `FAP_CACHE_DIR` (cache outside OneDrive) is visible after VS Code's
@@ -52,9 +53,10 @@ Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, 
 dropped). Five more held-out tournaments rank as well (0.76–0.81): World Cup 2022 0.808, AFCON 2023
 0.807, Women's World Cup 2023 0.777, Copa América 2024 0.763, Women's EURO 2025 0.763. EURO 2024 is
 near the bottom, not "the floor". Similarity: K=4 per position group, silhouette ~0.22–0.26 (a
-soft continuum) on the notebook's PL 2015/16 scope; the app's pool is 9 competitions and
-2,170 players, league-normalised, with goalkeepers clustered too. **1,327** players matched to a
-Transfermarkt market value (men's competitions, ~99%, each confirmed at the right club).
+soft continuum) on the notebook's PL 2015/16 scope; the app's pool is 14 competitions and
+3,794 players (2,170 StatsBomb + 1,624 Wyscout 2017/18, never mixed), league-normalised, with
+goalkeepers clustered too. **2,909** players matched to a Transfermarkt market value (men's
+competitions, ~98%, each confirmed at the right club).
 *(xG/similarity numbers come from
 [metrics.json](metrics.json) via `python -m src.metrics`. A doc-lint test fails the build if a
 current-state doc drifts on the headline xG numbers, the per-tournament AUCs, the silhouette

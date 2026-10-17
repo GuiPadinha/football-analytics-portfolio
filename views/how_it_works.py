@@ -24,18 +24,25 @@ xg, ladder = metrics["xg"], metrics["xg"]["baseline_ladder_test_roc_auc"]
 tests = pd.DataFrame(metrics["xg_generalisation"].values()).sort_values("roc_auc", ascending=False)
 n_test_shots = int(tests["n_shots"].sum())
 n_womens_tests = int((tests["gender"] == "female").sum())
-outfield_passes = per90[per90["position_group"] != "Goalkeeper"].groupby("gender")["progressive_passes_p90"].median()
+statsbomb = per90[per90["provider"] == "statsbomb"]
+wyscout = per90[per90["provider"] == "wyscout"]
+outfield_passes = statsbomb[statsbomb["position_group"] != "Goalkeeper"].groupby("gender")["progressive_passes_p90"].median()
+PROVIDER_LABELS = {"statsbomb": "StatsBomb", "wyscout": "Wyscout 2017/18"}
 
 
 @st.cache_data
 def silhouettes():
-    """Silhouette at K=2 and K=4 for each position group of the app's own pool, in the same
-    league-normalised space the lookalikes and styles use."""
+    """Silhouette at K=2 and K=4 for each position group of the app's own pool, per data provider,
+    in the same league-normalised space the lookalikes and styles use."""
     rows = []
-    for group in OUTFIELD_AND_KEEPERS:
-        part = per90[per90["position_group"] == group]
-        scores = compute_silhouette_scores(part[feature_columns_for(group)[2]], k_range=range(2, 5))
-        rows.append({"Position": group, "Players": len(part), "K = 2": round(scores[2], 2), "K = 4": round(scores[4], 2)})
+    for provider, label in PROVIDER_LABELS.items():
+        for group in OUTFIELD_AND_KEEPERS:
+            part = per90[(per90["provider"] == provider) & (per90["position_group"] == group)]
+            if part.empty:
+                continue
+            scores = compute_silhouette_scores(part[feature_columns_for(group, provider)[2]], k_range=range(2, 5))
+            rows.append({"Data": label, "Position": group, "Players": len(part),
+                         "K = 2": round(scores[2], 2), "K = 4": round(scores[4], 2)})
     return pd.DataFrame(rows)
 
 
@@ -50,14 +57,21 @@ st.html('<div style="height:12px"></div><p class="fap-kicker">HOW IT WORKS</p>'
 
 st.html(ui.section_title("The data"))
 prose(
-    f"- **{len(per90):,} players, {per90['competition'].nunique()} leagues.** Every full league season StatsBomb's free tier "
-    "has: the Premier League, La Liga, Serie A and Ligue 1 (all 2015/16), and the Frauen-Bundesliga, FA Women's Super "
-    "League, Liga F and Serie A Women (all 2023/24) plus the NWSL 2023. A player needs 900 minutes to be counted.\n"
+    f"- **{len(per90):,} players, {per90['competition'].nunique()} leagues.** {len(statsbomb):,} from every full league "
+    "season StatsBomb's free tier has: the Premier League, La Liga, Serie A and Ligue 1 (all 2015/16), and the "
+    "Frauen-Bundesliga, FA Women's Super League, Liga F and Serie A Women (all 2023/24) plus the NWSL 2023. "
+    f"{len(wyscout):,} more from Wyscout's public dataset: the five big men's leagues of 2017/18. A player needs 900 "
+    "minutes to be counted.\n"
+    "- **Two providers, kept apart.** Wyscout and StatsBomb log the same football differently: Wyscout counts about four "
+    "times as many interceptions and a third as many key passes, and records no pressures or blocks. So 2017/18 players "
+    "are described by their own nine stats, ranked and matched only with each other, and Compare won't pair them with a "
+    "StatsBomb player. Their shots were also tried as extra training data for the shot model: it got slightly worse, so "
+    "they aren't used.\n"
     "- **Shots.** The shot model is trained on the Premier League 2015/16 and Bayer Leverkusen 2023/24 "
     f"({xg['n_train_shots']:,} shots), then tested on {len(tests)} tournaments it never saw. Goals against chances is shown "
     "only for the Premier League 2015/16, the one league that is both in the player pool and in the shot data.\n"
-    f"- **Prices.** Transfermarkt values for the men's leagues ({len(pool.market_values):,} matched), around the 2015/16 "
-    "season. There is no shared ID with StatsBomb, so a player is matched by name and then must be placed at the same "
+    f"- **Prices.** Transfermarkt values for the men's leagues ({len(pool.market_values):,} matched), around each "
+    "player's season (2015/16 or 2017/18). There is no shared ID with either provider, so a player is matched by name and then must be placed at the same "
     "club that season: no confident match leaves a blank, never a guess. Transfermarkt's open data has no women's football."
 )
 
@@ -128,12 +142,13 @@ st.html(ui.section_title("Limits, stated plainly"))
 prose(
     "- **League adjustment is relative, not a strength rating.** It compares each player with his or her own league and assumes "
     "the leagues' distributions have a similar shape. There is no external league-strength data behind it.\n"
-    "- **The men's data is one season, 2015/16.** StatsBomb's free data has no newer full men's league season, so the men's "
-    "prices and finishing are a decade old. The women's leagues are 2023/24.\n"
+    "- **The men's data is two old seasons that can't be compared.** StatsBomb 2015/16 and Wyscout 2017/18: neither free "
+    "source has a newer full men's league season, so the men's prices and finishing are years old, and goals against "
+    "chances exists only for the Premier League 2015/16. The women's leagues are 2023/24.\n"
     "- **Season totals are small samples.** One season of goals barely separates skill from luck, which is why the page "
     "talks in odds.\n"
     "- **Goalkeepers have no shot-quality model yet.** Save % is a rate over shots on target, not a verdict.\n"
-    "- **Names are StatsBomb's.** Players are shown by their popular name where StatsBomb has one, otherwise by the full "
+    "- **Names are the providers'.** Players are shown by their popular name where the data has one, otherwise by the full "
     "registered name.\n"
     "- **Event data only.** No tracking, no off-ball movement, no age."
 )

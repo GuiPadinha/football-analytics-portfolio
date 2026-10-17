@@ -173,7 +173,9 @@ no shared player ID between StatsBomb and Transfermarkt, so players are matched 
    *today*, so only `current_club_name` (the club at the valuation date) can be used.
 
 Result: **~99% of the four men's competitions matched (1,327 of 1,347 players)**, every valuation
-from 2015–16. The 2026-10-03 changes added 159 players to the 2026-10-02 version (1,168) and
+from 2015–16. *Since 2026-10-17 (Wyscout 2017/18 added, 2018-01-01 anchor, unchanged matching):
+2,909 of the 2,971 men in the pool, ~98%; the 2015/16 matches are untouched, and a 25-player
+spot check of the Wyscout matches made under a different name found no wrong identity.* The 2026-10-03 changes added 159 players to the 2026-10-02 version (1,168) and
 changed none of its matches. The nickname and the club tiebreak account for 148 of them, including
 Suárez (€90M), Koke, Isco, Fàbregas, Diego Costa, David Silva, Marcelo, Dani Alves and Pepe. The
 other 11 come from two smaller fixes: letters with no plain-letter base are transliterated the way

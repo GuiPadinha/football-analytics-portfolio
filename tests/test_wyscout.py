@@ -44,15 +44,20 @@ def test_unescape_name_decodes_literal_escapes_and_trims():
     assert unescape_name(None) is None
 
 
-@pytest.mark.parametrize("first, short, expected", [
-    ("Lionel Andrés", "L. Messi", "Lionel Messi"),
-    ("Marco Davide", "D. Faraoni", "Davide Faraoni"),   # known by a middle name
-    ("Bamidele", "D. Alli", "D. Alli"),                  # no given name with that initial
-    ("Neymar", "Neymar", "Neymar"),                      # already the popular name
-    ("Riyad", None, None),
+@pytest.mark.parametrize("first, short, last, expected", [
+    ("Lionel Andrés", "L. Messi", "Messi Cuccittini", "Lionel Messi"),
+    ("Marco Davide", "D. Faraoni", "Faraoni", "Davide Faraoni"),             # a middle name
+    ("Jean-Eric Maxim", "E. Choupo-Moting", "Choupo-Moting", "Eric Choupo-Moting"),  # hyphenated
+    ("Bamidele", "D. Alli", "Alli", "D. Alli"),                  # no given name with that initial
+    ("Andrés", "Iniesta", "Iniesta Luján", "Andrés Iniesta"),    # a lone surname
+    ("David", "Lombán", "Rodríguez Lombán", "David Lombán"),     # ... the second surname
+    ("Neymar", "Neymar", "da Silva Santos Junior", "Neymar"),    # a given name used alone
+    ("Francisco", "Isco", "Román Alarcón Suárez", "Isco"),       # a nickname
+    ("Cristiano Ronaldo", "Cristiano Ronaldo", "dos Santos Aveiro", "Cristiano Ronaldo"),
+    ("Riyad", None, "Mahrez", None),
 ])
-def test_popular_name(first, short, expected):
-    assert popular_name(first, short) == expected
+def test_popular_name(first, short, last, expected):
+    assert popular_name(first, short, last) == expected
 
 
 def test_to_statsbomb_x_maps_pitch_landmarks():

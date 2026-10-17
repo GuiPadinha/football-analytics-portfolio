@@ -136,31 +136,39 @@ def unescape_name(text):
 _LEADING_INITIAL = re.compile(r"^([^\W\d_])\.\s+(.+)$")
 
 
-def popular_name(first_name, short_name):
-    """The name a fan knows, rebuilt from Wyscout's short name and the player's first name.
+def popular_name(first_name, short_name, last_name=None):
+    """The name a fan knows, rebuilt from Wyscout's short name and the player's names.
 
-    Wyscout's `shortName` is either the popular name already ("Neymar", "Cristiano Ronaldo") or
-    an initial plus surname ("L. Messi"). The full name is often a registered legal name
-    ("Lionel Andrés Messi Cuccittini"), so the initial is spelled out with the first given name
-    instead: "Lionel Messi", "Riyad Mahrez", "N'Golo Kanté". The initial can belong to a middle
-    name ("D. Faraoni" is Marco Davide Faraoni, known as Davide), so the first given name with
-    that initial is used. With none (Bamidele "Dele" Alli), the short name is kept as it is.
+    Wyscout's `shortName` takes three shapes, and the full name is often a registered legal name
+    ("Lionel Andrés Messi Cuccittini"), so each is turned into the usual "given name + surname":
+    - An initial plus surname ("L. Messi"): the initial is spelled out, "Lionel Messi", "N'Golo
+      Kanté". It can belong to a middle or hyphenated given name ("D. Faraoni" is Marco Davide,
+      "E. Choupo-Moting" is Jean-Eric), so the first given name with that initial is used. With
+      none (Bamidele "Dele" Alli), the short name is kept.
+    - A lone surname, common for Spanish players ("Iniesta", "Lombán", one of the `lastName`
+      words): the first given name goes in front, "Andrés Iniesta", "David Lombán".
+    - Anything else is already the popular name: a full name ("Cristiano Ronaldo"), a given name
+      used alone ("Neymar", "Munir") or a nickname ("Isco").
 
     Args:
         first_name (str | None): unescaped `firstName`.
         short_name (str | None): unescaped `shortName`.
+        last_name (str | None): unescaped `lastName`.
 
     Returns:
         str | None: the popular name, or None when there is no short name.
     """
-    if not short_name:
-        return None
-    match = _LEADING_INITIAL.match(short_name)
-    if not match or not first_name:
+    if not short_name or not first_name:
         return short_name
-    initial, surname = match.group(1).casefold(), match.group(2)
-    given = next((name for name in first_name.split() if name[0].casefold() == initial), None)
-    return f"{given} {surname}" if given else short_name
+    given_names = re.split(r"[\s-]+", first_name)
+    match = _LEADING_INITIAL.match(short_name)
+    if match:
+        initial, surname = match.group(1).casefold(), match.group(2)
+        given = next((name for name in given_names if name and name[0].casefold() == initial), None)
+        return f"{given} {surname}" if given else short_name
+    if " " not in short_name and last_name and short_name in last_name.split():
+        return f"{first_name.split()[0]} {short_name}"
+    return short_name
 
 
 def _cached_file(name):
@@ -216,7 +224,7 @@ def load_players():
         short = unescape_name(row.get("shortName"))
         register[row["wyId"]] = {
             "player": " ".join(part for part in (first, last) if part) or short,
-            "nickname": popular_name(first, short),
+            "nickname": popular_name(first, short, last),
             "birth_date": pd.to_datetime(row.get("birthDate"), errors="coerce"),
             "position_group": ROLE_TO_POSITION_GROUP.get(row["role"]["code2"]),
         }

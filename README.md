@@ -277,15 +277,17 @@ python -m src.app_data             # only to rebuild app_data/ (needs requiremen
 
 **Live and deployed** at
 [gpfootball-analytics-portfolio.streamlit.app](https://gpfootball-analytics-portfolio.streamlit.app)
-(Streamlit Community Cloud, since 2026-07-09). The player pool spans **9 competitions** — Premier
+(Streamlit Community Cloud, since 2026-07-09). The player pool spans **14 competitions** — Premier
 League, La Liga, Serie A, Ligue 1 (all 2015/16), plus five women's leagues: Frauen Bundesliga, FA
-Women's Super League, Liga F, Serie A Women (all 2023/24) and NWSL 2023 — **2,170 players total,
-including 168 goalkeepers** with their own feature set,
+Women's Super League, Liga F, Serie A Women (all 2023/24) and NWSL 2023, all StatsBomb; and the
+five big men's leagues of 2017/18 from Wyscout's public dataset, a separate pool because the two
+providers count stats differently — **3,794 players total, including 289 goalkeepers** with their
+own feature set,
 K-means clustered into style archetypes like the outfield groups. The app leads with
 conclusions: a **Home** page of computed findings, and a **player page** that answers three
 questions in plain words — what kind of player, are the goals real (exact odds against the shot
 model's chances), and who plays like this, in separate men's and women's lists next to their
-**Transfermarkt value** (men's competitions only, ~99% match rate). **Compare** puts any two
+**Transfermarkt value** (men's competitions only, ~98% match rate). **Compare** puts any two
 outfield players side by side under a rule-based verdict; a **Leaderboard** sorts everyone; and
 **How it works** holds the method, the accuracy numbers and the limits.
 

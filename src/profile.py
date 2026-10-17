@@ -91,6 +91,7 @@ class PlayerProfile:
         player, team (str): the table key.
         name (str): popular name.
         position_group, competition, gender (str): where he plays.
+        provider (str): whose data the season is, "statsbomb" or "wyscout".
         minutes (float): minutes played in the pool's season.
         short_version (str): the opening paragraph (`narrative.build_short_version`).
         strengths, weaknesses (list[StatBar]): the style section's two columns.
@@ -112,6 +113,7 @@ class PlayerProfile:
     position_group: str
     competition: str
     gender: str
+    provider: str
     minutes: float
     short_version: str
     strengths: list[StatBar]
@@ -298,7 +300,8 @@ def build_player_profile(pool, player, team):
     goals = None if is_keeper else int(round(row["goals"]))
     return PlayerProfile(
         player=player, team=team, name=display_name(row), position_group=group,
-        competition=row["competition"], gender=gender, minutes=float(row["minutes_played"]),
+        competition=row["competition"], gender=gender, provider=row["provider"],
+        minutes=float(row["minutes_played"]),
         short_version=short_version, strengths=strengths, weaknesses=weaknesses,
         goals=goals, assists=None if is_keeper else int(round(row["assists"])),
         penalty_goals=0 if is_keeper else goals - int(round(row["non_penalty_goals"])),

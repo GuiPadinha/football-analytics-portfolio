@@ -11,7 +11,7 @@ labels, key_by_label = player_options()
 
 st.html('<div style="height:12px"></div>' + ui.page_header(
     "COMPARE", "Two players, one verdict",
-    "Any two outfield players, whatever their position, or any two goalkeepers.",
+    "Any two outfield players, whatever their position, or any two goalkeepers, from the same data provider.",
 ))
 pick_a, pick_b = st.columns(2)
 with pick_a:

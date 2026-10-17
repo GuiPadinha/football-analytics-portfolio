@@ -57,5 +57,6 @@ st.html(ui.section_title("How it works") + '<div style="height:18px"></div>' + u
      "The closest statistical matches in the men's and the women's game, next to their Transfermarkt value."),
 ]))
 st.page_link("views/how_it_works.py", label="Methodology and model accuracy →")
-st.html('<p class="fap-muted" style="margin-top:36px">StatsBomb open data · Transfermarkt valuations via an open mirror · '
+st.html('<p class="fap-muted" style="margin-top:36px">StatsBomb open data · Wyscout public data (2017/18) · '
+        'Transfermarkt valuations via an open mirror · '
         '<a href="https://github.com/GuiPadinha/football-analytics-portfolio" style="color:#F5A15C">Source on GitHub</a></p>')

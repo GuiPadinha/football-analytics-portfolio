@@ -49,12 +49,14 @@ if not selected:
 profile = build_player_profile(pool, *selected)
 group_plural = GROUP_PLURALS[profile.position_group]
 is_keeper = profile.position_group == "Goalkeeper"
+is_wyscout = profile.provider == "wyscout"
 
 # --- header -----------------------------------------------------------------------------------
+competition = f"{profile.competition} (Wyscout data)" if is_wyscout else profile.competition
 if is_keeper:
-    facts = f"{profile.competition} · {profile.minutes:,.0f} minutes · {profile.saves.shots_on_target} shots on target faced"
+    facts = f"{competition} · {profile.minutes:,.0f} minutes · {profile.saves.shots_on_target} shots on target faced"
 else:
-    facts = f"{profile.competition} · {profile.minutes:,.0f} minutes · {profile.goals} goals · {profile.assists} assists"
+    facts = f"{competition} · {profile.minutes:,.0f} minutes · {profile.goals} goals · {profile.assists} assists"
 if profile.market_value_eur is not None:
     value_card = ui.value_card(
         format_market_value(profile.market_value_eur),
@@ -128,9 +130,11 @@ else:
 
 # --- 3 · lookalikes ---------------------------------------------------------------------------
 own, other = profile.gender, ("female" if profile.gender == "male" else "male")
+# A Wyscout season is matched only within Wyscout's data, which has no women's leagues.
+games = (own,) if is_wyscout else (own, other)
 st.html(ui.section_title("3 · Who plays like this player?", "Closest statistical matches, each judged against their own league"))
-tabs = st.tabs([f"{GAME_WORDS[own].capitalize()} game", f"{GAME_WORDS[other].capitalize()} game"])
-for tab, game in zip(tabs, (own, other)):
+tabs = st.tabs([f"{GAME_WORDS[game].capitalize()} game" for game in games])
+for tab, game in zip(tabs, games):
     with tab:
         matches = profile.lookalikes[game]
         color = ui.ORANGE if game == "male" else ui.BLUE
@@ -154,7 +158,14 @@ for tab, game in zip(tabs, (own, other)):
                 f'<div style="text-align:right"><div style="font-weight:600">{format_market_value(match.market_value_eur) or "n/a"}</div>'
                 f'{ui.pill("Cheaper") if match.cheaper else ""}</div>'
             )
-        if game == "male":
+        if game == "male" and is_wyscout:
+            st.caption(
+                "Bar length: how close each profile is, relative to the closest match. 2017/18 players come from "
+                "Wyscout's data and are matched only with each other: the two data providers count the same stats "
+                "differently. Valuations are Transfermarkt's, around the 2017/18 season. A similar "
+                "style is not the same level: league, age and contract move a price, so treat a cheaper match as a lead to check."
+            )
+        elif game == "male":
             st.caption(
                 "Bar length: how close each profile is, relative to the closest match in either game. Valuations are "
                 "Transfermarkt's, around the 2015/16 season. A similar style is not the same level: league, age and "

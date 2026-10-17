@@ -25,7 +25,7 @@ colleague pitch (date TBD — today or the next day at the time of writing).
 
 The app now leads with conclusions, so the demo does too (redesigned 2026-10-10).
 
-1. **Home** — scale (9 leagues, 2,170 players) and the four finding cards: the biggest finishing
+1. **Home** — scale (14 leagues, 3,794 players) and the four finding cards: the biggest finishing
    gap in the Premier League (Agüero +6.5 goals, with the "about one season in 22" odds), the
    buy-low mirror image (Jerome), the price card (94% of €10M+ men have a half-price lookalike,
    and the caveat that style is not level) and the closest man-woman pair.
@@ -44,12 +44,13 @@ The app now leads with conclusions, so the demo does too (redesigned 2026-10-10)
 
 ## Key numbers to lead with (whole numbers — say these without notes)
 
-- **9** competitions (5 of them women's), **2,170 players** in the similarity pool (incl. **168 goalkeepers**, wired in
+- **14** competitions (5 of them women's; the five 2017/18 men's leagues are Wyscout data, kept as
+  their own pool), **3,794 players** in the similarity pool (incl. **289 goalkeepers**, wired in
   2026-07-13 with their own feature set — saves, goals conceded, claims, punches, sweeper actions,
   plus save % — and K-means clustered into style archetypes like the outfield groups).
 - **10,824** shots trained the xG model; a further **7,215** held-out shots — across **6**
   tournaments it never trained on, **2 of them women's** — used to check it generalises.
-- **1,327** players matched to a real Transfermarkt market value (men's competitions only, each
+- **2,909** players matched to a real Transfermarkt market value (men's competitions only, each
   confirmed at the player's club that season — see the Roadmap section below for the coverage caveat).
 - **~260** automated tests, including smoke tests of every app page, run on every push on Python
   3.12 and 3.14; a one-command rebuild (`python -m src.pipeline`) that reproduces every number and

@@ -131,6 +131,26 @@ def test_compare_refuses_a_keeper_against_an_outfielder_without_crashing():
     assert any("share no stats" in w.value for w in at.warning)
 
 
+KANE_2017_18 = "Harry Kane (Tottenham Hotspur) · Premier League 2017/18"
+SALAH_2017_18 = "Mohamed Salah (Liverpool) · Premier League 2017/18"
+
+
+def test_compare_refuses_two_data_providers_but_pairs_two_wyscout_players():
+    at = _compare(KANE, KANE_2017_18)
+    _assert_clean(at)
+    assert any("different data providers" in w.value for w in at.warning)
+    at = _compare(KANE_2017_18, SALAH_2017_18)
+    _assert_clean(at)
+    assert "VERDICT" in _html(at)
+
+
+def test_a_wyscout_player_page_says_where_the_data_comes_from():
+    at = _open_player(("Mohamed Salah Ghaly · 2017/18", "Liverpool"))
+    assert "Premier League 2017/18 (Wyscout data)" in _html(at)
+    assert [tab.label for tab in at.tabs] == ["Men's game"]  # no women's list across providers
+    assert any("matched only with each other" in c.value for c in at.caption)
+
+
 def test_compare_prompts_until_two_different_players_are_picked():
     at = _run("compare")
     assert any("Pick two players" in i.value for i in at.info)
