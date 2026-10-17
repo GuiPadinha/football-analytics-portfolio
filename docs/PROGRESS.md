@@ -220,3 +220,5 @@ Git CLI is used directly (see CLAUDE.md's Session Workflow). This section is onl
 `git log`/`git status` for the real state. Since 2026-10-01 each phase of the health-check plan is
 committed and pushed on its own (Guilherme's request), so `origin/main` tracks the latest
 finished phase.
+
+Test commit 2026-10-17: confirms the repo works from Google Drive with the gitdir outside it.
