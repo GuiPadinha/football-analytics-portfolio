@@ -10,6 +10,32 @@ Companion to CLAUDE.md. Running record of ML/stats concepts exercised, gotchas h
 
 Key gotchas and lessons — most recent first:
 
+- **5× more shots from another provider made xG slightly worse: the model is feature-limited, and
+  provider shift beats volume** (2026-10-17, Phase 4e, probe outside the repo). The Wyscout public
+  set's five 2017/18 leagues give 43,040 in-game shots (StatsBomb train: 10,824). Wyscout has no
+  first-time or under-pressure flag, so every variant used the *common* features (geometry, game
+  state, header, penalty, free kick, assist type), on which StatsBomb-only scores 0.762 on EURO
+  2024 (production model with all features: 0.765). Coordinates went through kloppy's piecewise
+  pitch transform, not a linear rescale: Wyscout's pitch is landmark-normalised (goal = 12% of the
+  width, box = 62%; StatsBomb 10% and 55%), so `x*1.2, y*0.8` would have bent distances and angles.
+  Mean AUC over the six StatsBomb held-out tournaments:
+  - Learning curve, StatsBomb only: 1,082 shots 0.7755, 2,706 0.7779, 5,412 0.7787, 10,824
+    0.7790. A ~12-parameter logistic is saturated long before 10k shots.
+  - StatsBomb + Wyscout, 53,864 shots: 0.7773 (logistic), 0.7768 (calibrated GBM, vs. 0.7807 on
+    StatsBomb alone). The flexible model, the one that should profit from data, lost more.
+  - Calibration got worse: total xG on EURO 2024 rose from 1.21× to 1.37× the goals. A provider
+    flag in training (set to StatsBomb at prediction) restored it (1.21×) but not the AUC.
+  - The mirror holds: each provider's model ranks its *own* provider's tournaments best (Wyscout
+    WC 2018: StatsBomb model 0.798, Wyscout model 0.801).
+  - Why, in the data: Wyscout open-play shots inside 6 yards convert at 51% vs. StatsBomb's 38%,
+    and 57% of Wyscout shots get no assisting pass vs. 27%. Same football, different logging (what
+    counts as a shot, where the shot "is", which pass created it), plus an inferred assist type
+    (the shooting team's previous action) that StatsBomb gets from an explicit key-pass link.
+
+  Decision: no Wyscout shots in xG training. The next AUC gain needs better features (Phase 7's
+  freeze frames), not more rows of the same ones. Lesson: before pooling data, check that the
+  model is data-limited (a learning curve is a few minutes) and that the sources measure the same
+  thing (conversion by distance band is the quick test).
 - **A season of shots barely separates finishing skill from luck, and the normal approximation
   overstates small samples** (2026-10-06, for the redesign's "are the goals real?" sentence). If
   every shot goes in with its xG, independently, a player's goals follow a Poisson-binomial
@@ -149,6 +175,17 @@ Key gotchas and lessons — most recent first:
 
 Key gotchas and lessons — most recent first:
 
+- **Same stat name, different stat: Wyscout and StatsBomb can't share one similarity pool**
+  (2026-10-17, Phase 4e probe). Median per-90 rates of outfielders with 900+ minutes, Wyscout PL
+  2017/18 vs. StatsBomb PL 2015/16 (same league, ~300 players each, first-guess Wyscout mappings):
+  non-penalty goals 0.99×, shots 0.94×, progressive passes 1.04×, tackles 0.89× (these agree);
+  assists 0.73×, dribbles 0.70×, clearances 0.58×; key passes 0.29× (Wyscout's `keyPass` tag is
+  far stricter) and interceptions **4.2×** (Wyscout tags any cut-out pass). Pressures and blocks
+  don't exist in Wyscout at all. League z-scoring removes a level shift, not a change of meaning:
+  a Wyscout "interception" z-score ranks a different behaviour from a StatsBomb one. So a 2017/18
+  pool has to stand on its own, with its own features, and Compare must refuse cross-provider
+  pairs, as it already refuses keeper-vs-outfielder. Also in the raw data: a match's
+  `substitutions` is sometimes the string `"null"`, not a list.
 - **"Top 10% of midfielders" now ranks league standing, not the raw rate** (2026-10-06,
   Guilherme's call). Ranking raw per-90 rates pooled across 9 leagues mixed league tempo into
   every percentile. Men's midfielders make 9.6 progressive passes per 90 to women's 8.1, and

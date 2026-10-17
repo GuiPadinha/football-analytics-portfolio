@@ -279,4 +279,8 @@ site's landing page were read; no player pages were opened.
 - **Side lead, unverified:** clubelo.com is credited for the win probabilities and may serve as
   a team-strength / match-importance input for Module C. Check its terms before relying on it.
 - **Still the plan for more men's data:** Wyscout 2017/18 (Phase 4e) and, later, Understat
-  (see Phase 4 Data Expansion above).
+  (see Phase 4 Data Expansion above). Wyscout was probed on 2026-10-17: figshare collection
+  4415000, CC BY 4.0, `events.zip` 77 MB (~950 MB unzipped), one JSON per competition. Its
+  coordinates are 0–100 on a landmark-normalised pitch (convert with kloppy's
+  `WyscoutPitchDimensions` → metric → StatsBomb, not a linear rescale). Its shots don't help xG
+  training, and its per-90 stats only work as a separate pool (see ROADMAP Phase 4e).

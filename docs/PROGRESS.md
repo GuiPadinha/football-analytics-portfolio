@@ -6,6 +6,33 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-10-17 (afternoon) — Wyscout 2017/18 (Phase 4e): xG test rejected, ingestion built
+
+Guilherme OK'd the redesigned live app by eye ("looked good"), then chose "xG first, then a
+separate 2017/18 pool", in three stages (A ingestion, B pool plumbing, C pages), one commit each.
+- **Probe** (scratchpad, not in the repo): figshare collection 4415000, CC BY 4.0, 77 MB zip.
+  - Per-90 definitions differ from StatsBomb's: key passes 0.29×, interceptions 4.2×, and no
+    pressures or blocks exist. So the players can't share a pool with StatsBomb players.
+  - Its pitch is landmark-normalised, so coordinates go through kloppy's transform.
+- **xG with 43k Wyscout shots added: rejected.** Mean held-out AUC went from 0.7790 to 0.7773, and
+  calibration got worse. A learning curve shows the logistic is saturated at ~1k shots, so it is
+  feature-limited. Numbers are in ML_LEARNING_LOG.md (Module A); production xG is unchanged.
+- **Stage A, `src/wyscout.py` (new):**
+  - Downloads into `<FAP_CACHE_DIR>/wyscout/`.
+  - Minutes come from match sheets (red cards and the `"null"` substitutions handled).
+  - Positions come from the Wyscout role. Names are unescaped (`Kanté`), and popular names
+    are rebuilt ("L. Messi" → "Lionel Messi", "D. Faraoni" → "Davide Faraoni").
+  - Nine outfield stats (`WY_ACTION_COLUMNS`) and three keeper stats.
+  - `config.Dataset` gained `provider`; `config.WYSCOUT_SETS` holds the five leagues.
+  - Real build: 1,503 outfield + 121 keepers, ~10 s per league.
+  - Spot checks match the record books: Salah 32, Messi 34, Ronaldo 26, Immobile and Icardi 29,
+    Lewandowski 29, Cavani 28, 18 Bundesliga teams. Kane shows 29, not 30, because his
+    Stoke goal was credited after review. Median keeper save % is 0.69–0.71 (StatsBomb 0.70).
+- **Verified:** 271 tests pass, 11 of them new in `tests/test_wyscout.py`. The app is unchanged
+  until stage B.
+
+---
+
 ## 2026-10-17 — Cleanup after the move to Drive; MPG Stats looked at (no code changes)
 
 - **Drive clone checked:** clean, in sync with `origin/main`, and a test commit (`00e8edb`) was

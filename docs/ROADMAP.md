@@ -232,6 +232,14 @@ every dataset (it used to skip WC 2022/AFCON 2023).
    **kloppy already reads it**, so it's the cheapest *new provider*. It would give a second
    season of full men's leagues for Module B, but provider-specific event definitions mean
    per-90 features need re-deriving and checking, not reusing.
+   **Probed 2026-10-17** (77 MB zip, 1,826 league matches + WC 2018 + EURO 2016; numbers in
+   ML_LEARNING_LOG.md, both modules):
+   - *xG: rejected.* 43k Wyscout league shots added to training lowered mean held-out AUC
+     (0.7790 → 0.7773) and calibration; the model is feature-limited, not data-limited.
+   - *Module B: only as a separate 2017/18 pool.* Key passes (0.29×) and interceptions (4.2×)
+     mean different things, and pressures/blocks don't exist, so no mixing with StatsBomb
+     players. Next step: a Wyscout-only pool with its own feature set, and Compare refusing
+     cross-provider pairs.
 3. **PFF FC World Cup 2022** (free on request): broadcast tracking + events for all 64 matches,
    [PFF FC blog](https://www.blog.fc.pff.com/blog/pff-fc-release-2022-world-cup-data). kloppy
    supports it. The same tournament StatsBomb covers, so it's a cross-provider check, and full

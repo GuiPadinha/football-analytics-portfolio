@@ -28,6 +28,9 @@ class Dataset:
         gender: StatsBomb's `competition_gender` ("male"/"female"). The xG model trains on men's
             football only, so a women's tournament is a second distribution shift on top of
             league -> tournament, and results are reported apart.
+        provider: whose event data it is, "statsbomb" or "wyscout" (Phase 4e). The two log the
+            same football differently (ML_LEARNING_LOG.md, 2026-10-17), so their players never
+            share a similarity space. For Wyscout, `comp_id`/`season_id` are Wyscout's own ids.
     """
 
     comp_id: int
@@ -36,6 +39,7 @@ class Dataset:
     label: str
     has_360: bool = False
     gender: str = "male"
+    provider: str = "statsbomb"
 
 
 # --- League context (xG training) ---
@@ -110,6 +114,19 @@ SERIE_A_WOMEN_2023_24 = Dataset(
 )
 NWSL_2023 = Dataset(49, 107, "league", "NWSL 2023", has_360=False, gender="female")
 
+# Wyscout public dataset (Pappalardo et al. 2019, CC BY 4.0; Phase 4e, 2026-10-17): every match of
+# the five big men's leagues in 2017/18, read by `src/wyscout.py`. Similarity pool only: their
+# shots made the xG model worse (ML_LEARNING_LOG.md), so Module A never trains on them.
+WYSCOUT_PL_2017_18 = Dataset(364, 181150, "league", "Premier League 2017/18", provider="wyscout")
+WYSCOUT_LA_LIGA_2017_18 = Dataset(795, 181144, "league", "La Liga 2017/18", provider="wyscout")
+WYSCOUT_SERIE_A_2017_18 = Dataset(524, 181248, "league", "Serie A 2017/18", provider="wyscout")
+WYSCOUT_BUNDESLIGA_2017_18 = Dataset(426, 181137, "league", "Bundesliga 2017/18", provider="wyscout")
+WYSCOUT_LIGUE_1_2017_18 = Dataset(412, 181189, "league", "Ligue 1 2017/18", provider="wyscout")
+WYSCOUT_SETS = [
+    WYSCOUT_PL_2017_18, WYSCOUT_LA_LIGA_2017_18, WYSCOUT_SERIE_A_2017_18,
+    WYSCOUT_BUNDESLIGA_2017_18, WYSCOUT_LIGUE_1_2017_18,
+]
+
 # Additional held-out tournament test contexts for Module A generalisation (Phase 4c).
 COPA_AMERICA_2024 = Dataset(223, 282, "tournament", "Copa América 2024", has_360=False)
 WORLD_CUP_2022 = Dataset(43, 106, "tournament", "FIFA World Cup 2022", has_360=True)
@@ -142,7 +159,7 @@ ALL_DATASETS = [
     LEVERKUSEN_2023_24, PL_2015_16, EURO_2024, WOMENS_EURO_2025, WOMENS_WORLD_CUP_2023,
     *BARCELONA_SEASONS, LA_LIGA_2015_16_FULL, SERIE_A_2015_16, LIGUE_1_2015_16,
     FRAUEN_BUNDESLIGA_2023_24, FA_WSL_2023_24, LIGA_F_2023_24, SERIE_A_WOMEN_2023_24, NWSL_2023,
-    COPA_AMERICA_2024, WORLD_CUP_2022, AFCON_2023,
+    COPA_AMERICA_2024, WORLD_CUP_2022, AFCON_2023, *WYSCOUT_SETS,
 ]
 SETS_WITH_360 = [ds for ds in ALL_DATASETS if ds.has_360]
 

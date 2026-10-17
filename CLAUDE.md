@@ -87,6 +87,7 @@ src/
   config.py          ← named Dataset constants (competition/season ids, has_360, gender)
   net.py             ← download plumbing: OS trust store (truststore) + retry/backoff
   data_loader.py     ← StatsBomb + SkillCorner ingestion, per-match pickle cache
+  wyscout.py         ← Wyscout 2017/18 public set: download, minutes, per-90 tables (own stat list)
   features.py        ← xG feature engineering (distance, angle, assist type, flags)
   models.py          ← logistic pipeline, CV, calibration, GBM, player xG table
   similarity.py      ← per-90 features, league normalisation, clustering, find_similar_players
