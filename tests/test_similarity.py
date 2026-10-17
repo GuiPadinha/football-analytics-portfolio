@@ -15,6 +15,7 @@ from src.similarity import (
     compute_silhouette_scores,
     extract_goalkeeper_match_actions,
     extract_player_match_actions,
+    feature_columns_for,
     build_goalkeeper_per90_features,
     build_player_per90_features,
     build_season_per90_tables,
@@ -560,3 +561,36 @@ def test_pair_closeness_refuses_a_keeper_against_an_outfielder_and_unknown_playe
     with pytest.raises(ValueError):
         pair_closeness(pool, ("Nobody", "M"), ("M-Forward-0", "M"))
     assert pair_closeness(pool, ("M-Goalkeeper-0", "M"), ("M-Goalkeeper-1", "M")).list_position == "Goalkeeper"
+
+
+def _two_provider_pool():
+    """`_app_pool`'s StatsBomb players plus six Wyscout midfielders, which carry only Wyscout's
+    shorter stat list (no pressures or blocks), as app_data builds them."""
+    rng = np.random.default_rng(1)
+    _, wy_columns, _ = feature_columns_for("Midfielder", "wyscout")
+    wyscout = pd.DataFrame([
+        {"player": f"WY-Midfielder-{i}", "team": "Y", "position_group": "Midfielder",
+         "competition": "WY", "gender": "male", **{col: rng.gamma(2.0, 1.0) for col in wy_columns}}
+        for i in range(6)
+    ])
+    wyscout = wyscout.join(normalize_within_competition(wyscout, wy_columns))
+    return pd.concat([_app_pool().assign(provider="statsbomb"), wyscout.assign(provider="wyscout")],
+                     ignore_index=True)
+
+
+def test_pair_closeness_stays_within_one_provider():
+    pool = _two_provider_pool()
+    closeness = pair_closeness(pool, ("WY-Midfielder-0", "Y"), ("WY-Midfielder-1", "Y"))
+    assert closeness.list_size == 5                                 # Wyscout midfielders only
+    assert "pressures_p90" not in closeness.standing_a.index
+    with pytest.raises(ValueError, match="different data providers"):
+        pair_closeness(pool, ("WY-Midfielder-0", "Y"), ("M-Midfielder-0", "M"))
+
+
+def test_feature_columns_for_each_provider():
+    _, statsbomb, _ = feature_columns_for("Forward")
+    _, wyscout, wyscout_lz = feature_columns_for("Forward", "wyscout")
+    assert {"pressures_p90", "blocks_p90"} <= set(statsbomb)
+    assert set(wyscout) == set(statsbomb) - {"pressures_p90", "blocks_p90"}
+    assert wyscout_lz == [f"{col}_lz" for col in wyscout]
+    assert feature_columns_for("Goalkeeper", "wyscout")[1] == ["saves_p90", "goals_conceded_p90", "sweeper_actions_p90"]

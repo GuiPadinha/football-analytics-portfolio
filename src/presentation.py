@@ -10,13 +10,10 @@ two of them have already shipped real bugs ("91th"; a leaky goalkeeper reading a
 import pandas as pd
 
 from src.similarity import (
-    ACTION_COLUMNS,
-    GK_ACTION_COLUMNS,
     GK_PER90_FEATURE_COLUMNS,
-    GK_PER90_LEAGUE_Z_COLUMNS,
     PER90_FEATURE_COLUMNS,
-    PER90_LEAGUE_Z_COLUMNS,
 )
+from src.similarity import feature_columns_for as similarity_feature_columns_for
 
 # Three role-relevant headline stats per position group: a deliberately small, curated subset,
 # not a ranking of "the best 3 stats" in any absolute sense. Goalkeepers draw from their own
@@ -44,22 +41,12 @@ STAT_LABELS["key_passes_p90"] = "Key Passes (excl. Assists)"
 STAT_LABELS.update({f"{col}_lz": label for col, label in list(STAT_LABELS.items())})
 
 
-def feature_columns_for(position_group):
+def feature_columns_for(position_group, provider="statsbomb"):
     """The column sets one position group is described by: `(raw totals, per-90 rates,
-    league-normalised rates)`.
-
-    Goalkeepers use a feature set disjoint from the three outfield groups, so every view that
-    handles "any position" branches here instead of hard-coding the outfield columns.
-
-    Args:
-        position_group (str): "Defender", "Midfielder", "Forward" or "Goalkeeper".
-
-    Returns:
-        tuple[list[str], list[str], list[str]]: action, `_p90` and `_lz` columns, index-aligned.
+    league-normalised rates)`. See `similarity.feature_columns_for`, which this re-exports so the
+    views keep one import for their presentation needs.
     """
-    if position_group == "Goalkeeper":
-        return GK_ACTION_COLUMNS, GK_PER90_FEATURE_COLUMNS, GK_PER90_LEAGUE_Z_COLUMNS
-    return ACTION_COLUMNS, PER90_FEATURE_COLUMNS, PER90_LEAGUE_Z_COLUMNS
+    return similarity_feature_columns_for(position_group, provider)
 
 
 def percentile_tier(goodness_pct):

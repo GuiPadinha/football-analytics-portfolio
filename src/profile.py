@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from src.config import GENDER_BY_COMPETITION
+from src.config import GENDER_BY_COMPETITION, PROVIDER_BY_COMPETITION
 from src.narrative import (
     CHEAPER_RATIO,
     CompareSide,
@@ -135,9 +135,11 @@ class Pool:
     """The app's tables, prepared once (and cached by the app) for every page.
 
     Attributes:
-        per90 (pandas.DataFrame): the player table with a `gender` column, index 0..n-1.
-        percentiles (dict[str, pandas.DataFrame]): per position group, league-adjusted
-            percentiles indexed like `per90`.
+        per90 (pandas.DataFrame): the player table with `gender` and `provider` columns, index
+            0..n-1.
+        percentiles (dict[tuple[str, str], pandas.DataFrame]): per (provider, position group),
+            league-adjusted percentiles indexed like `per90`. A player is ranked only against his
+            own provider's players, whose stats are counted the same way.
         shots (pandas.DataFrame): shots with `predicted_xg` (Premier League 2015/16).
         market_values (pandas.DataFrame): `player, team, tm_name, market_value_eur,
             market_value_as_of`, indexed by (player, team).
@@ -150,7 +152,7 @@ class Pool:
 
 
 def prepare_pool(per90, shots, market_value):
-    """Add each player's game and rank every position group once.
+    """Add each player's game and provider, and rank every position group once per provider.
 
     Args:
         per90 (pandas.DataFrame): `app_data/player_per90.parquet`.
@@ -160,12 +162,20 @@ def prepare_pool(per90, shots, market_value):
     Returns:
         Pool
     """
-    per90 = per90.assign(gender=per90["competition"].map(GENDER_BY_COMPETITION)).reset_index(drop=True)
+    per90 = per90.assign(
+        gender=per90["competition"].map(GENDER_BY_COMPETITION),
+        provider=per90["competition"].map(PROVIDER_BY_COMPETITION),
+    ).reset_index(drop=True)
     percentiles = {
-        group: league_adjusted_percentiles(part, feature_columns_for(group)[1])
-        for group, part in per90.groupby("position_group")
+        (provider, group): league_adjusted_percentiles(part, feature_columns_for(group, provider)[1])
+        for (provider, group), part in per90.groupby(["provider", "position_group"])
     }
     return Pool(per90, percentiles, shots, market_value.set_index(["player", "team"]))
+
+
+def peers_of(pool, row):
+    """The pool rows a player can be ranked or matched against: his own provider's."""
+    return pool.per90[pool.per90["provider"] == row["provider"]]
 
 
 def find_player(pool, player, team):
@@ -213,9 +223,10 @@ def _stat_bars(row, percentiles, group_size):
 
 
 def _lookalikes(pool, row, value_eur):
-    """Both games' top lists for one player, from one ranking of his position group."""
-    _, _, lz_columns = feature_columns_for(row["position_group"])
-    ranked = rank_matches(pool.per90, lz_columns, row["player"], row["team"])
+    """Both games' top lists for one player, from one ranking of his position group within his
+    provider. A Wyscout player's women's list is empty: the women's leagues are StatsBomb's."""
+    _, _, lz_columns = feature_columns_for(row["position_group"], row["provider"])
+    ranked = rank_matches(peers_of(pool, row), lz_columns, row["player"], row["team"])
     lists = {gender: ranked[ranked["gender"] == gender].head(LOOKALIKES_PER_GAME) for gender in ("male", "female")}
     nearest = min(part["distance"].iloc[0] for part in lists.values() if len(part))
     result = {}
@@ -252,9 +263,9 @@ def build_player_profile(pool, player, team):
     """
     row = find_player(pool, player, team)
     group = row["position_group"]
-    group_rows = pool.per90[pool.per90["position_group"] == group]
-    group_size = len(group_rows)
-    percentiles = pool.percentiles[group].loc[row.name]
+    peers = peers_of(pool, row)
+    group_size = int((peers["position_group"] == group).sum())
+    percentiles = pool.percentiles[(row["provider"], group)].loc[row.name]
     value_eur, tm_name, as_of = market_value_of(pool, player, team)
     lookalikes = _lookalikes(pool, row, value_eur)
     strengths, weaknesses = _stat_bars(row, percentiles, group_size)
@@ -359,12 +370,25 @@ def build_compare_view(pool, key_a, key_b):
         CompareView
 
     Raises:
-        ValueError: unknown player, or a goalkeeper against an outfielder (no stats in common).
+        ValueError: unknown player, a goalkeeper against an outfielder (no stats in common), or two
+            players from different data providers. The message of the last two is written for
+            the page to show as it is.
     """
     row_a, row_b = find_player(pool, *key_a), find_player(pool, *key_b)
+    if (row_a["position_group"] == "Goalkeeper") != (row_b["position_group"] == "Goalkeeper"):
+        raise ValueError(
+            "A goalkeeper and an outfield player share no stats, so there is nothing to compare. "
+            "Pick two of the same kind."
+        )
+    if row_a["provider"] != row_b["provider"]:
+        raise ValueError(
+            f"{row_a['competition']} and {row_b['competition']} come from different data providers, "
+            "which count the same stats differently, so the two can't be compared fairly. "
+            "Pick two players from the same provider (see How it works)."
+        )
     closeness = pair_closeness(pool.per90, key_a, key_b)
     a, b = _compare_player(pool, row_a), _compare_player(pool, row_b)
-    _, columns, _ = feature_columns_for(row_a["position_group"])
+    _, columns, _ = feature_columns_for(row_a["position_group"], row_a["provider"])
     sides = [
         CompareSide(p.name, row[columns].astype(float), p.market_value_eur, p.save_pct)
         for p, row in ((a, row_a), (b, row_b))

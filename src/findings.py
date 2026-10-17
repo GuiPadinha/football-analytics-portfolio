@@ -10,7 +10,7 @@ against the tables.
 """
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 import pandas as pd
@@ -153,8 +153,11 @@ def build_findings(pool, xg_table):
     Returns:
         list[Finding]
     """
-    over, under = _finishing_findings(pool, xg_table)
-    return [over, under, _price_finding(pool), _cross_game_finding(pool)]
+    # The cards rank StatsBomb players only: they need the men's and women's games in one
+    # space, and goals against chances exists only for StatsBomb's Premier League 2015/16.
+    statsbomb = replace(pool, per90=pool.per90[pool.per90["provider"] == "statsbomb"])
+    over, under = _finishing_findings(statsbomb, xg_table)
+    return [over, under, _price_finding(statsbomb), _cross_game_finding(statsbomb)]
 
 
 def write_findings(app_data_dir=APP_DATA_DIR):

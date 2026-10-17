@@ -28,8 +28,8 @@ if label_a == label_b:
 
 try:
     view = build_compare_view(pool, key_by_label[label_a], key_by_label[label_b])
-except ValueError:
-    st.warning("A goalkeeper and an outfield player share no stats, so there is nothing to compare. Pick two of the same kind.")
+except ValueError as refusal:  # keeper vs outfielder, or two providers: the message is page-ready
+    st.warning(str(refusal))
     st.stop()
 
 a, b = view.a, view.b

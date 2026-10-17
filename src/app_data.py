@@ -51,6 +51,7 @@ from src.similarity import (
     fit_kmeans,
     normalize_within_competition,
 )
+from src.wyscout import WY_GK_PER90_FEATURE_COLUMNS, WY_PER90_FEATURE_COLUMNS, build_wyscout_per90_tables
 
 APP_DATA_DIR = Path(__file__).resolve().parent.parent / "app_data"
 
@@ -78,6 +79,31 @@ def _build_combined_tables(datasets=config.SIMILARITY_SETS):
     outfield_frames, goalkeeper_frames = [], []
     for dataset in datasets:
         outfield, goalkeepers = build_season_per90_tables(dataset.comp_id, dataset.season_id)
+        outfield["competition"] = dataset.label
+        goalkeepers["competition"] = dataset.label
+        outfield_frames.append(outfield)
+        goalkeeper_frames.append(goalkeepers)
+    return (
+        pd.concat(outfield_frames, ignore_index=True),
+        pd.concat(goalkeeper_frames, ignore_index=True),
+    )
+
+
+def _build_wyscout_tables(datasets=config.WYSCOUT_SETS):
+    """The Wyscout 2017/18 counterpart of `_build_combined_tables` (Phase 4e, `src/wyscout.py`).
+
+    Kept as separate tables because their stat list differs: they are clustered and
+    league-normalised on their own columns and never share a space with StatsBomb players.
+
+    Args:
+        datasets (list[config.Dataset]): Wyscout competitions to include.
+
+    Returns:
+        tuple[pandas.DataFrame, pandas.DataFrame]: (outfield, goalkeepers), with `competition`.
+    """
+    outfield_frames, goalkeeper_frames = [], []
+    for dataset in datasets:
+        outfield, goalkeepers = build_wyscout_per90_tables(dataset)
         outfield["competition"] = dataset.label
         goalkeepers["competition"] = dataset.label
         outfield_frames.append(outfield)
@@ -153,19 +179,22 @@ def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
 
     shots_train, _ = build_shot_tables()
     outfield_table, goalkeeper_table = _build_combined_tables()
-    outfield_per90 = _cluster_position_groups(
-        outfield_table, OUTFIELD_GROUPS, PER90_FEATURE_COLUMNS
-    )
-    gk_per90 = _cluster_position_groups(
-        goalkeeper_table, ["Goalkeeper"], GK_PER90_FEATURE_COLUMNS
-    )
-    # Concatenated, not two separate artifacts: lets goalkeepers show up for free in every
+    wyscout_outfield, wyscout_goalkeepers = _build_wyscout_tables()
+    clustered = [
+        _cluster_position_groups(outfield_table, OUTFIELD_GROUPS, PER90_FEATURE_COLUMNS),
+        _cluster_position_groups(goalkeeper_table, ["Goalkeeper"], GK_PER90_FEATURE_COLUMNS),
+        # Wyscout last, so the StatsBomb rows keep their order and their results.
+        _cluster_position_groups(wyscout_outfield, OUTFIELD_GROUPS, WY_PER90_FEATURE_COLUMNS),
+        _cluster_position_groups(wyscout_goalkeepers, ["Goalkeeper"], WY_GK_PER90_FEATURE_COLUMNS),
+    ]
+    # Concatenated, not separate artifacts: lets goalkeepers show up for free in every
     # position-group-driven UI element already keyed off `per90["position_group"].unique()`
     # (the sidebar filter, the leaderboard) without a parallel code path. `pd.concat` aligns
     # columns automatically — outfield-only columns (goals, tackles_p90, ...) are NaN on
-    # goalkeeper rows and vice versa, which app.py already handles by always scoping stat
-    # lookups to the current position group's own rows, never a global column.
-    per90_features = pd.concat([outfield_per90, gk_per90], ignore_index=True)
+    # goalkeeper rows and vice versa, and StatsBomb-only ones (pressures_p90, ...) on Wyscout
+    # rows. Pages scope every stat lookup to the player's own (provider, position) columns.
+    per90_features = pd.concat(clustered, ignore_index=True)
+    per90_features["provider"] = per90_features["competition"].map(config.PROVIDER_BY_COMPETITION)
 
     X_train, y_train = build_feature_matrix(shots_train)
     model = train_logistic_regression(X_train, y_train)

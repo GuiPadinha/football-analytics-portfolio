@@ -189,7 +189,13 @@ SIMILARITY_SETS = [
     FRAUEN_BUNDESLIGA_2023_24, FA_WSL_2023_24, LIGA_F_2023_24, SERIE_A_WOMEN_2023_24, NWSL_2023,
 ]
 
-# The game ("male"/"female") of each pool competition, keyed by the label the app's player table
-# carries in `competition`. The app keeps men's and women's lookalike lists apart, and Compare
-# ranks a player against the other player's game (`similarity.pair_closeness`).
-GENDER_BY_COMPETITION = {dataset.label: dataset.gender for dataset in SIMILARITY_SETS}
+# Every competition in the app's player pool: the StatsBomb leagues above plus Wyscout's 2017/18
+# season (Phase 4e), whose players are only ever compared with each other.
+APP_POOL_SETS = SIMILARITY_SETS + WYSCOUT_SETS
+
+# The game ("male"/"female") and the data provider of each pool competition, keyed by the label
+# the app's player table carries in `competition`. The app keeps men's and women's lookalike lists
+# apart, Compare ranks a player against the other player's game (`similarity.pair_closeness`),
+# and neither ever crosses providers.
+GENDER_BY_COMPETITION = {dataset.label: dataset.gender for dataset in APP_POOL_SETS}
+PROVIDER_BY_COMPETITION = {dataset.label: dataset.provider for dataset in APP_POOL_SETS}

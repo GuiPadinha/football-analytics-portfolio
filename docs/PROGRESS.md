@@ -30,6 +30,19 @@ separate 2017/18 pool", in three stages (A ingestion, B pool plumbing, C pages),
     Stoke goal was credited after review. Median keeper save % is 0.69–0.71 (StatsBomb 0.70).
 - **Verified:** 271 tests pass, 11 of them new in `tests/test_wyscout.py`. The app is unchanged
   until stage B.
+- **Stage B, plumbing (code only, `app_data/` not rebuilt, so the live app is unchanged):**
+  - Every "which columns" question now goes through `similarity.feature_columns_for(group,
+    provider)`.
+  - Percentiles are computed per (provider, position). Lookalikes and Compare stay within one
+    provider, and Compare refuses a cross-provider pair with a page-ready message.
+  - Home findings stay StatsBomb-only.
+  - `app_data` builds and clusters the Wyscout tables after the StatsBomb ones, so the StatsBomb
+    rows keep their order. Market values get a 2018-01-01 anchor for the five 2017/18 leagues.
+  - **Key collision:** 329 Wyscout (player, team) pairs already exist in the StatsBomb 2015/16
+    rows (Kane at Tottenham). Without a fix they would have picked up the other season's xG and
+    value. Wyscout's `player` key now carries " · 2017/18", pages show `nickname` (always filled),
+    and `normalize_name` drops the suffix for Transfermarkt matching.
+  - 273 tests pass.
 
 ---
 

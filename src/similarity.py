@@ -22,6 +22,9 @@ from src.data_loader import (
     load_events, load_lineups, load_matches, load_skillcorner_tracking,
     safe_bool_column, safe_column,
 )
+from src.wyscout import (
+    WY_ACTION_COLUMNS, WY_GK_ACTION_COLUMNS, WY_GK_PER90_FEATURE_COLUMNS, WY_PER90_FEATURE_COLUMNS,
+)
 
 # Common broadcast-tracking thresholds for classifying running intensity (km/h).
 HIGH_SPEED_RUNNING_THRESHOLD_KMH = 19.8
@@ -728,6 +731,40 @@ LEAGUE_Z_SUFFIX = "_lz"
 PER90_LEAGUE_Z_COLUMNS = [f"{col}{LEAGUE_Z_SUFFIX}" for col in PER90_FEATURE_COLUMNS]
 GK_PER90_LEAGUE_Z_COLUMNS = [f"{col}{LEAGUE_Z_SUFFIX}" for col in GK_PER90_FEATURE_COLUMNS]
 
+# Each provider's players are described by their own stat list (`src/wyscout.py` says why the
+# Wyscout one is shorter), so every "which columns" question is asked per (provider, position).
+FEATURE_SETS = {
+    ("statsbomb", False): (ACTION_COLUMNS, PER90_FEATURE_COLUMNS),
+    ("statsbomb", True): (GK_ACTION_COLUMNS, GK_PER90_FEATURE_COLUMNS),
+    ("wyscout", False): (WY_ACTION_COLUMNS, WY_PER90_FEATURE_COLUMNS),
+    ("wyscout", True): (WY_GK_ACTION_COLUMNS, WY_GK_PER90_FEATURE_COLUMNS),
+}
+
+
+def feature_columns_for(position_group, provider="statsbomb"):
+    """The column sets one position group is described by: `(raw totals, per-90 rates,
+    league-normalised rates)`.
+
+    Goalkeepers use a feature set disjoint from the three outfield groups, and Wyscout players a
+    shorter one than StatsBomb players (no pressures, blocks, claims or punches), so every caller
+    that handles "any player" branches here instead of hard-coding a column list.
+
+    Args:
+        position_group (str): "Defender", "Midfielder", "Forward" or "Goalkeeper".
+        provider (str): "statsbomb" or "wyscout", the row's `provider`.
+
+    Returns:
+        tuple[list[str], list[str], list[str]]: action, `_p90` and `_lz` columns, index-aligned.
+    """
+    actions, per90 = FEATURE_SETS[(provider, position_group == "Goalkeeper")]
+    return actions, per90, [f"{col}{LEAGUE_Z_SUFFIX}" for col in per90]
+
+
+def provider_of(row):
+    """A pool row's data provider; rows built before Phase 4e carry no column and are StatsBomb."""
+    provider = row.get("provider")
+    return provider if isinstance(provider, str) else "statsbomb"
+
 # Stats where a *smaller* raw value is the better outcome (currently just a goalkeeper conceding
 # fewer goals — every outfield ACTION_COLUMNS stat is "more is better"). A plain
 # `rank(pct=True)` on the raw column would put the leakiest keepers at the top of a percentile
@@ -1058,8 +1095,9 @@ def pair_closeness(features, player_a, player_b):
         PairCloseness
 
     Raises:
-        ValueError: a goalkeeper paired with an outfielder (no stats in common), or an unknown
-            player.
+        ValueError: a goalkeeper paired with an outfielder (no stats in common), two players from
+            different data providers (same stat names, different definitions; see
+            `src/wyscout.py`), or an unknown player.
     """
     rows = [features[(features["player"] == p) & (features["team"] == t)] for p, t in (player_a, player_b)]
     if any(row.empty for row in rows):
@@ -1068,8 +1106,13 @@ def pair_closeness(features, player_a, player_b):
     group_a, group_b = row_a["position_group"], row_b["position_group"]
     if (group_a == "Goalkeeper") != (group_b == "Goalkeeper"):
         raise ValueError("A goalkeeper and an outfielder share no stats to compare.")
+    provider = provider_of(row_a)
+    if provider != provider_of(row_b):
+        raise ValueError("Players from different data providers have no stats measured the same way.")
+    if "provider" in features.columns:
+        features = features[features["provider"].fillna("statsbomb") == provider]
 
-    per90_columns = GK_PER90_FEATURE_COLUMNS if group_a == "Goalkeeper" else PER90_FEATURE_COLUMNS
+    _, per90_columns, _ = feature_columns_for(group_a, provider)
     if group_a == group_b:
         pool = features[features["position_group"] == group_a]
         standing = pool[[f"{col}{LEAGUE_Z_SUFFIX}" for col in per90_columns]]

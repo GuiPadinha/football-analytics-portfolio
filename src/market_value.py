@@ -59,6 +59,13 @@ MARKET_VALUE_AS_OF_DATES = {
     "La Liga 2015/16 (full season)": pd.Timestamp("2016-01-01"),
     "Serie A 2015/16": pd.Timestamp("2016-01-01"),
     "Ligue 1 2015/16": pd.Timestamp("2016-01-01"),
+    # Wyscout's 2017/18 season (Phase 4e). Its `player` key ends in " · 2017/18", which
+    # `normalize_name` drops with the other non-letters, so matching sees the plain name.
+    "Premier League 2017/18": pd.Timestamp("2018-01-01"),
+    "La Liga 2017/18": pd.Timestamp("2018-01-01"),
+    "Serie A 2017/18": pd.Timestamp("2018-01-01"),
+    "Bundesliga 2017/18": pd.Timestamp("2018-01-01"),
+    "Ligue 1 2017/18": pd.Timestamp("2018-01-01"),
 }
 
 # How far from the season's anchor date a valuation may be and still confirm which club a

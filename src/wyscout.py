@@ -84,6 +84,8 @@ SHOT_SUBEVENTS = {SUBEVENT_SHOT, SUBEVENT_FREE_KICK_SHOT, SUBEVENT_PENALTY}
 PROGRESSIVE_PASS_YARDS = 10
 # A league match lasts 90 minutes on the match sheet; substitutions in stoppage time go past it.
 REGULATION_MINUTES = 90
+# The one season the public set covers for the leagues.
+SEASON = "2017/18"
 
 # The outfield stats a Wyscout player is described by: StatsBomb's `ACTION_COLUMNS` minus
 # pressures and blocks, which Wyscout doesn't log. Same names, so the app's labels and charts
@@ -384,7 +386,7 @@ def extract_match_actions(events):
     return pd.DataFrame(rows, columns=["player_id", "team_id"] + all_columns)
 
 
-def per90_tables(minutes, actions, players, team_names, min_minutes=900):
+def per90_tables(minutes, actions, players, team_names, min_minutes=900, season_label=SEASON):
     """Season minutes + action counts -> (outfield, goalkeepers) per-90 tables. Pure.
 
     Args:
@@ -394,6 +396,7 @@ def per90_tables(minutes, actions, players, team_names, min_minutes=900):
         team_names (dict[int, str]): `load_team_names` mapping.
         min_minutes (float): minutes floor, as in `similarity.build_player_per90_features`.
             Applied per (player, team), so a January transfer is two rows, as in StatsBomb.
+        season_label (str): appended to `player`, the row key ("Harry Kane · 2017/18").
 
     Returns:
         tuple[pandas.DataFrame, pandas.DataFrame]: exactly `WY_PER90_TABLE_COLUMNS` and
@@ -410,6 +413,12 @@ def per90_tables(minutes, actions, players, team_names, min_minutes=900):
     table = table.join(register, on="player_id")
     table["team"] = table["team_id"].map(team_names)
     table = table[table["position_group"].notna()]
+    # The app keys a row by (player, team), and 329 of these pairs already exist in its StatsBomb
+    # 2015/16 rows (Harry Kane at Tottenham is in both seasons), where they would silently pick up
+    # the other season's xG and market value. So `player` carries the season; pages show
+    # `nickname`, which is filled with the full name when Wyscout has no short name.
+    table["nickname"] = table["nickname"].fillna(table["player"])
+    table["player"] = table["player"] + f" · {season_label}"
 
     outfield = table[table["position_group"] != "Goalkeeper"].copy()
     for col in WY_ACTION_COLUMNS:

@@ -35,10 +35,13 @@ def pool():
 
 def test_prepare_pool_adds_each_players_game_and_ranks_every_group(pool):
     assert set(pool.per90["gender"]) == {"male", "female"}
-    assert set(pool.percentiles) == {"Defender", "Midfielder", "Forward", "Goalkeeper"}
-    forwards = pool.per90["position_group"] == "Forward"
-    assert pool.percentiles["Forward"].index.equals(pool.per90.index[forwards])
-    assert pool.percentiles["Forward"].max().max() == 1.0
+    assert pool.per90["provider"].notna().all()
+    # Ranked once per (provider, position group): never against another provider's players.
+    groups = {"Defender", "Midfielder", "Forward", "Goalkeeper"}
+    assert set(pool.percentiles) == {(p, g) for p in set(pool.per90["provider"]) for g in groups}
+    forwards = (pool.per90["position_group"] == "Forward") & (pool.per90["provider"] == "statsbomb")
+    assert pool.percentiles[("statsbomb", "Forward")].index.equals(pool.per90.index[forwards])
+    assert pool.percentiles[("statsbomb", "Forward")].max().max() == 1.0
 
 
 def test_a_star_with_xg_gets_every_section(pool):

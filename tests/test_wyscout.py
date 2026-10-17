@@ -133,8 +133,12 @@ def test_per90_tables_splits_keepers_applies_floor_and_rates():
     assert outfield["player_id"].tolist() == [7]
     salah = outfield.iloc[0]
     assert salah["team"] == "Liverpool" and salah["minutes_played"] == 1800
+    # The key carries the season (it would collide with StatsBomb 2015/16 rows otherwise).
+    assert salah["player"] == "Mohamed Salah Ghaly · 2017/18"
+    assert salah["nickname"] == "Mohamed Salah"
     assert salah["non_penalty_goals_p90"] == pytest.approx(0.1)
     keeper = keepers.iloc[0]
+    assert keeper["nickname"] == "Keeper One"  # no short name: the full name is shown
     assert keeper["save_pct"] == pytest.approx(0.75)
     assert keeper["saves_p90"] == pytest.approx(0.15)
 
