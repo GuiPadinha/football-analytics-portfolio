@@ -29,11 +29,11 @@ both sides of every page"), and an always-on look at the live app after each pus
   - Anonymous visits to the live URL got "You do not have access… / 404" while Guilherme, signed
     in, saw the app. He was asked to check in an incognito window, since it may be private.
   - `86cf569`: CI green.
-  - After Guilherme set the app to public, an anonymous rendered visit
-    (`tools/screenshot.py`, 4 min wait) **still** got "You do not have access to this app or it
-    does not exist". This is **open**, and the first job next session: re-check in an incognito
-    window, then in share.streamlit.io (Settings → Sharing, and whether the URL/subdomain
-    changed). The session stopped here (token limit).
+  - **Resolved:** the app had been running on another subdomain
+    (`football-analytics-portfolio-tzl6…streamlit.app`), so every documented link hit "You do not
+    have access… / does not exist". Guilherme restored `gpfootball-analytics-portfolio`, and an
+    anonymous rendered visit now shows the latest deploy (3,794 players, 2,911 values, wider
+    pages).
 - **Verified:**
   - 285 tests pass.
   - Real-browser screenshots at 1900 px (local): Home, and How it works before and after.
