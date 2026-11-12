@@ -51,6 +51,10 @@ everything": one commit and push per item, with the CI and the live app checked 
   - Home moved: Agüero +6.5 → +6.7 (1 in 22 → 1 in 25), Jerome 1 in 27 → 1 in 26.
   - Model uncertainty measured and left out (~8% of the luck). ML_LEARNING_LOG.md has the numbers.
   - `findings.json` is now written with LF on Windows too.
+- **Wild ideas mapped** in ROADMAP.md (Phase 9): no-server app, tournament stories, dbt + DuckDB,
+  LLM reports with a fact-check, build-your-own-player, each with a cost and a verdict.
+- **The 11 GB cache is gone:** `C:\Users\guilh\fap-cache` doesn't exist, and why is not known. The
+  `--xg-only` rebuild didn't need it (it reads `data/`); a full rebuild will download it again.
 - **Verified:** 285 tests pass locally before any change; CI green on `cddb68b`; the rewritten
   tool finds the live Home in 8 s and returns 1 for a marker that isn't there.
 

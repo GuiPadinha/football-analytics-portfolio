@@ -43,7 +43,7 @@ file in the repo root points there): with `.git` inside Drive, the sync corrupte
 within minutes. Don't move it back. The venv is `C:\Users\guilh\venvs\football-analytics-portfolio`
 (outside Drive: thousands of files, not relocatable); run Python with `PYTHONDONTWRITEBYTECODE=1`
 so no `__pycache__` gets synced. The cache is `C:\Users\guilh\fap-cache` (11 GB, local only,
-re-downloadable). In a fresh clone run `git config core.hooksPath .githooks` once. The old
+re-downloadable; found missing on 2026-11-12, so the next full rebuild downloads it again). In a fresh clone run `git config core.hooksPath .githooks` once. The old
 OneDrive copy is obsolete (`C:\dev\football-analytics-portfolio` and the copy in the Drive archive were
 deleted on 2026-10-17); a full snapshot of the old working copy is `OneDrive ISCTE (arquivo)\_snapshots\football-analytics-portfolio_2026-10-10.zip`
 in Drive.
