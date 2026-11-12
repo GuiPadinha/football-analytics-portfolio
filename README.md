@@ -8,6 +8,11 @@ for less?
 
 [![The app's Home page: findings computed from the data](docs/img/app_home.png)](https://gpfootball-analytics-portfolio.streamlit.app)
 
+Straight to a page:
+[Riyad Mahrez, 2015/16](https://gpfootball-analytics-portfolio.streamlit.app/players?player=Riyad+Mahrez&league=Premier+League+2015/16) ·
+[Mohamed Salah, 2017/18](https://gpfootball-analytics-portfolio.streamlit.app/players?player=Mohamed+Salah&league=Premier+League+2017/18) ·
+[Harry Kane against Jamie Vardy](https://gpfootball-analytics-portfolio.streamlit.app/compare?player_a=Harry+Kane&player_b=Jamie+Vardy)
+
 A two-part analytics project built on public StatsBomb and SkillCorner data, designed to answer
 two questions a recruitment or performance analysis team actually asks:
 

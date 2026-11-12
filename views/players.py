@@ -8,7 +8,9 @@ from src.narrative import GAME_WORDS, GROUP_PLURALS
 from src.presentation import format_market_value
 from src.profile import build_player_profile
 from views import components as ui
-from views.data import label_of, load_pool, open_player, player_options, popular_picks
+from views.data import (
+    label_of, link_params, linked_player, load_pool, open_player, player_options, popular_picks, read_link,
+)
 
 LOW_NOTE = {
     False: "Not weaknesses as such: a winger who carries the ball is rarely the one who tackles.",
@@ -24,6 +26,15 @@ def _remember_choice():
     st.session_state["selected_player"] = key_by_label.get(st.session_state.get("player_search"))
 
 
+# A link to a player ("?player=Riyad Mahrez&team=Leicester City") opens his page. It is followed
+# once: after that the address only mirrors the page (it is rewritten below), so a later pick in
+# the search box isn't undone by the address the visit started from.
+link, unknown_name = read_link(), None
+if link[0] and link != st.session_state.get("player_link"):
+    st.session_state["player_link"] = link
+    st.session_state["selected_player"] = linked_player(link)
+    unknown_name = None if st.session_state["selected_player"] else link[0]
+
 # A jump (a lookalike's name, a Home card) sets `selected_player` and reruns. Pushing it into the
 # search box before the box is drawn makes the box show who the page is about.
 selected = st.session_state.get("selected_player")
@@ -37,6 +48,9 @@ st.selectbox(
 selected = st.session_state.get("selected_player")
 
 if not selected:
+    st.query_params.clear()
+    if unknown_name:
+        st.warning(f"No player called “{unknown_name}” in this data. Search above, or start with one of the names below.")
     st.html(ui.section_title("Pick a player", "Search above, or start with one of the most valuable names in the data."))
     columns = st.columns(len(popular_picks()))
     for column, key in zip(columns, popular_picks()):
@@ -45,6 +59,11 @@ if not selected:
                 open_player(key)
                 st.rerun()
     st.stop()
+
+# The address always points at the player on the page, so copying it shares this exact page.
+address = link_params(selected)
+st.query_params.from_dict(address)
+st.session_state["player_link"] = tuple(address.values())
 
 profile = build_player_profile(pool, *selected)
 group_plural = GROUP_PLURALS[profile.position_group]
@@ -179,3 +198,4 @@ if st.button(f"Compare {profile.name} with another player", type="primary"):
     st.session_state.pop("compare_pick_b", None)
     st.switch_page("views/compare.py")
 st.page_link("views/how_it_works.py", label="How these numbers are made →")
+st.caption(f"This page has its own address: copy it from the address bar to share {profile.name}'s page.")

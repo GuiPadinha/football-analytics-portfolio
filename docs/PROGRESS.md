@@ -26,6 +26,21 @@ everything": one commit and push per item, with the CI and the live app checked 
   (`docs/img/app_home.png`), instead of "Phase 8 (deployed 2026-07-09)". It gained a "Data and
   licence" section crediting the four sources. The code is now MIT-licensed (`LICENSE`); Claude
   picked MIT under the autonomy given, so Guilherme should confirm or change it.
+- **Shareable links, and the look at the Wyscout pool** (CLAUDE.md's agreed next step 1):
+  - A player's page and a comparison each have their own address, e.g.
+    `/players?player=Mohamed Salah&league=Premier League 2017/18` and
+    `/compare?player_a=Harry Kane&player_b=Jamie Vardy`. The page rewrites the address in full
+    (name, club, league) whenever the player changes, so copying it shares that exact page.
+  - A link is followed once per visit. After that the address mirrors the page, so a later pick
+    in the search box isn't undone by the address the visit started from.
+  - `profile.find_linked_player` forgives case, accents and a missing club or league; a name in
+    both seasons' data resolves to the season with the most minutes. An unknown name gets a
+    warning and the starting points.
+  - Looked at in a real browser (local, through the new links): Salah 2017/18's page (32 goals,
+    €80M, lookalikes Agüero, Immobile, Depay, Dybala, Mbappé), Salah against Kane 2017/18, and
+    the cross-provider refusal. All read correctly.
+  - One fix from that look: a comparison of two players without shot data showed two "n/a"
+    panels; it now says so once.
 - **Verified:** 285 tests pass locally before any change; CI green on `cddb68b`; the rewritten
   tool finds the live Home in 8 s and returns 1 for a marker that isn't there.
 

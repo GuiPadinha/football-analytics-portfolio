@@ -97,6 +97,7 @@ async def visit(ws_url, url, out, marker, width, height, timeout):
     found = marker in text
     state = "woken from sleep" if woken else "already awake"
     print(f"found ({state})" if found else "MARKER NOT FOUND", f"after {time.time() - start:.0f}s ->", out)
+    print("address:", await evaluate("location.href"))  # shows whether the page rewrote its own link
     print(" ".join(text.split())[:300])
     return found
 

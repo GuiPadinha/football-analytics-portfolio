@@ -42,10 +42,14 @@ closest man-woman pair), each with its caveat, then a three-step "how it works".
    how-close bars, Transfermarkt value and a "Cheaper" tag, and a note that a similar style is not
    the same level. A name opens that player's page. A button starts Compare with this player.
 A player's header shows popular name, team, facts and market value (or why there isn't one).
+The page has its own address (`/players?player=Riyad Mahrez&team=Leicester City&league=Premier
+League 2015/16`), rewritten whenever the player changes, so the address bar always holds a link
+to the page on screen. A link is forgiving: a name alone works, in any case, without accents.
 
 **Compare** — any two outfield players (whatever their position) or any two goalkeepers: a card
-each, a rule-based verdict, per-90 bars side by side, and goals against chances (or save %). A
-keeper against an outfielder gets a plain warning.
+each, a rule-based verdict, per-90 bars side by side, and goals against chances (or save %; one
+sentence when neither player has shot data). A keeper against an outfielder gets a plain warning.
+A comparison has its own address too (`/compare?player_a=Harry Kane&player_b=Jamie Vardy`).
 
 **Leaderboard** — everyone in one sortable table: minutes, goals (incl. penalties), assists,
 goals − xG (Premier League only), value (€M). Filters for game, position and name; a row opens the
@@ -162,8 +166,7 @@ them again.
 
 ## Known gaps
 
-- No deep links: a player's page has no URL of its own, so a link can't point at one (a
-  `st.query_params` follow-up).
+- Links cover a player and a comparison only: the Leaderboard's filters are not in its address.
 - 159 players have no StatsBomb nickname and a long registered name ("Mary Alexandra Earps"),
   mostly women's leagues. There is no safe rule for shortening a name.
 - Goals against chances is Premier League 2015/16 only, and keepers have no shot-quality model.

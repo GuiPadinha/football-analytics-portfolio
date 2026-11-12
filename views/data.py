@@ -10,11 +10,12 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from src.profile import display_name, prepare_pool
+from src.profile import display_name, find_linked_player, link_to_player, prepare_pool
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 APP_DATA_DIR = REPO_ROOT / "app_data"
 POPULAR_PICKS = 4
+LINK_FIELDS = ("player", "team", "league")
 
 
 @st.cache_resource
@@ -88,3 +89,18 @@ def popular_picks():
 def open_player(key):
     """Make `key` the selected player for the Players page (the page seeds its search box from it)."""
     st.session_state["selected_player"] = tuple(key)
+
+
+def read_link(suffix=""):
+    """`(player, team, league)` as the page's address asks for them; `None` where it doesn't."""
+    return tuple(st.query_params.get(f"{field}{suffix}") for field in LINK_FIELDS)
+
+
+def linked_player(link):
+    """The `(player, team)` key a `read_link` tuple points at, or `None`."""
+    return find_linked_player(load_pool(), *link)
+
+
+def link_params(key, suffix=""):
+    """The URL parameters that open `key`'s page (`profile.link_to_player`)."""
+    return link_to_player(load_pool(), *key, suffix=suffix)

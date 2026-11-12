@@ -16,7 +16,9 @@ from src.profile import (
     build_compare_view,
     build_leaderboard,
     build_player_profile,
+    find_linked_player,
     find_player,
+    link_to_player,
     market_value_of,
     prepare_pool,
 )
@@ -93,6 +95,30 @@ def test_unknown_players_are_refused(pool):
     with pytest.raises(ValueError):
         build_player_profile(pool, "Nobody", "Nowhere")
     assert market_value_of(pool, "Nobody", "Nowhere") == (None, None, None)
+
+
+def test_a_link_reads_as_words_and_leads_back_to_the_same_player(pool):
+    assert link_to_player(pool, *SALAH_2017_18) == {
+        "player": "Mohamed Salah", "team": "Liverpool", "league": "Premier League 2017/18",
+    }
+    assert set(link_to_player(pool, *MAHREZ, suffix="_a")) == {"player_a", "team_a", "league_a"}
+    # Every 20th player of the pool: the link a page writes must open that same page.
+    for _, row in pool.per90.iloc[::20].iterrows():
+        key = (row["player"], row["team"])
+        assert find_linked_player(pool, **link_to_player(pool, *key)) == key
+
+
+def test_a_hand_typed_link_is_forgiven_its_case_accents_and_gaps(pool):
+    aguero_2015_16 = ("Sergio Leonel Agüero del Castillo", "Manchester City")
+    # A name alone: the season with the most minutes, whichever provider it is.
+    assert find_linked_player(pool, "sergio aguero") == aguero_2015_16
+    assert find_linked_player(pool, "Sergio Agüero", league="premier league 2017/18") == (
+        "Sergio Leonel Agüero del Castillo · 2017/18", "Manchester City",
+    )
+    # The registered name works too, and a club nobody of that name played for is ignored.
+    assert find_linked_player(pool, "Sergio Leonel Agüero del Castillo", team="Real Madrid") == aguero_2015_16
+    assert find_linked_player(pool, "Nobody At All") is None
+    assert find_linked_player(pool, None) is None and find_linked_player(pool, "") is None
 
 
 def test_compare_view_has_a_verdict_and_one_row_per_stat(pool):

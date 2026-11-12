@@ -142,6 +142,8 @@ def test_compare_refuses_two_data_providers_but_pairs_two_wyscout_players():
     at = _compare(KANE_2017_18, SALAH_2017_18)
     _assert_clean(at)
     assert "VERDICT" in _html(at)
+    # Neither season has shot data: one sentence says so, not two "n/a" panels.
+    assert "No shot data for either player" in _html(at) and "n/a" not in _html(at)
 
 
 def test_a_wyscout_player_page_says_where_the_data_comes_from():
@@ -149,6 +151,48 @@ def test_a_wyscout_player_page_says_where_the_data_comes_from():
     assert "Premier League 2017/18 (Wyscout data)" in _html(at)
     assert [tab.label for tab in at.tabs] == ["Men's game"]  # no women's list across providers
     assert any("matched only with each other" in c.value for c in at.caption)
+
+
+def _follow_link(page, **params):
+    """Open `page` the way a shared link does: with the player(s) in the address."""
+    at = streamlit_testing.AppTest.from_file(APP_PATH, default_timeout=TIMEOUT_SECS)
+    at.run()
+    at.switch_page(f"views/{page}.py")
+    for name, value in params.items():
+        at.query_params[name] = value
+    at.run()
+    _assert_clean(at)
+    return at
+
+
+def test_a_link_opens_a_players_page_and_the_address_then_follows_the_page():
+    at = _follow_link("players", player="mohamed salah", league="Premier League 2017/18")
+    assert at.session_state["selected_player"] == ("Mohamed Salah Ghaly · 2017/18", "Liverpool")
+    assert "Premier League 2017/18 (Wyscout data)" in _html(at)
+    # The page rewrites its address in full, so what gets copied is unambiguous.
+    assert dict(at.query_params) == {
+        "player": ["Mohamed Salah"], "team": ["Liverpool"], "league": ["Premier League 2017/18"],
+    }
+    # A later pick in the search box wins over the address the visit started from.
+    at.selectbox(key="player_search").set_value("Riyad Mahrez (Leicester City) · Premier League 2015/16").run()
+    _assert_clean(at)
+    assert at.session_state["selected_player"] == MAHREZ
+    assert at.query_params["player"] == ["Riyad Mahrez"]
+
+
+def test_a_link_to_nobody_says_so_and_offers_the_starting_points():
+    at = _follow_link("players", player="Nobody At All")
+    assert any("No player called" in w.value for w in at.warning)
+    assert len(at.button) >= 4
+    assert dict(at.query_params) == {}
+
+
+def test_a_link_opens_a_comparison_with_both_players_filled_in():
+    at = _follow_link("compare", player_a="Harry Kane", player_b="jamie vardy")
+    assert at.selectbox(key="compare_pick_a").value == KANE
+    assert at.selectbox(key="compare_pick_b").value == VARDY
+    assert "VERDICT" in _html(at)
+    assert at.query_params["league_b"] == ["Premier League 2015/16"]
 
 
 def test_compare_prompts_until_two_different_players_are_picked():

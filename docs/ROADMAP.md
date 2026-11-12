@@ -327,8 +327,8 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
   mockup (https://claude.ai/artifact/PjwLKvcswLnErrfBFaj1tR) are in CLAUDE.md's "Next session".
   It replaces several items below (Leaderboard filter, visual pass). **Done 2026-10-06 → 10-10:**
   the rule-based text (`src/narrative.py`), then the pages (Home, Players, Compare, Leaderboard,
-  How it works) on top navigation with native charts. Left: deep links, a rule for long
-  registered names, and the visual polish items in PRODUCT_SPEC.md's Known gaps.
+  How it works) on top navigation with native charts. Left: a rule for long registered names,
+  and the visual polish items in PRODUCT_SPEC.md's Known gaps.
 - **Leaderboard's name filter still needs Enter** — flagged 2026-07-14 (cont.), deliberately not
   fixed that session: it's an `st.text_input` feeding a multi-row `st.dataframe`, not a single-pick
   widget, so the live-filtering-selectbox trick that fixed the other three search boxes that
@@ -356,10 +356,6 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
   an open discussion, not a task list, same as the visual/docs item below. Candidates surfaced
   while thinking this through, roughly in "buildable from data already in `app_data/`" → "needs new
   data" order:
-  - **Shareable deep links** via `st.query_params` — encode the current view/filters/picked player
-    in the URL so a specific player's page (or a specific comparison) can be linked directly,
-    instead of always landing on a blank search. Session-only state today; this would need no new
-    data, just wiring existing selections through the URL.
   - **A team-level or "Best XI" view** — aggregate stats by team, or let a user assemble a squad
     from the pool and see combined market value / style mix. New scope, buildable from existing
     per-player data, no new pulls — but a genuinely new page, not a small addition.
@@ -420,6 +416,8 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
 
 ### Done
 
+- **Shareable links** (2026-11-12): a player's page and a comparison each have their own address
+  (`st.query_params`), kept in step with the page; `profile.find_linked_player` resolves a link.
 - **The live demo no longer sleeps** (found 2026-10-01, fixed 2026-11-12): Streamlit Community
   Cloud hibernates an app after 12 hours without traffic, and a plain HTTP GET doesn't wake it.
   `.github/workflows/keepalive.yml` opens the app in a headless browser every four hours

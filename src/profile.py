@@ -201,6 +201,69 @@ def display_name(row):
     return popular_name(row["player"], row["nickname"])
 
 
+def _folded(names):
+    """A Series of names in lower case without accents, so a hand-typed "aguero" finds "Agüero"."""
+    return (
+        names.astype(str).str.normalize("NFKD").str.encode("ascii", "ignore").str.decode("ascii")
+        .str.casefold().str.strip()
+    )
+
+
+def link_to_player(pool, player, team, suffix=""):
+    """The URL parameters that address one player: popular name, club and league.
+
+    The three together are unique (they are the search box's label), and they read as words in an
+    address bar, which the table key does not ("Mohamed Salah Ghaly · 2017/18").
+
+    Args:
+        pool (Pool)
+        player, team (str): the table key.
+        suffix (str): appended to each parameter name, so one URL can carry two players ("_a").
+
+    Returns:
+        dict[str, str]: `player`, `team` and `league`, each name with `suffix`.
+    """
+    row = find_player(pool, player, team)
+    values = {"player": display_name(row), "team": row["team"], "league": row["competition"]}
+    return {f"{field}{suffix}": value for field, value in values.items()}
+
+
+def find_linked_player(pool, player, team=None, league=None):
+    """The `(player, team)` key a link asks for, or `None` if nobody has that name.
+
+    Forgiving on purpose, because links get typed and edited by hand: case and accents are
+    ignored, the name can be the popular or the registered one, and a club or league that matches
+    nobody of that name is dropped instead of failing the link. When several rows are left (a
+    name alone, for a man who is in both seasons' data), the one with the most minutes wins.
+
+    Args:
+        pool (Pool)
+        player (str): popular or registered name.
+        team, league (str or None): the club and the competition, to tell namesakes and seasons apart.
+
+    Returns:
+        tuple[str, str] or None
+    """
+    if not player:
+        return None
+    per90 = pool.per90
+    has_nickname = per90["nickname"].fillna("").str.strip() != ""
+    wanted = _folded(pd.Series([player])).iloc[0]
+    hits = per90[
+        (_folded(per90["nickname"].where(has_nickname, per90["player"])) == wanted)
+        | (_folded(per90["player"]) == wanted)
+    ]
+    for column, value in (("team", team), ("competition", league)):
+        if value:
+            narrowed = hits[_folded(hits[column]) == _folded(pd.Series([value])).iloc[0]]
+            if not narrowed.empty:
+                hits = narrowed
+    if hits.empty:
+        return None
+    best = hits.sort_values("minutes_played", ascending=False, kind="stable").iloc[0]
+    return best["player"], best["team"]
+
+
 def _stat_bars(row, percentiles, group_size):
     """Strength and weakness rows for one player, best / worst first."""
     def detail(stat):
