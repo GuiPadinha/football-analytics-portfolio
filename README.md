@@ -2,7 +2,11 @@
 
 [![tests](https://github.com/GuiPadinha/football-analytics-portfolio/actions/workflows/tests.yml/badge.svg)](https://github.com/GuiPadinha/football-analytics-portfolio/actions/workflows/tests.yml)
 
-**[Live demo](https://gpfootball-analytics-portfolio.streamlit.app)** — Streamlit Community Cloud, Phase 8 (deployed 2026-07-09).
+**[Live demo](https://gpfootball-analytics-portfolio.streamlit.app)**: pick a player and get three
+answers in plain words. What kind of player is this, are the goals real, and who plays like this
+for less?
+
+[![The app's Home page: findings computed from the data](docs/img/app_home.png)](https://gpfootball-analytics-portfolio.streamlit.app)
 
 A two-part analytics project built on public StatsBomb and SkillCorner data, designed to answer
 two questions a recruitment or performance analysis team actually asks:
@@ -303,3 +307,19 @@ outfield players side by side under a rule-based verdict; a **Leaderboard** sort
 - **Module C — Performance Under Pressure:** scoped in `docs/MODULES.md`, not started.
 
 Full phase-by-phase plan: [docs/ROADMAP.md](docs/ROADMAP.md).
+
+---
+
+## Data and licence
+
+The code is under the [MIT licence](LICENSE). The data is not mine and keeps its own terms:
+
+- **Events:** [StatsBomb Open Data](https://github.com/statsbomb/open-data), free for research
+  with StatsBomb credited as the source.
+- **2017/18 events:** Wyscout's public data set, from Pappalardo et al., "A public data set of
+  spatio-temporal match events in soccer competitions", *Scientific Data* 6, 236 (2019), CC BY 4.0.
+- **Tracking sample:** [SkillCorner Open Data](https://github.com/SkillCorner/opendata).
+- **Market values:** Transfermarkt, through the open
+  [transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets) mirror.
+
+Details and caveats for each source are in [docs/DATA.md](docs/DATA.md).

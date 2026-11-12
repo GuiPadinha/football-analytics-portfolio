@@ -22,6 +22,10 @@ everything": one commit and push per item, with the CI and the live app checked 
 - **Repo hygiene:** `.gitattributes` (LF everywhere; notebooks out of GitHub's language bar, which
   read 87% "Jupyter Notebook"), `pytest.ini` (no `.pytest_cache` in the synced folder), the dev
   container on Python 3.12, and the redesign's mock-ups kept under `docs/redesign-2026-10/`.
+- **GitHub front door:** the README opens with what the app answers and a screenshot of its Home
+  (`docs/img/app_home.png`), instead of "Phase 8 (deployed 2026-07-09)". It gained a "Data and
+  licence" section crediting the four sources. The code is now MIT-licensed (`LICENSE`); Claude
+  picked MIT under the autonomy given, so Guilherme should confirm or change it.
 - **Verified:** 285 tests pass locally before any change; CI green on `cddb68b`; the rewritten
   tool finds the live Home in 8 s and returns 1 for a marker that isn't there.
 

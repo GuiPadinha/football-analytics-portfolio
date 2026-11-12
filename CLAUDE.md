@@ -82,6 +82,7 @@ Player Evaluation Framework — two modules on StatsBomb/SkillCorner open data:
 ```
 app.py                   ← Streamlit entry: page frame + top navigation (`streamlit run app.py`)
 views/                   ← one script per page (home, players, compare, leaderboard, how_it_works) + components.py (stylesheet, HTML builders, shot map) + data.py (cached loaders); reads app_data/, never downloads
+LICENSE                  ← MIT, code only; the data keeps its providers' terms (README, "Data and licence")
 requirements.txt         ← app runtime deps only (what Streamlit Cloud installs; no matplotlib)
 requirements-dev.txt     ← + ingestion, truststore, matplotlib/mplsoccer, jupyter, pytest (includes requirements.txt)
 metrics.json             ← headline numbers, single source (`python -m src.metrics`)
@@ -123,6 +124,7 @@ docs/
   ML_TOOLING.md          ← Windows/environment gotchas
   CONTEXT.md             ← owner, learning goals, career context
   PITCH.md               ← pre-demo cheat sheet, refreshed by hand
+  img/                   ← screenshots of the live app that the README embeds (taken with tools/screenshot.py)
   redesign-2026-10/      ← mock-ups of the conclusions-first redesign (Home, Player, Compare): Claude Design source files, exported 2026-11-12, kept for reference
 tools/screenshot.py          ← opens a (live or local) app page in headless Chrome, wakes it if asleep, screenshots it: the after-push check and the keep-alive
 .github/workflows/tests.yml  ← CI: pytest on 3.12 + 3.14, plus an app-runtime-only smoke job (3.14)
