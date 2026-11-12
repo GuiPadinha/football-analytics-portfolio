@@ -1,0 +1,18 @@
+version: 2
+
+sources:
+  - name: app_data
+    description: >
+      Parquet tables the Python pipeline writes to app_data/ (paths are relative to the repo root,
+      where tools/warehouse.py runs dbt from).
+    meta:
+      external_location: "app_data/{name}.parquet"
+    tables:
+      - name: shots_with_xg
+        description: >
+          Every Premier League 2015/16 shot, with its out-of-fold xG (`predicted_xg`) from the
+          logistic model in src/models.py. One row per shot.
+      - name: player_xg_table
+        description: >
+          The same per-player aggregation built by pandas (`models.build_player_xg_table`). Used
+          only by the parity test: the dbt mart must reproduce it exactly.

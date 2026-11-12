@@ -1,0 +1,9 @@
+# In memory on purpose: `dbt build` creates the models and tests them in one session, and nothing
+# is left behind. Point `path` at a file instead to keep the tables for ad-hoc queries.
+fap_warehouse:
+  target: memory
+  outputs:
+    memory:
+      type: duckdb
+      path: ":memory:"
+      threads: 1

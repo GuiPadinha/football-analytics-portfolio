@@ -39,6 +39,19 @@ Windows-specific friction hit while building this project. Written so they don't
   push-triggered run died after 29 s (browser connection closed), while the same pages loaded
   fine minutes later. On a push the workflow now waits 150 s first.
 
+## dbt + DuckDB (2026-11-12)
+
+- **In-memory DuckDB holds the tables for one `dbtRunner` object.** `tools/warehouse.py --show`
+  builds and then queries in two `invoke` calls on the same runner, and the tables are still
+  there. A second `python -m dbt` process would start empty.
+- **`dbt show --inline` refuses `--select`** ("inline: not allowed with argument select").
+- **Generic tests take `arguments:`** under the test name in dbt 1.12 (`accepted_values`, and the
+  two custom ones in `warehouse/macros/generic_tests.sql`). No dbt_utils, so there is no
+  `dbt deps` download.
+- dbt writes `target/` and `logs/` next to the project unless `DBT_TARGET_PATH` and
+  `DBT_LOG_PATH` say otherwise. In the Drive that is hundreds of synced files, so the runner
+  points them at the temp folder.
+
 ## `git status` lists untouched files as modified in the Drive working tree (2026-11-12)
 
 - **Symptom:** ` M` on files nobody edited, with an empty `git diff`. The content is identical:

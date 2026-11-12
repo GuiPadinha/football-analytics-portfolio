@@ -83,3 +83,25 @@ jobs:
 
       - name: Smoke-test every app view
         run: pytest -q tests/test_app_smoke.py tests/test_presentation.py
+
+  warehouse:
+    # The dbt + DuckDB layer over app_data/ (warehouse/): builds every model and runs every data
+    # test, including the parity test that the dbt player table equals the pandas one the app
+    # ships. Its own requirements file, so dbt's pins never touch the app's.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dbt and DuckDB
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-warehouse.txt
+
+      - name: dbt build (models + tests)
+        run: python -m tools.warehouse

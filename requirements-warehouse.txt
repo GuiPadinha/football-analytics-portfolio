@@ -1,0 +1,7 @@
+# The dbt + DuckDB layer (warehouse/), kept apart from the app and the pipeline: neither imports
+# it, and dbt pins many packages of its own.
+#   pip install -r requirements-warehouse.txt
+#   python -m tools.warehouse
+dbt-core==1.12.7
+dbt-duckdb==1.11.1
+duckdb==2.0.0

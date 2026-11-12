@@ -25,8 +25,9 @@ it works), with native charts and no matplotlib in the app. Session detail is in
 **Next session, start here (agreed order):**
 1. **Loose ends of the 2026-11-12 night shift** (PROGRESS.md; all pushed, live checked). Still
    his: GitHub's About box (description, topics, website link; texts given in chat). MIT licence
-   confirmed by him (2026-11-12). Claude's proposal, not decided: a one-session dbt + DuckDB pilot (ROADMAP.md
-   "Wild ideas") before 5b, for the data-engineering applications.
+   confirmed by him (2026-11-12). About box and profile bio done by him (2026-11-12).
+   **dbt + DuckDB pilot done** (2026-11-12, his "segue"): `warehouse/`, see README "The dbt layer".
+   Its next step, if he wants it: raw events through dbt (needs the event cache re-downloaded).
 2. **Phase 5b** (hierarchical finishing). 5a (2026-11-12) showed one season can't separate
    skill from luck: 8 of 164 shooters outside their 90% range, 8.1 expected by luck. 5b pools
    seasons and players; the 16 cached Barcelona seasons are the obvious multi-season test bed.
@@ -85,6 +86,8 @@ views/                   ← one script per page (home, players, compare, leader
 LICENSE                  ← MIT, code only; the data keeps its providers' terms (README, "Data and licence")
 requirements.txt         ← app runtime deps only (what Streamlit Cloud installs; no matplotlib)
 requirements-dev.txt     ← + ingestion, truststore, matplotlib/mplsoccer, jupyter, pytest (includes requirements.txt)
+requirements-warehouse.txt ← dbt-core + dbt-duckdb + duckdb, for warehouse/ only
+warehouse/               ← dbt project on DuckDB over app_data/: stg_shots → player_xg, team_xg; 14 data tests incl. parity with the pandas table
 metrics.json             ← headline numbers, single source (`python -m src.metrics`)
 src/
   config.py          ← named Dataset constants (competition/season ids, has_360, gender)
@@ -126,8 +129,9 @@ docs/
   PITCH.md               ← pre-demo cheat sheet, refreshed by hand
   img/                   ← screenshots of the live app that the README embeds (taken with tools/screenshot.py)
   redesign-2026-10/      ← mock-ups of the conclusions-first redesign (Home, Player, Compare): Claude Design source files, exported 2026-11-12, kept for reference
+tools/warehouse.py           ← dbt build (models + tests) in memory, run from the repo root; target/logs go to the temp folder, not the Drive
 tools/screenshot.py          ← opens a (live or local) app page in headless Chrome, wakes it if asleep, screenshots it: the after-push check and the keep-alive
-.github/workflows/tests.yml  ← CI: pytest on 3.12 + 3.14, plus an app-runtime-only smoke job (3.14)
+.github/workflows/tests.yml  ← CI: pytest on 3.12 + 3.14, an app-runtime-only smoke job (3.14), and the dbt build (3.12)
 .github/workflows/keepalive.yml ← visits the live app every 4 hours so it never sleeps (Streamlit Cloud: 12 hours without traffic)
 .githooks/pre-commit         ← enforces the doc-log rule below
 .streamlit/config.toml       ← app theme

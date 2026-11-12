@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: stg_shots
+    description: One row per Premier League 2015/16 shot with its out-of-fold xG.
+    columns:
+      - name: match_id
+        data_tests: [not_null]
+      - name: player
+        data_tests: [not_null]
+      - name: team
+        data_tests: [not_null]
+      - name: goal
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+      - name: xg
+        data_tests: [not_null, probability]
+      - name: statsbomb_xg
+        description: StatsBomb's own xG, kept for comparison; the app never shows it.
+        data_tests: [probability]
+
+  - name: player_xg
+    description: >
+      One row per player and club: shots, goals, xG and goals − xG, plus the non-penalty split.
+      Reproduces app_data/player_xg_table.parquet exactly (tests/assert_player_xg_matches_pandas.sql).
+    data_tests:
+      - unique_together:
+          arguments:
+            columns: [player, team]
+    columns:
+      - name: shots
+        data_tests: [not_null]
+      - name: xg_per_shot
+        data_tests: [probability]
+
+  - name: team_xg
+    description: One row per club, the sum of its shooters.
+    columns:
+      - name: team
+        data_tests: [unique, not_null]

@@ -436,6 +436,10 @@ Guilherme's decision yet).
   of the infrastructure item above: raw StatsBomb/Wyscout JSON → staging → marts with dbt tests,
   the app reading the marts. 2–4 sessions. *Verdict:* the best career return on this list for
   data-engineering roles, arguably ahead of more ML depth while applications are open.
+  **🟡 Piloted 2026-11-12** (`warehouse/`, `python -m tools.warehouse`, a CI job): staging over
+  `app_data/shots_with_xg.parquet`, marts `player_xg` and `team_xg`, 14 data tests including
+  parity with the pandas player table. Still to do: raw events → staging (the 11 GB event cache
+  is gone, so this starts with a re-download), and the app reading the marts.
 - **LLM scout reports next to the rule-based text.** Precomputed offline (no API key in the app),
   one per player, then checked automatically: every number an LLM sentence quotes must match the
   player's profile. The rule-based text stays the source of truth (PRODUCT_SPEC.md: "never an

@@ -231,6 +231,7 @@ football-analytics-portfolio/
 ├── metrics.json            ← every headline number, generated — docs are tested against it
 ├── requirements.txt        ← what the app needs to run
 ├── requirements-dev.txt    ← + everything to rebuild data/models and run tests
+├── warehouse/              ← dbt + DuckDB models and data tests over app_data/ (python -m tools.warehouse)
 └── docs/                   ← see the map below
 ```
 
@@ -248,7 +249,7 @@ football-analytics-portfolio/
 ## Tech Stack
 
 Python · `statsbombpy` · `kloppy` · pandas · numpy · scikit-learn · `mplsoccer` · matplotlib
-(pipeline charts) · `streamlit` + Altair (the app)
+(pipeline charts) · `streamlit` + Altair (the app) · dbt + DuckDB (`warehouse/`)
 
 ## Running it
 
@@ -301,6 +302,23 @@ outfield players side by side under a rule-based verdict; a **Leaderboard** sort
 **How it works** holds the method, the accuracy numbers and the limits.
 
 ---
+
+## The dbt layer
+
+`warehouse/` is a dbt project on DuckDB over the tables the app reads. `python -m tools.warehouse`
+builds it and runs its 14 data tests in one in-memory session, and CI runs it on every push.
+- **Staging:** `stg_shots`, the 9,908 Premier League 2015/16 shots with their out-of-fold xG.
+- **Marts:** `player_xg` (goals against chances per player, with the non-penalty split) and
+  `team_xg`, a club table the app doesn't have yet.
+- **Tests:** keys unique and not null, every xG a probability, club totals that add back to the
+  shots, and **parity**: `player_xg` must equal, row for row, the pandas table the app ships. A
+  deliberately wrong mart fails it on all 463 rows.
+
+What the club table says: Leicester won the 2015/16 title scoring 67 from chances worth 67.9.
+Their finishing was ordinary; they made the chances. Arsenal scored 8.3 fewer than theirs were
+worth, West Brom 11.1 fewer.
+
+This is a pilot. Next step: build the player table from raw events through dbt as well.
 
 ## What's next
 

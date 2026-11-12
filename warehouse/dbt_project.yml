@@ -1,0 +1,19 @@
+# dbt + DuckDB layer over the app's tables (pilot, 2026-11-12). Run it with
+#   python -m tools.warehouse
+# which builds every model and runs every test in one in-memory DuckDB session (no database file
+# in the synced Drive folder). How and why: tools/warehouse.py and README.md ("The dbt layer").
+name: fap_warehouse
+version: "1.0.0"
+config-version: 2
+profile: fap_warehouse
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+models:
+  fap_warehouse:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
