@@ -124,8 +124,9 @@ docs/
   CONTEXT.md             ← owner, learning goals, career context
   PITCH.md               ← pre-demo cheat sheet, refreshed by hand
   redesign-2026-10/      ← mock-ups of the conclusions-first redesign (Home, Player, Compare): Claude Design source files, exported 2026-11-12, kept for reference
-tools/screenshot.py          ← dev tool: screenshot a rendered (live or local) app page, for the after-push check
+tools/screenshot.py          ← opens a (live or local) app page in headless Chrome, wakes it if asleep, screenshots it: the after-push check and the keep-alive
 .github/workflows/tests.yml  ← CI: pytest on 3.12 + 3.14, plus an app-runtime-only smoke job (3.14)
+.github/workflows/keepalive.yml ← visits the live app every 4 hours so it never sleeps (Streamlit Cloud: 12 hours without traffic)
 .githooks/pre-commit         ← enforces the doc-log rule below
 .streamlit/config.toml       ← app theme
 pytest.ini                   ← testpaths + no .pytest_cache (the working tree is cloud-synced)

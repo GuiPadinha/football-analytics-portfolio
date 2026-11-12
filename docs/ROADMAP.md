@@ -375,10 +375,6 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
     PL 2015/16 has one.
   - **xA / chance-creation model, Module C (PUP)** — both already listed below in this same Phase 9
     section; larger, model-layer undertakings rather than app-layer features.
-- **The live demo sleeps** (found 2026-10-01): Streamlit Community Cloud hibernates an app with no
-  traffic, so the first visitor from a CV/LinkedIn link sees a "wake this app up" screen and waits
-  ~1 min. Options: a scheduled GitHub Action that opens the app in a headless browser (a plain
-  HTTP GET doesn't wake it), or a line in README warning that the first load is slow.
 
 ### Open — models and data
 
@@ -424,6 +420,11 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
 
 ### Done
 
+- **The live demo no longer sleeps** (found 2026-10-01, fixed 2026-11-12): Streamlit Community
+  Cloud hibernates an app after 12 hours without traffic, and a plain HTTP GET doesn't wake it.
+  `.github/workflows/keepalive.yml` opens the app in a headless browser every four hours
+  (`tools/screenshot.py`, which also clicks the wake-up button) and fails loudly if the page
+  doesn't render.
 - **Architecture / dependency doc** — [ARCHITECTURE.md](ARCHITECTURE.md), 2026-07-04.
 - **Market value (Transfermarkt) alongside "players like X"** — `src/market_value.py`, 2026-07-14;
   club check against wrong identities added 2026-10-02. Since 2026-10-03 it also matches on

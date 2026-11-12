@@ -170,8 +170,9 @@ them again.
 - No pass-completion % or duel-success %: those need *attempted*-action features from raw events.
 - Market value: 20 of 1,347 men's players stay blank (no single Transfermarkt profile at their
   club that season), and there is no women's coverage (see DATA.md).
-- The live demo sleeps after inactivity, so the first visit waits about a minute (see ROADMAP.md's
-  Phase 9 list).
+- The live demo sleeps after 12 hours without traffic. A scheduled visit every four hours keeps it
+  awake (`.github/workflows/keepalive.yml`); GitHub pauses that schedule after 60 days without a
+  commit.
 - Home's finding cards are different heights, so their link buttons don't align (cosmetic).
 
 ## Out of scope

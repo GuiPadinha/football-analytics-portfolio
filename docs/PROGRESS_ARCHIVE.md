@@ -1,7 +1,8 @@
 # Progress Log — Historical (S1–S8, Phase 0–3)
 
 Sessions from 2026-06-28 through 2026-10-10 (archived 2026-10-03; the 2026-10-02/03, 10-06 and
-10-10 entries moved here on 2026-10-17). Committed work only.
+10-10 entries moved here on 2026-10-17, the 10-10 evening and 10-17 morning ones on 2026-11-12).
+Committed work only.
 → Recent sessions: [PROGRESS.md](PROGRESS.md)
 
 ---
@@ -2045,3 +2046,36 @@ C Compare · D Home, Leaderboard, How it works · E docs.
   scores are HTML bars in the site's own style.
 - **Open:** the redesigned live app has not been looked at by Guilherme yet (see CLAUDE.md's next
   steps).
+
+---
+
+## 2026-10-10 (evening) — Moved to Google Drive; no code changes
+
+OneDrive ISCTE is being archived into Google Drive, so the working tree now lives in
+`G:\My Drive\Projetos\football-analytics-portfolio` with `.git` kept **outside** Drive
+(`C:\dev\gitdirs\football-analytics-portfolio.git`, because Drive corrupted `.git/index`), the venv
+in `C:\Users\guilh\venvs\football-analytics-portfolio`, and the cache still in `C:\Users\guilh\fap-cache`.
+Details in CLAUDE.md ("Where things live") and ML_TOOLING.md. The 33 git-ignored `data/` files were
+copied and size-verified; a full snapshot of the old working copy is in Drive under
+`OneDrive ISCTE (arquivo)\_snapshots\`. 260 tests pass in the new location. Next steps are unchanged
+(CLAUDE.md "Next session, start here").
+
+---
+
+## 2026-10-17 — Cleanup after the move to Drive; MPG Stats looked at (no code changes)
+
+- **Drive clone checked:** clean, in sync with `origin/main`, and a test commit (`00e8edb`) was
+  made and pushed from it, so the gitdir-outside-Drive setup works (it stays; ML_TOOLING.md says why).
+- **Obsolete copies deleted:** `C:\dev\football-analytics-portfolio` (clean, level with origin at
+  `947ad38`; `data/` identical to the Drive clone, only three older docs differed) and the
+  corrupted-`.git` copy under `OneDrive ISCTE (arquivo)\...\Foot_Analytics_Port`. That one left an
+  undeletable empty `.git`, removed by trashing the folder through the Drive API (ML_TOOLING.md).
+  The snapshot zip stays; the original OneDrive ISCTE folder is read-only and was not touched.
+- **MPG Stats (mpgstats.fr) evaluated as a data source and parked:** fantasy-game ratings, minutes,
+  goals and prices; no shots, no x/y; source and licence not stated. "Real and current" was not
+  verified. Findings and a side lead (clubelo.com for Module C) are in DATA.md.
+- **Housekeeping:** this file passed 150 lines, so the three 2026-10-02/03 entries moved to
+  PROGRESS_ARCHIVE.md, and the "Test commit" line left at the bottom by the test commit is gone.
+- **Verified:** docs-only change; the 8 tests in `tests/test_metrics.py` (the doc-lint) pass. The
+  full suite was not re-run.
+- Next steps unchanged (CLAUDE.md "Next session, start here").

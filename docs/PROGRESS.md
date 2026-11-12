@@ -6,6 +6,27 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-11-12 — Night shift: keep-alive, repo hygiene (Guilherme asleep, full autonomy given)
+
+Guilherme asked for a sweep of the repo after 26 days away, then said "commit and proceed with
+everything": one commit and push per item, with the CI and the live app checked after each.
+- **The live app was asleep.** An anonymous visit got Streamlit's "gone to sleep" page (open in
+  ROADMAP.md since 10-01). Woken by hand, then fixed for good:
+  - `tools/screenshot.py` now wakes a sleeping app (clicks the page's button), runs on Linux, and
+    exits 1 when its marker is missing.
+  - It also reads the app's iframe. On Streamlit Cloud the top document's text is empty, so the
+    10-17 version never found its marker on the live URL (ML_TOOLING.md).
+  - `.github/workflows/keepalive.yml` runs it every four hours. The Cloud's limit is 12 hours
+    without traffic (its docs, read today). Known limit: GitHub pauses scheduled workflows after
+    60 days without a commit.
+- **Repo hygiene:** `.gitattributes` (LF everywhere; notebooks out of GitHub's language bar, which
+  read 87% "Jupyter Notebook"), `pytest.ini` (no `.pytest_cache` in the synced folder), the dev
+  container on Python 3.12, and the redesign's mock-ups kept under `docs/redesign-2026-10/`.
+- **Verified:** 285 tests pass locally before any change; CI green on `cddb68b`; the rewritten
+  tool finds the live Home in 8 s and returns 1 for a marker that isn't there.
+
+---
+
 ## 2026-10-17 (late afternoon) — Loose ends: Home price card, initials, page width, after-push check
 
 Guilherme asked for the two open items, a fix for the side margins ("I don't love the space on
@@ -111,39 +132,6 @@ separate 2017/18 pool", in three stages (A ingestion, B pool plumbing, C pages),
   - Not checked in a real browser.
   - Home's finding cards stay StatsBomb-only.
   - A few Wyscout names stay as initials ("D. Alli").
-
----
-
-## 2026-10-17 — Cleanup after the move to Drive; MPG Stats looked at (no code changes)
-
-- **Drive clone checked:** clean, in sync with `origin/main`, and a test commit (`00e8edb`) was
-  made and pushed from it, so the gitdir-outside-Drive setup works (it stays; ML_TOOLING.md says why).
-- **Obsolete copies deleted:** `C:\dev\football-analytics-portfolio` (clean, level with origin at
-  `947ad38`; `data/` identical to the Drive clone, only three older docs differed) and the
-  corrupted-`.git` copy under `OneDrive ISCTE (arquivo)\...\Foot_Analytics_Port`. That one left an
-  undeletable empty `.git`, removed by trashing the folder through the Drive API (ML_TOOLING.md).
-  The snapshot zip stays; the original OneDrive ISCTE folder is read-only and was not touched.
-- **MPG Stats (mpgstats.fr) evaluated as a data source and parked:** fantasy-game ratings, minutes,
-  goals and prices; no shots, no x/y; source and licence not stated. "Real and current" was not
-  verified. Findings and a side lead (clubelo.com for Module C) are in DATA.md.
-- **Housekeeping:** this file passed 150 lines, so the three 2026-10-02/03 entries moved to
-  PROGRESS_ARCHIVE.md, and the "Test commit" line left at the bottom by the test commit is gone.
-- **Verified:** docs-only change; the 8 tests in `tests/test_metrics.py` (the doc-lint) pass. The
-  full suite was not re-run.
-- Next steps unchanged (CLAUDE.md "Next session, start here").
-
----
-
-## 2026-10-10 (evening) — Moved to Google Drive; no code changes
-
-OneDrive ISCTE is being archived into Google Drive, so the working tree now lives in
-`G:\My Drive\Projetos\football-analytics-portfolio` with `.git` kept **outside** Drive
-(`C:\dev\gitdirs\football-analytics-portfolio.git`, because Drive corrupted `.git/index`), the venv
-in `C:\Users\guilh\venvs\football-analytics-portfolio`, and the cache still in `C:\Users\guilh\fap-cache`.
-Details in CLAUDE.md ("Where things live") and ML_TOOLING.md. The 33 git-ignored `data/` files were
-copied and size-verified; a full snapshot of the old working copy is in Drive under
-`OneDrive ISCTE (arquivo)\_snapshots\`. 260 tests pass in the new location. Next steps are unchanged
-(CLAUDE.md "Next session, start here").
 
 ---
 

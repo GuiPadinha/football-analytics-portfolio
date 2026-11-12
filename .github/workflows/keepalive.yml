@@ -1,0 +1,41 @@
+name: keep-alive
+
+# Streamlit Community Cloud puts an app to sleep after 12 hours without traffic. A sleeping app
+# greets its next visitor, typically someone following the CV or README link, with a "wake it
+# up" button and a wait of a minute or more. A plain HTTP GET doesn't count as a visit and
+# doesn't wake it, so this opens the app in a real (headless) browser every four hours: often
+# enough to survive a delayed or skipped scheduled run. If the app is asleep anyway, the script
+# clicks the wake-up button; if the page never renders, the job fails and GitHub emails the owner.
+#
+# Known limit: GitHub disables scheduled workflows in a public repository after 60 days without
+# a commit (it emails first). Any push, or "Enable workflow" in the Actions tab, restarts it.
+on:
+  schedule:
+    - cron: "17 */4 * * *"   # off the hour, when scheduled runs queue up
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/keepalive.yml", "tools/screenshot.py"]   # a change here tests itself
+
+permissions:
+  contents: read
+
+jobs:
+  visit:
+    runs-on: ubuntu-24.04   # ships Google Chrome
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install the websocket client the script drives Chrome with
+        run: pip install tornado==6.5.10
+
+      - name: Visit the live app (and wake it if it sleeps)
+        run: >
+          python tools/screenshot.py https://gpfootball-analytics-portfolio.streamlit.app/
+          home.png "Scout by data" 1900 1500 180

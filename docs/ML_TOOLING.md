@@ -20,6 +20,36 @@ Windows-specific friction hit while building this project. Written so they don't
   auth: `curl https://api.github.com/repos/GuiPadinha/football-analytics-portfolio/actions/runs?per_page=4`.
 - A server's first page load builds the pool cache, so the first shot of a fresh `streamlit run`
   can time out. Load once, then shoot.
+- **On Streamlit Cloud the app sits in an iframe (found 2026-11-12).** The top document holds only
+  the "Hosted with Streamlit" badge, so `document.body.innerText` is empty there. The tool never
+  found its marker on the live URL: it timed out and took the screenshot anyway, which looked like
+  success. It now reads same-origin iframes too, and exits 1 when the marker is missing. A local
+  `streamlit run` has no such frame.
+- **A sleeping app (12 hours without traffic) shows a "gone to sleep" page** with a wake-up button.
+  The tool clicks it and waits up to 10 minutes for the boot. `.github/workflows/keepalive.yml`
+  runs the tool every four hours so visitors don't meet that page.
+
+## `git status` lists untouched files as modified in the Drive working tree (2026-11-12)
+
+- **Symptom:** ` M` on files nobody edited, with an empty `git diff`. The content is identical:
+  `git hash-object <file>` equals `git rev-parse :<file>`.
+- `git update-index --refresh` answers "needs update" and changes nothing. **`git add <file>`
+  clears it** and stages nothing.
+- Seen on files rewritten in place: five on 2026-10-17, and one of 68 re-created on 2026-11-12.
+  The likely cause is Drive's virtual filesystem reporting different file metadata once it has
+  synced a file. That is a guess, not confirmed.
+- Separate problem, fixed the same day: the working tree mixed CRLF and LF files
+  (`core.autocrlf=true`, no `.gitattributes`), which printed "LF will be replaced by CRLF" on
+  every command. `.gitattributes` now sets `* text=auto eol=lf`.
+
+## A `git push` that hangs: a hidden "Connect to GitHub" window (2026-11-12)
+
+- Git Credential Manager had no stored GitHub credential, so `git push` opened a sign-in window on
+  the desktop and waited. From an agent's shell that looks like a hang with no output.
+- **Diagnose:** `Get-Process git-credential-manager | Select-Object MainWindowTitle` shows
+  "Connect to GitHub". Only Guilherme can sign in.
+- **Test without a prompt:** `GCM_INTERACTIVE=never git push --dry-run origin main` fails fast
+  when no credential is stored.
 
 ## Python / pip not recognized in a fresh terminal
 
