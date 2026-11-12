@@ -24,8 +24,8 @@ everything": one commit and push per item, with the CI and the live app checked 
   container on Python 3.12, and the redesign's mock-ups kept under `docs/redesign-2026-10/`.
 - **GitHub front door:** the README opens with what the app answers and a screenshot of its Home
   (`docs/img/app_home.png`), instead of "Phase 8 (deployed 2026-07-09)". It gained a "Data and
-  licence" section crediting the four sources. The code is now MIT-licensed (`LICENSE`); Claude
-  picked MIT under the autonomy given, so Guilherme should confirm or change it.
+  licence" section crediting the four sources. The code is now MIT-licensed (`LICENSE`): Claude's
+  pick under the autonomy given, confirmed by Guilherme the same day.
 - **Shareable links, and the look at the Wyscout pool** (CLAUDE.md's agreed next step 1):
   - A player's page and a comparison each have their own address, e.g.
     `/players?player=Mohamed Salah&league=Premier League 2017/18` and

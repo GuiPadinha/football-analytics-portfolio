@@ -24,8 +24,8 @@ it works), with native charts and no matplotlib in the app. Session detail is in
 
 **Next session, start here (agreed order):**
 1. **Loose ends of the 2026-11-12 night shift** (PROGRESS.md; all pushed, live checked). Still
-   his: GitHub's About box (description, topics, website link) and confirming the MIT licence
-   (Claude's pick). Claude's proposal, not decided: a one-session dbt + DuckDB pilot (ROADMAP.md
+   his: GitHub's About box (description, topics, website link; texts given in chat). MIT licence
+   confirmed by him (2026-11-12). Claude's proposal, not decided: a one-session dbt + DuckDB pilot (ROADMAP.md
    "Wild ideas") before 5b, for the data-engineering applications.
 2. **Phase 5b** (hierarchical finishing). 5a (2026-11-12) showed one season can't separate
    skill from luck: 8 of 164 shooters outside their 90% range, 8.1 expected by luck. 5b pools
