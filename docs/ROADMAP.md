@@ -416,6 +416,36 @@ PROGRESS.md / PROGRESS_ARCHIVE.md under the date given.
   `app_data/`, would show Guilherme's data-engineering background next to the ML. Not started;
   scope undecided.
 
+### Wild ideas (mapped 2026-11-12, none started)
+
+From the 2026-11-12 sweep. Each says what already exists, the cost, and a verdict (Claude's, not
+Guilherme's decision yet).
+
+- **The app with no server (stlite: Python in the browser, on GitHub Pages).** Pyodide's built-in
+  packages include scikit-learn 1.8, pyarrow 22, pandas 3.0 and altair 6 (pyodide.org, read
+  2026-11-12), and `app_data/` is ~1.5 MB, so nothing rules it out. Unknowns: first-load time
+  (Pyodide plus packages, not measured) and pandas 3 against the pinned 2.3. *Verdict:* less
+  urgent now that the keep-alive exists. Worth a one-evening prototype as a mirror for its two
+  real gains: no 60-day keep-alive limit, and "it runs with no server" as a talking point.
+- **Tournament stories (the Éder card).** The Wyscout set has more than the five leagues: its
+  World Cup 2018 was scored on 2026-10-17 (ML_LEARNING_LOG.md); Euro 2016 is described in the
+  source paper, not checked here. `wyscout.py` already reads a competition by its area name.
+  Seven games at most, so per-90 needs a minutes floor and the text must say "small sample".
+  *Verdict:* cheap, and a Portuguese hook for a demo. A weekend item, after 5b.
+- **A data-engineering layer: dbt + DuckDB feeding `app_data/`.** The local, no-cloud-bill version
+  of the infrastructure item above: raw StatsBomb/Wyscout JSON → staging → marts with dbt tests,
+  the app reading the marts. 2–4 sessions. *Verdict:* the best career return on this list for
+  data-engineering roles, arguably ahead of more ML depth while applications are open.
+- **LLM scout reports next to the rule-based text.** Precomputed offline (no API key in the app),
+  one per player, then checked automatically: every number an LLM sentence quotes must match the
+  player's profile. The rule-based text stays the source of truth (PRODUCT_SPEC.md: "never an
+  LLM"); this is an experiment, a notebook first. *Verdict:* a strong interview story ("which
+  lies less, and how I measured it"); the fact-check is the part worth building.
+- **"Build your own player" (a.k.a. Players like Guilherme).** Sliders for the per-90 stats both
+  providers share, then the nearest archetype and lookalikes from the existing similarity code.
+  No event data exists for a semi-pro, so it must be labelled a toy, the one page where numbers
+  are typed in rather than measured. *Verdict:* small, and the best demo icebreaker here.
+
 ### Done
 
 - **Shareable links** (2026-11-12): a player's page and a comparison each have their own address
