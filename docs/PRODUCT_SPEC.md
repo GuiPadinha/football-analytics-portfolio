@@ -35,8 +35,8 @@ closest man-woman pair), each with its caveat, then a three-step "how it works".
 **Players** — one player as three questions, under a "short version" paragraph (`narrative.py`):
 1. **What kind of player?** "Does more / less than most": top N% / bottom N% bars on
    league-adjusted percentiles, with the raw per-90 rate and season total under each.
-2. **Are the goals real?** Goals, the goals the chances were worth, the gap, an exact-odds sentence
-   and a native shot map. Players outside the Premier League 2015/16 get a plain "no shot data"
+2. **Are the goals real?** Goals, the goals the chances were worth, the gap, what luck alone gives
+   (the 90% range), an exact-odds sentence and a native shot map. Players outside the Premier League 2015/16 get a plain "no shot data"
    panel; keepers get "how good is the shot-stopping?" (save %, saves, shots on target).
 3. **Who plays like this?** Men's and women's top-5 lists in tabs (the player's own game first),
    how-close bars, Transfermarkt value and a "Cheaper" tag, and a note that a similar style is not
@@ -143,8 +143,9 @@ them again.
   Elite/Very good tier words were dropped: "top 4%" says it directly.
 - **The text is rule-based, never an LLM.** Each sentence is a tested rule with named, calibrated
   thresholds (ML_LEARNING_LOG.md, 2026-10-06), so every claim traces to a number on the page.
-- **Finishing is quoted as exact odds** ("about one season in 22"), not a z-score and not a bare
-  "+6.5 goals" verdict: a season of shots barely separates skill from luck.
+- **Finishing is quoted as exact odds** ("about one season in 25"), not a z-score and not a bare
+  "+6.7 goals" verdict: a season of shots barely separates skill from luck. Since 2026-11-12 a
+  tile shows *what luck alone gives* (the 90% goals range), from out-of-fold xG.
 - **Lookalikes are two lists, men's and women's,** one ranking split by game; Compare reads one
   player's rank on the other's list ("5th-closest of 194 women's forwards"), because a distance
   cutoff called Benzema's 5th-closest match "different".

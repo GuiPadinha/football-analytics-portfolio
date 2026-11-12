@@ -2,6 +2,7 @@
 and cross-validation, the gradient boosting comparison, and the per-player xG table.
 """
 
+import numpy as np
 import pandas as pd
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 from sklearn.compose import ColumnTransformer
@@ -9,7 +10,7 @@ from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss, log_loss, roc_auc_score
-from sklearn.model_selection import cross_validate
+from sklearn.model_selection import GroupKFold, cross_validate
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -27,6 +28,8 @@ ASSIST_TYPES = ["None", "Standard Pass", "Cross", "Through Ball", "Cut Back"]
 # Gradient boosting settings from a small tuning sweep against overfitting (shallow trees, low
 # learning rate, row subsampling); shared by the plain and the calibrated GBM.
 GBM_PARAMS = {"n_estimators": 100, "max_depth": 2, "learning_rate": 0.05, "subsample": 0.8}
+# Folds for `out_of_fold_xg`: the usual five, so each shot's model still trains on 80% of the matches.
+OUT_OF_FOLD_SPLITS = 5
 
 
 def build_feature_matrix(shots):
@@ -126,6 +129,39 @@ def train_logistic_regression(X_train, y_train, numeric_features=NUMERIC_FEATURE
     model = build_logistic_pipeline(numeric_features)
     model.fit(X_train, y_train)
     return model
+
+
+def out_of_fold_xg(shots, n_splits=OUT_OF_FOLD_SPLITS, fit=train_logistic_regression):
+    """Each shot's xG from a model that never saw the match it came from (cross-fitting).
+
+    Goals minus xG is a comparison against a baseline. Scored in-sample, a player's own shots
+    helped set that baseline: a logistic regression with an intercept pulls its total predicted
+    goals to the total actual goals of whatever it was trained on. Out-of-fold removes that: the
+    shots are split into `n_splits` folds, and each fold is scored by a model fitted on the others.
+
+    Folds are whole matches (`GroupKFold`), not random shots. A rebound and the shot that caused
+    it share a game state, a goalkeeper and often a shooter; splitting them would let the model
+    train on one and be tested on the other, which is leakage in miniature.
+
+    Measured on the Premier League 2015/16 (2026-11-12): goals minus xG moves by 0.03 goals per
+    player on average and 0.20 at most against the in-sample numbers. Small, because 12 features
+    and 10.8k shots leave little room to memorise, but it is the honest baseline for an interval.
+
+    Args:
+        shots (pandas.DataFrame): engineered shots with `match_id` and the model's feature columns.
+        n_splits (int): number of folds.
+        fit (callable): `(X, y) -> fitted model with predict_proba`; the production logistic by
+            default. A parameter so a test can prove no match is scored by a model that saw it.
+
+    Returns:
+        numpy.ndarray: one probability per shot, in `shots`' row order.
+    """
+    X, y = build_feature_matrix(shots)
+    predicted = np.empty(len(shots))
+    for train_rows, test_rows in GroupKFold(n_splits=n_splits).split(X, y, groups=shots["match_id"]):
+        model = fit(X.iloc[train_rows], y.iloc[train_rows])
+        predicted[test_rows] = model.predict_proba(X.iloc[test_rows])[:, 1]
+    return predicted
 
 
 def get_coefficients(model):

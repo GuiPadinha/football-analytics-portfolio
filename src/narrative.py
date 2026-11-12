@@ -85,6 +85,11 @@ RARE_SEASON = 0.05
 UNUSUAL_SEASON = 0.20
 # Under one expected goal, "about par" is true and says nothing.
 MIN_EXPECTED_GOALS_TO_JUDGE = 1.0
+# The goals range shown next to a player's tally: what an average finisher scores from the same
+# shots in at least 9 seasons out of 10. Its two tails are 1 in 20 each, the same line as
+# RARE_SEASON, so a tally outside the range is exactly one the text calls "likely skill" or "more
+# than bad luck". Change both together.
+LIKELY_RANGE = 0.90
 
 # "Cheaper" means half the value or less: the price sentence says "half", so change both together.
 # Measured on 2026-10-06, 75% of valued men have at least one top-5 lookalike that cheap. Values
@@ -126,12 +131,16 @@ class Finishing:
         expected_goals (float): the shots' summed xG.
         p_at_least (float): chance an average finisher scores `goals` or more from these shots.
         p_at_most (float): chance an average finisher scores `goals` or fewer.
+        likely_low, likely_high (int or None): the goals range an average finisher lands in from
+            these shots in at least `LIKELY_RANGE` of seasons (`likely_goals_range`).
     """
 
     goals: int
     expected_goals: float
     p_at_least: float
     p_at_most: float
+    likely_low: int | None = None
+    likely_high: int | None = None
 
 
 @dataclass(frozen=True)
@@ -248,10 +257,9 @@ def goals_distribution(shot_xg):
     This is the luck an *average* finisher would see on exactly these chances, which a fixed
     "±3 goals" rule ignores: +3 is unremarkable on 120 shots and rare on 20. It's exact rather
     than a normal approximation, which overstates small samples (2026-10-06: Townsend's 4 goals
-    from 1.1 xG read as 2.8 SD; the exact tail is 1 in 44, about 1.9 SD). Two simplifications
-    are left to Phase 5a/5b: the xG is in-sample (the model saw these shots, which moves
-    goals - xG by 0.02 on average), and shots aren't fully independent (a rebound exists only
-    because the first shot missed).
+    from 1.1 xG read as 2.8 SD; the exact tail is 1 in 44, about 1.9 SD). One simplification
+    is left: shots aren't fully independent (a rebound exists only because the first shot
+    missed). The other went with Phase 5a: the app's xG is out-of-fold (`models.out_of_fold_xg`).
 
     Args:
         shot_xg (array-like): one xG per shot.
@@ -265,15 +273,46 @@ def goals_distribution(shot_xg):
     return pmf
 
 
+def likely_goals_range(pmf, coverage=LIKELY_RANGE):
+    """`(low, high)`: the central range of goals holding at least `coverage` of the distribution.
+
+    This is the interval on goals minus xG, said in goals: "+7 on 40 shots" and "+7 on 200 shots"
+    stop reading as the same claim once each sits next to its own range. Equal tails of
+    (1 - coverage) / 2 are cut from each end, so the range is wider than `coverage` rather than
+    narrower: goals are whole numbers, and no range of them holds exactly 90%.
+
+    It carries the luck of the shots only. The shot model's own error (refit on resampled matches,
+    2026-11-12) moves a player's total xG by about 8% of the luck's standard deviation, which
+    would widen the range by under 2% for every regular shooter: left out, on purpose.
+
+    Args:
+        pmf (array-like): P(goals = k) for k = 0..n, from `goals_distribution`.
+        coverage (float): the share of seasons the range must hold.
+
+    Returns:
+        tuple[int, int]
+    """
+    tail = (1 - coverage) / 2
+    cumulative = np.cumsum(pmf)
+    # The smallest k with P(goals <= k) >= tail (resp. 1 - tail). The tiny slack absorbs the
+    # rounding of a sum of a few hundred floats that should reach the line exactly.
+    low = int(np.searchsorted(cumulative, tail - 1e-12))
+    high = int(np.searchsorted(cumulative, 1 - tail - 1e-12))
+    return low, min(high, len(cumulative) - 1)
+
+
 def finishing_from_shots(shot_xg, goals):
     """A `Finishing` from one player's per-shot xG and their goal count."""
     pmf = goals_distribution(shot_xg)
     goals = int(goals)
+    low, high = likely_goals_range(pmf)
     return Finishing(
         goals=goals,
         expected_goals=float(np.sum(shot_xg)),
         p_at_least=float(pmf[goals:].sum()),
         p_at_most=float(pmf[: goals + 1].sum()),
+        likely_low=low,
+        likely_high=high,
     )
 
 

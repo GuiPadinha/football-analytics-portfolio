@@ -29,6 +29,7 @@ from src.narrative import (
     describe_style,
     finishing_from_shots,
     goals_distribution,
+    likely_goals_range,
     top_share,
 )
 from src.similarity import GK_PER90_FEATURE_COLUMNS, PER90_FEATURE_COLUMNS, PairCloseness
@@ -318,3 +319,32 @@ def test_price_gap_phrases(value_a, value_b, band, expected):
 def test_price_gap_needs_both_values():
     assert describe_price_gap(_side("A", 20e6), _side("B"), "different") is None
     assert "costs" not in build_compare_verdict(_side("A", 20e6), _side("B"), _closeness())
+
+
+def test_likely_goals_range_cuts_a_twentieth_or_less_from_each_end():
+    assert likely_goals_range(goals_distribution([0.5])) == (0, 1)
+    assert likely_goals_range(goals_distribution([1.0, 1.0])) == (2, 2)  # certain goals: no luck at all
+    rng = np.random.default_rng(0)
+    for n in (5, 40, 150):
+        pmf = goals_distribution(rng.uniform(0.02, 0.6, n))
+        low, high = likely_goals_range(pmf)
+        assert pmf[:low].sum() <= 0.05 and pmf[high + 1:].sum() <= 0.05
+        assert pmf[low: high + 1].sum() >= 0.90
+        # Tight: one goal narrower on either side would leave more than a twentieth out.
+        assert pmf[: low + 1].sum() > 0.05 and pmf[high:].sum() > 0.05
+
+
+def test_the_range_widens_with_the_shots_but_less_than_the_goals():
+    few, many = goals_distribution([0.1] * 40), goals_distribution([0.1] * 200)
+    (few_low, few_high), (many_low, many_high) = likely_goals_range(few), likely_goals_range(many)
+    assert many_high - many_low > few_high - few_low  # more shots, more room for luck in goals...
+    assert (many_high - many_low) / 20 < (few_high - few_low) / 4  # ...but less per expected goal
+
+
+def test_finishing_carries_its_range_and_a_tally_outside_it_is_one_the_text_calls_rare():
+    shot_xg = [0.15] * 60  # 9.0 xG
+    for goals in range(0, 21):
+        finishing = finishing_from_shots(shot_xg, goals)
+        outside = not finishing.likely_low <= goals <= finishing.likely_high
+        text = describe_finishing(finishing)
+        assert outside == ("likely skill" in text or "more than bad luck" in text), (goals, text)

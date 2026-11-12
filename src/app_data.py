@@ -30,9 +30,11 @@ every build either way; they aren't cached.) Only ever resolved for the four men
 `market_value.MARKET_VALUE_AS_OF_DATES` — see that module's docstring for why.
 
 Usage:
-    python -m src.app_data
+    python -m src.app_data             # everything, minutes, needs the network
+    python -m src.app_data --xg-only   # the xG tables and the Home findings only, seconds
 """
 
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -40,7 +42,7 @@ import pandas as pd
 from src import config
 from src.findings import write_findings
 from src.market_value import INITIAL_AND_SURNAME, build_market_value_table
-from src.models import build_feature_matrix, build_player_xg_table, train_logistic_regression
+from src.models import build_player_xg_table, out_of_fold_xg
 from src.pipeline import build_shot_tables
 from src.similarity import (
     CLUSTER_K,
@@ -185,6 +187,47 @@ def spell_out_initials(per90_features, market_value):
     return result
 
 
+def build_xg_tables(shots_train):
+    """The app's two xG tables: the per-player ranking and the Premier League shots with their xG.
+
+    Every shot is scored out-of-fold (`models.out_of_fold_xg`): by a model fitted on the other
+    four fifths of the training matches, never on its own. The pages compare a player's goals
+    with these numbers and put a luck range around them, so the baseline must not have been set
+    by the very shots it judges (Phase 5a, 2026-11-12; in-sample before).
+
+    The tables stay scoped to config.SIMILARITY_SET (PL 2015/16) alone, not the wider
+    config.SIMILARITY_SETS pool: Module A's TRAIN_SETS were never expanded (see
+    ML_LEARNING_LOG.md), so the other similarity competitions' players have no xG, and the pages
+    say so.
+
+    Args:
+        shots_train (pandas.DataFrame): `pipeline.build_shot_tables`' training shots.
+
+    Returns:
+        tuple[pandas.DataFrame, pandas.DataFrame]: `(xg_table, flagship_shots)`.
+    """
+    is_flagship = (shots_train["competition_id"] == config.SIMILARITY_SET.comp_id).values
+    flagship_shots = shots_train[is_flagship].reset_index(drop=True)
+    flagship_shots["predicted_xg"] = out_of_fold_xg(shots_train)[is_flagship]
+    xg_table = build_player_xg_table(flagship_shots, flagship_shots["predicted_xg"].values).reset_index()
+    return xg_table, flagship_shots
+
+
+def rebuild_xg_artifacts(app_data_dir=APP_DATA_DIR):
+    """Rewrite only the xG tables and the Home findings that quote them, in seconds.
+
+    For a change to the shot model or to how shots are scored: the player table and the market
+    values don't depend on either, and rebuilding them takes minutes and a network pull.
+    """
+    app_data_dir = Path(app_data_dir)
+    shots_train, _ = build_shot_tables()
+    xg_table, flagship_shots = build_xg_tables(shots_train)
+    xg_table.to_parquet(app_data_dir / "player_xg_table.parquet")
+    flagship_shots.to_parquet(app_data_dir / "shots_with_xg.parquet")
+    write_findings(app_data_dir)
+    return {"xg_table_rows": len(xg_table), "shots": len(flagship_shots), "findings": 4}
+
+
 def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
     """Write the artifacts the app reads: per-90 features, player xG table, shots+xG, market value,
     and the Home page's findings.
@@ -222,20 +265,7 @@ def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
     per90_features = pd.concat(clustered, ignore_index=True)
     per90_features["provider"] = per90_features["competition"].map(config.PROVIDER_BY_COMPETITION)
 
-    X_train, y_train = build_feature_matrix(shots_train)
-    model = train_logistic_regression(X_train, y_train)
-
-    # The xG ranking + shot map deliberately stay scoped to config.SIMILARITY_SET (PL 2015/16)
-    # alone, not the wider config.SIMILARITY_SETS pool above — Module A's TRAIN_SETS were never
-    # expanded (see ML_LEARNING_LOG.md), so there is no xG model output for the other similarity
-    # competitions' players. app.py's "no logged shots" fallback covers that gap in the UI.
-    flagship_shots = shots_train[
-        shots_train["competition_id"] == config.SIMILARITY_SET.comp_id
-    ].reset_index(drop=True)
-    X_flagship, _ = build_feature_matrix(flagship_shots)
-    flagship_shots["predicted_xg"] = model.predict_proba(X_flagship)[:, 1]
-
-    xg_table = build_player_xg_table(flagship_shots, flagship_shots["predicted_xg"].values).reset_index()
+    xg_table, flagship_shots = build_xg_tables(shots_train)
 
     per90_features.to_parquet(app_data_dir / "player_per90.parquet")
     xg_table.to_parquet(app_data_dir / "player_xg_table.parquet")
@@ -261,7 +291,11 @@ def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
 
 
 def main():
-    """CLI entry point: `python -m src.app_data`."""
+    """CLI entry point: `python -m src.app_data`, or `--xg-only` for just the xG tables."""
+    if "--xg-only" in sys.argv[1:]:
+        result = rebuild_xg_artifacts()
+        print(f"Wrote app_data/: {result['xg_table_rows']} xG-table rows, {result['shots']} shots, the Home findings.")
+        return
     result = build_app_artifacts()
     print(
         f"Wrote app_data/: {result['players']} players, "

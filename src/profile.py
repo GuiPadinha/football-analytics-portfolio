@@ -27,6 +27,8 @@ from src.narrative import (
     describe_saves,
     finishing_from_shots,
     format_rate,
+    goals_distribution,
+    likely_goals_range,
     top_share,
 )
 from src.presentation import STAT_LABELS, feature_columns_for, format_market_value, popular_name
@@ -39,6 +41,9 @@ WEAK_PERCENTILE = 0.25
 MAX_STRENGTHS = 5
 MAX_WEAKNESSES = 4
 LOOKALIKES_PER_GAME = 5
+# `finishing_census` counts players whose chances were worth two goals or more: below that a
+# season's range is "0 to 3 goals" and being outside it says little.
+CENSUS_MIN_EXPECTED_GOALS = 2.0
 
 
 @dataclass(frozen=True)
@@ -262,6 +267,36 @@ def find_linked_player(pool, player, team=None, league=None):
         return None
     best = hits.sort_values("minutes_played", ascending=False, kind="stable").iloc[0]
     return best["player"], best["team"]
+
+
+def finishing_census(pool, min_expected_goals=CENSUS_MIN_EXPECTED_GOALS):
+    """How many shooters scored outside their luck range, and how many luck alone would put there.
+
+    The check on the whole idea of reading skill off one season: if finishing skill were large,
+    far more players would land outside the range an *average* finisher is given than chance
+    predicts. On the Premier League 2015/16 the two numbers are the same (8 and 8.0 of 164).
+
+    Args:
+        pool (Pool)
+        min_expected_goals (float): only players whose chances were worth at least this much.
+
+    Returns:
+        dict: `players` (int), `outside` (int: goals below `likely_low` or above `likely_high`),
+            `expected_outside` (float: the sum of each player's chance of landing outside).
+    """
+    players = outside = 0
+    expected_outside = 0.0
+    for _, shots in pool.shots.groupby(["player", "team"]):
+        shot_xg = shots["predicted_xg"].values
+        if shot_xg.sum() < min_expected_goals:
+            continue
+        pmf = goals_distribution(shot_xg)
+        low, high = likely_goals_range(pmf)
+        goals = int(shots["is_goal"].sum())
+        players += 1
+        outside += not low <= goals <= high
+        expected_outside += 1 - float(pmf[low: high + 1].sum())
+    return {"players": players, "outside": outside, "expected_outside": expected_outside}
 
 
 def _stat_bars(row, percentiles, group_size):

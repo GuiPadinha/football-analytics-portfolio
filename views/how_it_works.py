@@ -10,6 +10,7 @@ import streamlit as st
 
 from src.narrative import CHEAPER_RATIO, RARE_SEASON, STANDOUT_PERCENTILE, UNUSUAL_SEASON
 from src.presentation import feature_columns_for
+from src.profile import finishing_census
 from src.similarity import compute_silhouette_scores
 from views import components as ui
 from views.data import load_metrics, load_pool
@@ -28,6 +29,15 @@ statsbomb = per90[per90["provider"] == "statsbomb"]
 wyscout = per90[per90["provider"] == "wyscout"]
 outfield_passes = statsbomb[statsbomb["position_group"] != "Goalkeeper"].groupby("gender")["progressive_passes_p90"].median()
 PROVIDER_LABELS = {"statsbomb": "StatsBomb", "wyscout": "Wyscout 2017/18"}
+
+
+@st.cache_data
+def census_of_finishing():
+    """`profile.finishing_census` over the Premier League shots: computed once per server."""
+    return finishing_census(pool)
+
+
+census = census_of_finishing()
 
 
 @st.cache_data
@@ -90,13 +100,18 @@ st.html(ui.section_title("2 · Are the goals real: exact odds"))
 prose(
     "Every shot gets a chance of scoring from where and how it was taken (distance, angle, body part, how it was created, "
     "game state). If every shot went in with exactly that chance, a player's goals would follow a known distribution, so the "
-    "page can say how often an *average finisher* scores as many from the same chances: \"about one season in 22\". That is "
+    "page can say how often an *average finisher* scores as many from the same chances: \"about one season in 25\". That is "
     "exact, not a normal approximation, which overstates small samples. "
     f"The wording changes at 1 in {1 / UNUSUAL_SEASON:.0f} (\"luck alone could explain it\") and 1 in {1 / RARE_SEASON:.0f} "
     "(\"likely skill\"). Even a 1-in-20 season is expected a few times among ~160 shooters, so the page never says \"proven\". "
-    "Two simplifications remain: the chances were fitted on the same shots, which moves goals minus xG by about 0.02 goals per "
-    "player, and shots are not independent (a rebound exists only because the first shot missed). "
-    "A planned upgrade adds proper uncertainty ranges."
+    "Next to the tally the page shows *what luck alone gives*: the goals an average finisher lands between in 9 seasons out of "
+    "10, from the same shots. A tally outside that range is one the text calls likely skill, or more than bad luck.\n\n"
+    f"That range is the honest limit of one season. Of the {census['players']} players whose chances were worth two goals or "
+    f"more, {census['outside']} scored outside their range, and luck alone would put about {census['expected_outside']:.0f} "
+    "there. One season can't tell the finishers from the lucky; it takes several.\n\n"
+    "Each shot is rated by a model that never saw the match it came from, so a player's own shots don't set the bar he is "
+    "judged against. The shot model's own error is left out of the range: it is about a twelfth of the luck. "
+    "One simplification remains: shots are not independent (a rebound exists only because the first shot missed)."
 )
 
 st.html(ui.section_title("3 · Who plays like this: lookalikes"))

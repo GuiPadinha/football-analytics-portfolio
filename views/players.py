@@ -132,8 +132,12 @@ elif profile.finishing is not None:
             ("Goals", f"{finishing.goals}", False),
             ("Goals the chances were worth", f"{finishing.expected_goals:.1f}", False),
             ("Above expectation", f"{gap:+.1f}".replace("-", "−"), gap > 0),
+            ("What luck alone gives", f"{finishing.likely_low}–{finishing.likely_high}", False),
         ])
         + f'<p style="font-size:18px;line-height:1.55;margin:18px 0 0;max-width:900px">{escape(profile.output_text)}</p>'
+        + f'<p class="fap-muted" style="margin-top:8px;max-width:900px">What luck alone gives: an average finisher scores '
+          f"between {finishing.likely_low} and {finishing.likely_high} from these same shots in 9 seasons out of 10. Each shot "
+          "is rated by a model that never saw the match it came from.</p>"
     )
     st.altair_chart(ui.shot_map(profile.shots), width="stretch")
     st.caption("Every shot, sized by its chance of scoring. Orange circles are goals.")

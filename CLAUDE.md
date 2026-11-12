@@ -4,11 +4,11 @@ Project source of truth. Read this first every session, then load linked docs on
 
 ---
 
-## Current Status (updated 2026-10-17)
+## Current Status (updated 2026-11-12)
 
 **Where we are:** Phases 0–4 ✅ (4c closed 2026-10-01 with two women's tournaments; **4e**, new data
 sources + 360, started 2026-10-03 with the women's leagues), Phase 8 ✅ ([live app](https://gpfootball-analytics-portfolio.streamlit.app)),
-Phase 9 ongoing. Phases 5–7, the ML-depth work, are not started. The 2026-09-30 repo health check
+Phase 9 ongoing. Phase 5a ✅ (2026-11-12: out-of-fold xG, a luck range per player); 5b–7 not started. The 2026-09-30 repo health check
 and all its fixes were completed on 2026-10-02: HTTPS via the OS trust store, Python 3.12, the
 `app.py` restructure + app tests, and the repo/doc declutter. A deep audit (10-02/03) then found
 and fixed three data bugs the live app was showing (goalkeeper save %, Ligue 1 clubs split under two
@@ -23,13 +23,12 @@ it works), with native charts and no matplotlib in the app. Session detail is in
 [docs/PROGRESS.md](docs/PROGRESS.md); phases and backlog are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 **Next session, start here (agreed order):**
-1. **A look at the live 2017/18 Wyscout pool** (a Wyscout player page, a cross-provider Compare).
-   Anonymous access was fixed on 2026-10-17: the app had been moved to another subdomain, and
-   Guilherme restored `gpfootball-analytics-portfolio`. Known small gaps are in PRODUCT_SPEC.md: no
-   deep links, 159 long registered names, uneven Home card heights.
-2. **Phase 5a** (uncertainty on goals−xG). Score each shot with a model that never saw it
-   (out-of-fold xG): see ML_LEARNING_LOG.md's 2026-10-03 entry. The page's exact-odds sentence
-   already assumes an average finisher; 5a replaces its in-sample xG.
+1. **Review the 2026-11-12 night shift** (PROGRESS.md): keep-alive, shareable links, Phase 5a,
+   MIT licence (Claude's pick). The 5a commit is local, not pushed, until Guilherme has looked.
+   Still his: repo description, topics and website link in GitHub's About box.
+2. **Phase 5b** (hierarchical finishing). 5a (2026-11-12) showed one season can't separate
+   skill from luck: 8 of 164 shooters outside their 90% range, 8.1 expected by luck. 5b pools
+   seasons and players; the 16 cached Barcelona seasons are the obvious multi-season test bed.
 3. More men's data, if wanted, is Understat now (Phase 4e list). Wyscout's shots were tested for
    xG on 10-17 and rejected (ML_LEARNING_LOG.md); MPG Stats was parked (DATA.md).
 

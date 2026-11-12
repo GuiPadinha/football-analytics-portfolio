@@ -71,6 +71,7 @@ def test_a_star_with_xg_shows_finishing_and_a_native_shot_map():
     at = _open_player(MAHREZ)
     assert "Are the goals real?" in _html(at)
     assert len(at.get("vega_lite_chart")) == 1
+    assert "What luck alone gives" in _html(at) and "between 8 and 17" in _html(at)
 
 
 def test_an_outfield_player_without_xg_says_why_instead_of_faking_it():

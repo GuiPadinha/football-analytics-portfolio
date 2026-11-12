@@ -254,12 +254,14 @@ a sparse `git clone` of `statsbomb/open-data` read from local JSON, which avoids
 altogether. (The cache location is configurable since 2026-10-02: `FAP_CACHE_DIR`, used here to
 keep 8.5 GB out of OneDrive.)
 
-## Phase 5 — xG uncertainty + hierarchical finishing model  ⬜
+## Phase 5 — xG uncertainty + hierarchical finishing model  🟡 5a done
 
 The ML-depth differentiator: small → big, no new data, directly serves the valuation lens.
 
-- **5a — Uncertainty on goals−xG:** bootstrap / analytic interval so "+8 on 40 shots" and "+8 on
-  200 shots" stop reading as the same claim. The single best small addition.
+- **5a — Uncertainty on goals−xG** ✅ 2026-11-12. Out-of-fold xG (5 folds grouped by match) and
+  an exact 90% luck range per player, on the player page and in How it works. Census: 8 of 164
+  shooters land outside their range, luck predicts 8.1. Model uncertainty measured and left out
+  (~8% of the luck). Numbers in ML_LEARNING_LOG.md.
 - **5b — Hierarchical / empirical-Bayes finishing:** per-player finishing random effect over
   baseline xG, shrunk toward zero — the statistically correct goals−xG. Achieves PUP's "real or
   luck" with clean stats. (May add `statsmodels`.)

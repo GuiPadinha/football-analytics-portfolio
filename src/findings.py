@@ -170,7 +170,8 @@ def write_findings(app_data_dir=APP_DATA_DIR):
     pool = prepare_pool(read("player_per90"), read("shots_with_xg"), read("market_value"))
     findings = build_findings(pool, read("player_xg_table"))
     (app_data_dir / "findings.json").write_text(
-        json.dumps([asdict(f) for f in findings], ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        json.dumps([asdict(f) for f in findings], ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8", newline="\n",  # LF on Windows too, as .gitattributes stores it
     )
     return findings
 

@@ -304,9 +304,10 @@ outfield players side by side under a rule-based verdict; a **Leaderboard** sort
 
 ## What's next
 
-- **Uncertainty on goals − xG** (next up): an interval around each player's over/under-performance,
-  so "+8 on 40 shots" and "+8 on 200 shots" stop reading as the same claim; then a hierarchical
-  finishing model.
+- **A hierarchical finishing model** (next up). Every player page now shows the goals range luck
+  alone gives an average finisher on the same shots, from out-of-fold xG. Its verdict on one
+  season: 8 of 164 Premier League shooters land outside their range, about what luck alone
+  predicts. Telling finishers from the lucky needs several seasons pooled.
 - **More data:** StatsBomb 360 freeze frames (defender positions at the moment of each shot) for a
   360-context xG model; more full-season women's leagues; current-season men's shots via Understat.
 - **Module C — Performance Under Pressure:** scoped in `docs/MODULES.md`, not started.

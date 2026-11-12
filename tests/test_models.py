@@ -12,6 +12,7 @@ from src.models import (
     build_player_xg_table,
     cross_validate_model,
     evaluate_by_competition,
+    out_of_fold_xg,
     get_coefficients,
     train_baseline_classifier,
     train_logistic_regression,
@@ -216,3 +217,30 @@ def test_logistic_accepts_numeric_feature_subset():
     geometry = ["distance_to_goal", "angle_to_goal"]
     model = train_logistic_regression(X[geometry], y, numeric_features=geometry)
     assert model.predict_proba(X[geometry]).shape == (len(X), 2)
+
+
+def test_out_of_fold_xg_never_scores_a_match_with_a_model_that_saw_it():
+    shots = _synthetic_shots(n=120, seed=3).assign(match_id=np.repeat(np.arange(12), 10))
+    match_of_row = shots["match_id"]
+
+    class Spy:
+        """Stands in for a fitted model and checks every scoring call against its training rows."""
+
+        def __init__(self, X, y):
+            self.train_matches = set(match_of_row.loc[X.index])
+
+        def predict_proba(self, X):
+            assert not self.train_matches & set(match_of_row.loc[X.index]), "a match was scored by a model that saw it"
+            return np.tile([0.5, 0.5], (len(X), 1))
+
+    xg = out_of_fold_xg(shots, n_splits=4, fit=Spy)
+    assert xg.shape == (len(shots),) and np.allclose(xg, 0.5)  # every shot scored exactly once
+
+
+def test_out_of_fold_xg_is_a_real_probability_per_shot_in_row_order():
+    shots = _synthetic_shots(n=200, seed=4).assign(match_id=np.repeat(np.arange(20), 10))
+    xg = out_of_fold_xg(shots)
+    assert ((xg > 0) & (xg < 1)).all()
+    # Closer shots score more in the synthetic data, and the held-out predictions still see it.
+    near, far = shots["distance_to_goal"] < 8, shots["distance_to_goal"] > 25
+    assert xg[near.values].mean() > xg[far.values].mean()

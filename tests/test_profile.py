@@ -18,6 +18,7 @@ from src.profile import (
     build_player_profile,
     find_linked_player,
     find_player,
+    finishing_census,
     link_to_player,
     market_value_of,
     prepare_pool,
@@ -95,6 +96,15 @@ def test_unknown_players_are_refused(pool):
     with pytest.raises(ValueError):
         build_player_profile(pool, "Nobody", "Nowhere")
     assert market_value_of(pool, "Nobody", "Nowhere") == (None, None, None)
+
+
+def test_finishing_ranges_and_the_census_of_one_season(pool):
+    finishing = build_player_profile(pool, *MAHREZ).finishing
+    assert (finishing.likely_low, finishing.likely_high) == (8, 17)  # 17 goals: inside, just
+    census = finishing_census(pool)
+    assert census["players"] == 164
+    # The headline of Phase 5a: as many shooters land outside their range as luck alone puts there.
+    assert census["outside"] == 8 and census["expected_outside"] == pytest.approx(8.1, abs=0.1)
 
 
 def test_a_link_reads_as_words_and_leads_back_to_the_same_player(pool):

@@ -10,6 +10,27 @@ Companion to CLAUDE.md. Running record of ML/stats concepts exercised, gotchas h
 
 Key gotchas and lessons — most recent first:
 
+- **Phase 5a: one season can't tell finishers from the lucky, and the interval says so by itself**
+  (2026-11-12). The app's xG is now out-of-fold (`models.out_of_fold_xg`: 5 folds grouped by
+  match, so a rebound and the shot before it never sit on opposite sides). Each player's tally
+  gets a 90% luck range from the same Poisson-binomial the odds use
+  (`narrative.likely_goals_range`): Agüero's 24 sit outside 12–23, Mahrez's 17 at the top of 8–17.
+  - **Out-of-fold vs. in-sample:** goals − xG moves by 0.03 goals per player on average, 0.20 at
+    most. Agüero +6.5 → +6.7, his odds 1 in 22 → 1 in 25. Total xG 1,099.0 → 1,097.4 against
+    1,098 goals: in-sample, the intercept had pulled the total onto the goals.
+  - **The census:** of 164 players with 2+ xG, **8 scored outside their range, and luck alone
+    predicts 8.1.** The spread of (goals − xG) ÷ SD is 0.96, where pure luck gives 1.0. If
+    finishing skill were big, both numbers would be well above luck's. That is the case for 5b:
+    a hierarchical model pools seasons and players, which a single season can't.
+  - **Model uncertainty left out, measured:** refitting the logistic on 200 match-resampled sets
+    moves a player's total xG by ~8% of his luck SD (median; 18% at most). In quadrature that
+    widens the range by under 2% for every regular shooter. The big error bar is the shots, not
+    the model, so the range carries only the luck. Same fact as the 10-17 learning curve from
+    the other side: the logistic is saturated, so its coefficients barely move.
+  - **Discrete ranges cover more than 90%.** Goals are whole numbers, so no range holds exactly
+    90%. Cutting at most 1 in 20 from each tail gives 95.1% average coverage. The cut equals the
+    "likely skill" line (RARE_SEASON), so outside the range and the strong wording always agree
+    (a test pins it).
 - **5× more shots from another provider made xG slightly worse: the model is feature-limited, and
   provider shift beats volume** (2026-10-17, Phase 4e, probe outside the repo). The Wyscout public
   set's five 2017/18 leagues give 43,040 in-game shots (StatsBomb train: 10,824). Wyscout has no

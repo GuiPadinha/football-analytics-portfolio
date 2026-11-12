@@ -26,7 +26,7 @@ colleague pitch (date TBD — today or the next day at the time of writing).
 The app now leads with conclusions, so the demo does too (redesigned 2026-10-10).
 
 1. **Home** — scale (14 leagues, 3,794 players) and the four finding cards: the biggest finishing
-   gap in the Premier League (Agüero +6.5 goals, with the "about one season in 22" odds), the
+   gap in the Premier League (Agüero +6.7 goals, with the "about one season in 25" odds), the
    buy-low mirror image (Jerome), the price card (94% of €10M+ men have a half-price lookalike,
    and the caveat that style is not level) and the closest man-woman pair.
 2. **Open a well-known player** (search "Mahrez") — read the *short version* aloud: style, whether
