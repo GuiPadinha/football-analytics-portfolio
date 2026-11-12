@@ -128,6 +128,9 @@ tools/screenshot.py          ← dev tool: screenshot a rendered (live or local)
 .github/workflows/tests.yml  ← CI: pytest on 3.12 + 3.14, plus an app-runtime-only smoke job (3.14)
 .githooks/pre-commit         ← enforces the doc-log rule below
 .streamlit/config.toml       ← app theme
+pytest.ini                   ← testpaths + no .pytest_cache (the working tree is cloud-synced)
+.gitattributes               ← LF everywhere; notebooks excluded from GitHub's language bar
+.devcontainer/               ← Codespaces config (Python 3.12), added by Streamlit Cloud's "edit in Codespaces"
 ```
 
 ---

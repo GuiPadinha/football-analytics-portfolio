@@ -1,0 +1,11 @@
+# Line endings: LF in the repository and in every working tree, whatever a machine's
+# core.autocrlf says. Without this, a Windows clone held a mix of CRLF and LF files and
+# `git status` listed untouched files as modified (2026-11-12).
+* text=auto eol=lf
+*.png binary
+*.parquet binary
+
+# GitHub's language bar counts bytes, and the three notebooks (3.3 MB with their outputs) made
+# the repository read as 87% "Jupyter Notebook". They are the narrated teaching surface; the
+# code is the Python under src/, views/ and tests/.
+*.ipynb linguist-documentation
