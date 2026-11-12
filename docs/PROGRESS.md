@@ -58,7 +58,8 @@ everything": one commit and push per item, with the CI and the live app checked 
 - **After the push (Guilherme's OK, same day):** CI green, but the live player page had died with
   an `ImportError`. The Cloud ran the new pages against the old `views/data.py` it held in
   memory. Guilherme rebooted the app; Mahrez's page then showed "What luck alone gives". The
-  keep-alive now opens that page too, since Home alone hid the break (ML_TOOLING.md).
+  keep-alive now opens that page too, since Home alone hid the break (ML_TOOLING.md). Its first
+  run, set off by that push, hit the redeploy and failed; on a push it now waits 150 s.
 - **Verified:** 285 tests pass locally before any change; CI green on `cddb68b`; the rewritten
   tool finds the live Home in 8 s and returns 1 for a marker that isn't there.
 

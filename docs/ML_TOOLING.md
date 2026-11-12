@@ -35,6 +35,9 @@ Windows-specific friction hit while building this project. Written so they don't
   (needs Guilherme's sign-in). The keep-alive now also opens Mahrez's page, so this fails a run
   instead of hiding behind a working Home. After a push that changes a module the pages import,
   check a player page, not only Home.
+- **A push redeploys the app, and a visit during the restart fails.** The keep-alive's own
+  push-triggered run died after 29 s (browser connection closed), while the same pages loaded
+  fine minutes later. On a push the workflow now waits 150 s first.
 
 ## `git status` lists untouched files as modified in the Drive working tree (2026-11-12)
 

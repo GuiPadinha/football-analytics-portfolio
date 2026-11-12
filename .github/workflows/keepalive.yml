@@ -35,6 +35,12 @@ jobs:
       - name: Install the websocket client the script drives Chrome with
         run: pip install tornado==6.5.10
 
+      # A push also redeploys the app on Streamlit Cloud. Visiting during the restart killed the
+      # browser connection after 29 s and failed the run (2026-11-12), so wait it out first.
+      - name: Let a push's redeploy finish
+        if: github.event_name == 'push'
+        run: sleep 150
+
       - name: Visit the live app (and wake it if it sleeps)
         run: >
           python tools/screenshot.py https://gpfootball-analytics-portfolio.streamlit.app/
