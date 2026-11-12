@@ -28,6 +28,13 @@ Windows-specific friction hit while building this project. Written so they don't
 - **A sleeping app (12 hours without traffic) shows a "gone to sleep" page** with a wake-up button.
   The tool clicks it and waits up to 10 minutes for the boot. `.github/workflows/keepalive.yml`
   runs the tool every four hours so visitors don't meet that page.
+- **A deploy can leave the live app half-updated (2026-11-12).** After the links and Phase 5a
+  pushes, the player page died with an `ImportError` on `from views.data import (... read_link)`
+  while Home still rendered. The code at `HEAD` was fine. The Cloud had rerun the new page files
+  against the `views/data.py` it already held in memory. **Fix: Manage app → ⋮ → Reboot app**
+  (needs Guilherme's sign-in). The keep-alive now also opens Mahrez's page, so this fails a run
+  instead of hiding behind a working Home. After a push that changes a module the pages import,
+  check a player page, not only Home.
 
 ## `git status` lists untouched files as modified in the Drive working tree (2026-11-12)
 

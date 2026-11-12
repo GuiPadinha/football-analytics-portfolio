@@ -23,9 +23,10 @@ it works), with native charts and no matplotlib in the app. Session detail is in
 [docs/PROGRESS.md](docs/PROGRESS.md); phases and backlog are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 **Next session, start here (agreed order):**
-1. **Review the 2026-11-12 night shift** (PROGRESS.md): keep-alive, shareable links, Phase 5a,
-   MIT licence (Claude's pick). The 5a commit is local, not pushed, until Guilherme has looked.
-   Still his: repo description, topics and website link in GitHub's About box.
+1. **Loose ends of the 2026-11-12 night shift** (PROGRESS.md; all pushed, live checked). Still
+   his: GitHub's About box (description, topics, website link) and confirming the MIT licence
+   (Claude's pick). Claude's proposal, not decided: a one-session dbt + DuckDB pilot (ROADMAP.md
+   "Wild ideas") before 5b, for the data-engineering applications.
 2. **Phase 5b** (hierarchical finishing). 5a (2026-11-12) showed one season can't separate
    skill from luck: 8 of 164 shooters outside their 90% range, 8.1 expected by luck. 5b pools
    seasons and players; the 16 cached Barcelona seasons are the obvious multi-season test bed.

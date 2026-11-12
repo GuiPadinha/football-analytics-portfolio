@@ -39,3 +39,13 @@ jobs:
         run: >
           python tools/screenshot.py https://gpfootball-analytics-portfolio.streamlit.app/
           home.png "Scout by data" 1900 1500 180
+
+      # The Home alone is not proof the app works. On a deploy, Streamlit Cloud reran the new page
+      # files against modules it still held from the previous version (views/data.py), and the
+      # player page broke with an ImportError while Home still rendered (2026-11-12, fixed by a
+      # reboot). A player page goes through views/data.py, src/profile.py and src/narrative.py.
+      - name: Open a player page (fails if a deploy left the app half-updated)
+        run: >
+          python tools/screenshot.py
+          "https://gpfootball-analytics-portfolio.streamlit.app/players?player=Riyad%20Mahrez"
+          player.png "What luck alone gives" 1900 1500 120

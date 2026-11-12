@@ -55,6 +55,10 @@ everything": one commit and push per item, with the CI and the live app checked 
   LLM reports with a fact-check, build-your-own-player, each with a cost and a verdict.
 - **The 11 GB cache is gone:** `C:\Users\guilh\fap-cache` doesn't exist, and why is not known. The
   `--xg-only` rebuild didn't need it (it reads `data/`); a full rebuild will download it again.
+- **After the push (Guilherme's OK, same day):** CI green, but the live player page had died with
+  an `ImportError`. The Cloud ran the new pages against the old `views/data.py` it held in
+  memory. Guilherme rebooted the app; Mahrez's page then showed "What luck alone gives". The
+  keep-alive now opens that page too, since Home alone hid the break (ML_TOOLING.md).
 - **Verified:** 285 tests pass locally before any change; CI green on `cddb68b`; the rewritten
   tool finds the live Home in 8 s and returns 1 for a marker that isn't there.
 
