@@ -123,6 +123,7 @@ docs/
   ML_TOOLING.md          ← Windows/environment gotchas
   CONTEXT.md             ← owner, learning goals, career context
   PITCH.md               ← pre-demo cheat sheet, refreshed by hand
+  redesign-2026-10/      ← mock-ups of the conclusions-first redesign (Home, Player, Compare): Claude Design source files, exported 2026-11-12, kept for reference
 tools/screenshot.py          ← dev tool: screenshot a rendered (live or local) app page, for the after-push check
 .github/workflows/tests.yml  ← CI: pytest on 3.12 + 3.14, plus an app-runtime-only smoke job (3.14)
 .githooks/pre-commit         ← enforces the doc-log rule below

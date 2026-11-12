@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Player page: Riyad Mahrez</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0F1419}
+a{color:#F5A15C}a:hover{color:#FFC48F}
+</style>
+</helmet>
+<div style="background: #0F1419; color: #E8ECEF; font-family: 'IBM Plex Sans', sans-serif; min-height: 2300px">
+
+  <header style="border-bottom: 1px solid #243039">
+    <nav style="max-width: 1200px; margin: 0 auto; padding: 14px 32px; display: flex; flex-wrap: wrap; align-items: center; gap: 28px" aria-label="Main">
+      <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #E8ECEF">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="#F28C38" stroke-width="2" aria-hidden="true"><circle cx="13" cy="13" r="11"></circle><path d="M13 2v22M2 13h22"></path></svg>
+        <span style="font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 0.5px">PLAYER EVALUATION</span>
+      </a>
+      <div style="display: flex; flex-wrap: wrap; gap: 22px; font-size: 15px">
+        <a href="Main.dc.html" style="color: #9AA7B2; text-decoration: none">Home</a>
+        <a href="Player.dc.html" style="color: #E8ECEF; text-decoration: none; border-bottom: 2px solid #F28C38; padding-bottom: 4px">Players</a>
+        <a href="Compare.dc.html" style="color: #9AA7B2; text-decoration: none">Compare</a>
+        <a href="#" style="color: #9AA7B2; text-decoration: none">Leaderboard</a>
+        <a href="#" style="color: #9AA7B2; text-decoration: none">How it works</a>
+      </div>
+      <div style="margin-left: auto; display: flex; flex: 0 1 300px">
+        <label for="nav-search" style="position: absolute; left: -9999px">Search a player</label>
+        <input id="nav-search" type="search" placeholder="Search a player" style="width: 100%; min-height: 44px; padding: 0 14px; font-size: 15px; font-family: 'IBM Plex Sans', sans-serif; background: #182028; color: #E8ECEF; border: 1px solid #33424E; border-radius: 8px">
+      </div>
+    </nav>
+  </header>
+
+  <main style="max-width: 1200px; margin: 0 auto; padding: 0 32px 80px">
+
+    <section style="padding: 48px 0 32px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px">
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <p style="margin: 0; font-size: 14px; letter-spacing: 2px; color: #F5A15C; font-weight: 600">MIDFIELDER · LEICESTER CITY</p>
+        <h1 style="margin: 0; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 80px; line-height: 0.95">Riyad Mahrez</h1>
+        <p style="margin: 0; color: #9AA7B2; font-size: 16px">Premier League 2015/16 · 3,103 minutes · 17 goals · 10 assists</p>
+      </div>
+      <div style="background: #182028; border: 1px solid #243039; border-radius: 14px; padding: 18px 24px; min-width: 220px">
+        <div style="color: #9AA7B2; font-size: 13px; letter-spacing: 1px">MARKET VALUE</div>
+        <div style="font-family: 'Barlow Condensed', sans-serif; font-size: 48px; font-weight: 700; line-height: 1.1">€20.0M</div>
+        <div style="color: #8494A0; font-size: 13px">Transfermarkt, 2015/16 season</div>
+      </div>
+    </section>
+
+    <section aria-label="Summary" style="background: #1C2630; border: 1px solid #2C3A45; border-radius: 16px; padding: 30px 32px; display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-size: 14px; letter-spacing: 2px; color: #F5A15C; font-weight: 600">THE SHORT VERSION</h2>
+      <p style="margin: 0; font-size: 24px; line-height: 1.45; font-weight: 500; max-width: 1000px">A dribbler and scorer: top 1% of midfielders in the six leagues for both. His 17 goals beat his chances by 4.5, so expect fewer next season. Similar profiles cost far less: <a href="#" style="text-decoration: none">Ousmane Dembélé</a> and <a href="#" style="text-decoration: none">José Luis Morales</a>, both valued at €3M.</p>
+    </section>
+
+    <section style="padding-top: 56px; display: flex; flex-direction: column; gap: 22px">
+      <div>
+        <h2 style="margin: 0; font-family: 'Barlow Condensed', sans-serif; font-size: 40px; font-weight: 700">1 · What kind of player is he?</h2>
+        <p style="margin: 6px 0 0; color: #9AA7B2; font-size: 15px">Per 90 minutes, against every midfielder in the six leagues</p>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px">
+        <div style="background: #182028; border: 1px solid #243039; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+          <h3 style="margin: 0; font-size: 18px; font-weight: 600">Does more than most</h3>
+          <sc-for list="{{strengths}}" as="s" hint-placeholder-count="5">
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 15px">
+                <span>{{s.label}}</span>
+                <span style="color: #F5A15C; font-weight: 600">{{s.rank}}</span>
+              </div>
+              <div style="height: 10px; background: #243039; border-radius: 5px; overflow: hidden">
+                <div style="height: 10px; background: #F28C38; border-radius: 5px; width: {{s.width}}"></div>
+              </div>
+              <div style="color: #8494A0; font-size: 13px">{{s.detail}}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background: #182028; border: 1px solid #243039; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+          <h3 style="margin: 0; font-size: 18px; font-weight: 600">Does less than most</h3>
+          <sc-for list="{{weaknesses}}" as="s" hint-placeholder-count="4">
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 15px">
+                <span>{{s.label}}</span>
+                <span style="color: #7DB5EE; font-weight: 600">{{s.rank}}</span>
+              </div>
+              <div style="height: 10px; background: #243039; border-radius: 5px; overflow: hidden">
+                <div style="height: 10px; background: #4C9BE8; border-radius: 5px; width: {{s.width}}"></div>
+              </div>
+              <div style="color: #8494A0; font-size: 13px">{{s.detail}}</div>
+            </div>
+          </sc-for>
+          <p style="margin: 4px 0 0; color: #9AA7B2; font-size: 14px; line-height: 1.5">Not weaknesses as such: a winger who carries the ball is rarely the one who tackles or plays it long.</p>
+        </div>
+      </div>
+    </section>
+
+    <section style="padding-top: 56px; display: flex; flex-direction: column; gap: 22px">
+      <div>
+        <h2 style="margin: 0; font-family: 'Barlow Condensed', sans-serif; font-size: 40px; font-weight: 700">2 · Are his goals real?</h2>
+        <p style="margin: 6px 0 0; color: #9AA7B2; font-size: 15px">87 shots, each rated by its chance of going in</p>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #243039; border: 1px solid #243039; border-radius: 14px; overflow: hidden">
+        <div style="background: #182028; padding: 22px 26px">
+          <div style="color: #9AA7B2; font-size: 14px">Goals</div>
+          <div style="font-family: 'Barlow Condensed', sans-serif; font-size: 56px; font-weight: 700">17</div>
+        </div>
+        <div style="background: #182028; padding: 22px 26px">
+          <div style="color: #9AA7B2; font-size: 14px">Goals his chances were worth</div>
+          <div style="font-family: 'Barlow Condensed', sans-serif; font-size: 56px; font-weight: 700">12.5</div>
+        </div>
+        <div style="background: #182028; padding: 22px 26px">
+          <div style="color: #9AA7B2; font-size: 14px">Above expectation</div>
+          <div style="font-family: 'Barlow Condensed', sans-serif; font-size: 56px; font-weight: 700; color: #F28C38">+4.5</div>
+        </div>
+      </div>
+      <p style="margin: 0; font-size: 18px; line-height: 1.55; max-width: 900px">The third-biggest gap in the Premier League (players with 40+ shots). Some of it is skill, but gaps this size usually shrink the next season. Judge him on the 12–13 goals his chances were worth, not the 17.</p>
+      <div style="height: 380px; border: 1px dashed #33424E; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #8494A0; font-size: 15px; text-align: center; padding: 20px">[Shot map: every shot on a half pitch, sized by its chance of scoring, goals highlighted]</div>
+    </section>
+
+    <section style="padding-top: 56px; display: flex; flex-direction: column; gap: 22px">
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px">
+        <div>
+          <h2 style="margin: 0; font-family: 'Barlow Condensed', sans-serif; font-size: 40px; font-weight: 700">3 · Who plays like him?</h2>
+          <p style="margin: 6px 0 0; color: #9AA7B2; font-size: 15px">Closest statistical matches, each judged against his own league</p>
+        </div>
+        <div role="group" aria-label="Which game" style="display: flex; background: #182028; border: 1px solid #33424E; border-radius: 10px; padding: 4px; gap: 4px">
+          <button type="button" onClick="{{showMen}}" style="{{menTabStyle}}">Men's game</button>
+          <button type="button" onClick="{{showWomen}}" style="{{womenTabStyle}}">Women's game</button>
+        </div>
+      </div>
+
+      <div style="background: #182028; border: 1px solid #243039; border-radius: 14px; overflow-x: auto">
+        <div style="min-width: 760px">
+          <div style="display: grid; grid-template-columns: 44px minmax(0, 2.2fr) minmax(0, 1.6fr) minmax(0, 1.6fr) 120px; gap: 16px; padding: 14px 24px; color: #8494A0; font-size: 13px; letter-spacing: 1px; border-bottom: 1px solid #243039">
+            <span>#</span><span>PLAYER</span><span>LEAGUE</span><span>HOW CLOSE</span><span style="text-align: right">VALUE</span>
+          </div>
+          <sc-for list="{{rows}}" as="r" hint-placeholder-count="5">
+            <div style="display: grid; grid-template-columns: 44px minmax(0, 2.2fr) minmax(0, 1.6fr) minmax(0, 1.6fr) 120px; gap: 16px; padding: 16px 24px; align-items: center; border-bottom: 1px solid #1F2A33">
+              <span style="font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 700; color: #8494A0">{{r.rank}}</span>
+              <div style="display: flex; flex-direction: column; gap: 2px">
+                <a href="#" style="color: #E8ECEF; font-weight: 600; font-size: 16px; text-decoration: none">{{r.name}}</a>
+                <span style="color: #9AA7B2; font-size: 14px">{{r.team}}</span>
+              </div>
+              <span style="color: #B9C4CC; font-size: 14px">{{r.league}}</span>
+              <div style="height: 10px; background: #243039; border-radius: 5px; overflow: hidden">
+                <div style="height: 10px; border-radius: 5px; background: {{r.barColor}}; width: {{r.closeness}}"></div>
+              </div>
+              <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+                <span style="font-weight: 600; font-size: 16px">{{r.value}}</span>
+                <sc-if value="{{r.cheaper}}" hint-placeholder-val="{{false}}">
+                  <span style="background: #3A2A18; color: #FFC48F; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px">Cheaper</span>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <p style="margin: 0; color: #8494A0; font-size: 14px">{{listNote}}</p>
+    </section>
+
+    <section style="padding-top: 56px; display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: space-between">
+      <a href="Compare.dc.html" style="min-height: 48px; padding: 0 22px; display: inline-flex; align-items: center; background: #F28C38; color: #1A1206; font-weight: 600; border-radius: 10px; text-decoration: none">Compare Mahrez with another player</a>
+      <a href="#" style="font-weight: 600; text-decoration: none">How these numbers are made →</a>
+    </section>
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":2300}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { game: 'men' };
+  }
+  renderVals() {
+    const men = [
+      { name: 'Sadio Mané', team: 'Southampton', league: 'Premier League', dist: 2.02, value: '€20.0M', cheaper: false },
+      { name: 'José Luis Morales', team: 'Levante', league: 'La Liga', dist: 2.64, value: '€3.0M', cheaper: true },
+      { name: 'Ousmane Dembélé', team: 'Rennes', league: 'Ligue 1', dist: 2.96, value: '€3.0M', cheaper: true },
+      { name: 'Paul Pogba', team: 'Juventus', league: 'Serie A', dist: 2.99, value: '€55.0M', cheaper: false },
+      { name: 'Giacomo Bonaventura', team: 'AC Milan', league: 'Serie A', dist: 3.09, value: '€21.0M', cheaper: false },
+    ];
+    const women = [
+      { name: 'Jessica Park', team: 'Manchester City', league: "Women's Super League", dist: 3.31, value: 'n/a', cheaper: false },
+      { name: 'Sharon Beck', team: 'Köln', league: 'Frauen-Bundesliga', dist: 3.84, value: 'n/a', cheaper: false },
+      { name: 'Jill Roord', team: 'Manchester City', league: "Women's Super League", dist: 4.07, value: 'n/a', cheaper: false },
+      { name: 'Karólína Lea Vilhjálmsdóttir', team: 'Bayer Leverkusen', league: 'Frauen-Bundesliga', dist: 4.14, value: 'n/a', cheaper: false },
+      { name: 'Laura Freigang', team: 'Eintracht Frankfurt', league: 'Frauen-Bundesliga', dist: 4.28, value: 'n/a', cheaper: false },
+    ];
+    const isMen = this.state.game === 'men';
+    const closest = 2.02;
+    const rows = (isMen ? men : women).map((r, i) => ({
+      ...r,
+      rank: i + 1,
+      closeness: Math.round((closest / r.dist) * 100) + '%',
+      barColor: isMen ? '#F28C38' : '#4C9BE8',
+    }));
+    const bar = (pct) => pct + '%';
+    const active = 'min-height: 40px; padding: 0 18px; border: 0; border-radius: 7px; background: #F28C38; color: #1A1206; font-weight: 600; font-size: 15px; font-family: inherit; cursor: pointer';
+    const idle = 'min-height: 40px; padding: 0 18px; border: 0; border-radius: 7px; background: transparent; color: #B9C4CC; font-weight: 500; font-size: 15px; font-family: inherit; cursor: pointer';
+    return {
+      rows,
+      menTabStyle: isMen ? active : idle,
+      womenTabStyle: isMen ? idle : active,
+      showMen: () => this.setState({ game: 'men' }),
+      showWomen: () => this.setState({ game: 'women' }),
+      listNote: isMen
+        ? 'Bar length: how close each profile is, relative to the closest match. Valuations: Transfermarkt, 2015/16.'
+        : "Same scale as the men's list: these profiles are further away. No market values exist for women's football in this data.",
+      strengths: [
+        { label: 'Dribbles completed', rank: 'Top 1%', width: bar(99), detail: '3.6 per 90 · 123 this season' },
+        { label: 'Non-penalty goals', rank: 'Top 1%', width: bar(99), detail: '0.38 per 90 · 13 this season' },
+        { label: 'Assists', rank: 'Top 4%', width: bar(96), detail: '0.29 per 90 · 10 this season' },
+        { label: 'Shots', rank: 'Top 6%', width: bar(94), detail: '2.5 per 90 · 87 this season' },
+        { label: 'Key passes (excl. assists)', rank: 'Top 15%', width: bar(85), detail: '1.6 per 90 · 56 this season' },
+      ],
+      weaknesses: [
+        { label: 'Progressive passes', rank: 'Bottom 17%', width: bar(17), detail: '5.8 per 90' },
+        { label: 'Tackles', rank: 'Bottom 20%', width: bar(20), detail: '1.5 per 90' },
+        { label: 'Clearances', rank: 'Bottom 24%', width: bar(24), detail: '0.7 per 90' },
+        { label: 'Pressures', rank: 'Bottom 28%', width: bar(28), detail: '17.0 per 90' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>
