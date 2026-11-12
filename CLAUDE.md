@@ -28,6 +28,8 @@ it works), with native charts and no matplotlib in the app. Session detail is in
    confirmed by him (2026-11-12). About box and profile bio done by him (2026-11-12).
    **dbt + DuckDB pilot done** (2026-11-12, his "segue"): `warehouse/`, see README "The dbt layer".
    Its next step, if he wants it: raw events through dbt (needs the event cache re-downloaded).
+   **Build a player done** (2026-11-12): a toy page with sliders. The session closed there; the
+   rest (raw-event dbt, 5b, the other wild ideas) waits for another session (his call).
 2. **Phase 5b** (hierarchical finishing). 5a (2026-11-12) showed one season can't separate
    skill from luck: 8 of 164 shooters outside their 90% range, 8.1 expected by luck. 5b pools
    seasons and players; the 16 cached Barcelona seasons are the obvious multi-season test bed.
@@ -82,7 +84,7 @@ Player Evaluation Framework — two modules on StatsBomb/SkillCorner open data:
 
 ```
 app.py                   ← Streamlit entry: page frame + top navigation (`streamlit run app.py`)
-views/                   ← one script per page (home, players, compare, leaderboard, how_it_works) + components.py (stylesheet, HTML builders, shot map) + data.py (cached loaders); reads app_data/, never downloads
+views/                   ← one script per page (home, players, compare, leaderboard, build, how_it_works) + components.py (stylesheet, HTML builders, shot map) + data.py (cached loaders); reads app_data/, never downloads
 LICENSE                  ← MIT, code only; the data keeps its providers' terms (README, "Data and licence")
 requirements.txt         ← app runtime deps only (what Streamlit Cloud installs; no matplotlib)
 requirements-dev.txt     ← + ingestion, truststore, matplotlib/mplsoccer, jupyter, pytest (includes requirements.txt)

@@ -44,6 +44,10 @@ LOOKALIKES_PER_GAME = 5
 # `finishing_census` counts players whose chances were worth two goals or more: below that a
 # season's range is "0 to 3 goals" and being outside it says little.
 CENSUS_MIN_EXPECTED_GOALS = 2.0
+# `build_your_own`: the groups it covers, and the (player, team) key of the built player, which
+# no real row has.
+BUILD_GROUPS = ("Defender", "Midfielder", "Forward")
+BUILT_PLAYER = ("Your player", "Built from sliders")
 
 
 @dataclass(frozen=True)
@@ -327,6 +331,47 @@ def _lookalikes(pool, row, value_eur):
     provider. A Wyscout player's women's list is empty: the women's leagues are StatsBomb's."""
     _, _, lz_columns = feature_columns_for(row["position_group"], row["provider"])
     ranked = rank_matches(peers_of(pool, row), lz_columns, row["player"], row["team"])
+    return _match_lists(pool, ranked, value_eur)
+
+
+def build_your_own(pool, position_group, standing, exclude=None):
+    """Lookalikes for a player who exists only as slider settings: the "Build a player" toy.
+
+    Each stat is set as a standing within the league (0-1, the same percentile the player pages
+    show). It becomes the league-adjusted value at that quantile of the position group, so the
+    built player sits in the space the real lookalikes are measured in, and is then ranked by the
+    same `rank_matches`. StatsBomb's outfield pool only: it holds both games on the same stats.
+
+    Args:
+        pool (Pool): from `prepare_pool`.
+        position_group (str): "Defender", "Midfielder" or "Forward".
+        standing (dict[str, float]): `_p90` stat -> 0-1. Missing stats sit at the median.
+        exclude (tuple or None): a `(player, team)` left off the lists: the player the sliders
+            were started from, who would otherwise top them at distance ~0 and squash every
+            other closeness bar to nothing.
+
+    Returns:
+        dict[str, list[Match]]: the men's and women's top lists, keyed "male" / "female".
+
+    Raises:
+        ValueError: for "Goalkeeper" or an unknown group (keepers have their own stats).
+    """
+    if position_group not in BUILD_GROUPS:
+        raise ValueError(f"Build a player covers outfield groups only, not {position_group!r}")
+    _, per90_columns, lz_columns = feature_columns_for(position_group, "statsbomb")
+    peers = pool.per90[(pool.per90["provider"] == "statsbomb") & (pool.per90["position_group"] == position_group)]
+    built = {lz: float(peers[lz].quantile(min(max(standing.get(stat, 0.5), 0.0), 1.0)))
+             for stat, lz in zip(per90_columns, lz_columns)}
+    you = pd.DataFrame([{"player": BUILT_PLAYER[0], "team": BUILT_PLAYER[1], "position_group": position_group, **built}])
+    ranked = rank_matches(pd.concat([peers, you], ignore_index=True), lz_columns, *BUILT_PLAYER)
+    if exclude:
+        ranked = ranked[~((ranked["player"] == exclude[0]) & (ranked["team"] == exclude[1]))]
+    return _match_lists(pool, ranked, value_eur=None)
+
+
+def _match_lists(pool, ranked, value_eur):
+    """The men's and women's top lists from one full ranking (`rank_matches`), with prices and
+    a closeness relative to the nearest match of either game."""
     lists = {gender: ranked[ranked["gender"] == gender].head(LOOKALIKES_PER_GAME) for gender in ("male", "female")}
     nearest = min(part["distance"].iloc[0] for part in lists.values() if len(part))
     result = {}

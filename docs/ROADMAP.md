@@ -449,6 +449,9 @@ Guilherme's decision yet).
   providers share, then the nearest archetype and lookalikes from the existing similarity code.
   No event data exists for a semi-pro, so it must be labelled a toy, the one page where numbers
   are typed in rather than measured. *Verdict:* small, and the best demo icebreaker here.
+  **✅ Done 2026-11-12:** the "Build a player" page (`views/build.py`, `profile.build_your_own`).
+  StatsBomb's outfield pool. You can start from a real player and change a stat; that player is
+  then left off the lists.
 
 ### Done
 

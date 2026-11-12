@@ -298,7 +298,8 @@ conclusions: a **Home** page of computed findings, and a **player page** that an
 questions in plain words — what kind of player, are the goals real (exact odds against the shot
 model's chances), and who plays like this, in separate men's and women's lists next to their
 **Transfermarkt value** (men's competitions only, ~98% match rate). **Compare** puts any two
-outfield players side by side under a rule-based verdict; a **Leaderboard** sorts everyone; and
+outfield players side by side under a rule-based verdict; a **Leaderboard** sorts everyone;
+**Build a player** is a labelled toy (set a style with sliders, see who plays like it); and
 **How it works** holds the method, the accuracy numbers and the limits.
 
 ---

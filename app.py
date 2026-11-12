@@ -21,6 +21,7 @@ st.navigation(
         st.Page("views/players.py", title="Players"),
         st.Page("views/compare.py", title="Compare"),
         st.Page("views/leaderboard.py", title="Leaderboard"),
+        st.Page("views/build.py", title="Build a player"),
         st.Page("views/how_it_works.py", title="How it works"),
     ],
     position="top",

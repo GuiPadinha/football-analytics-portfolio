@@ -7,6 +7,7 @@ checks that pages render and say the right things, not what they look like: visu
 real browser (docs/ML_TOOLING.md).
 """
 
+from html import unescape
 from pathlib import Path
 
 import pandas as pd
@@ -17,7 +18,7 @@ streamlit_testing = pytest.importorskip("streamlit.testing.v1")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 APP_PATH = str(REPO_ROOT / "app.py")
 TIMEOUT_SECS = 180
-PAGES = ["home", "players", "compare", "leaderboard", "how_it_works"]
+PAGES = ["home", "players", "compare", "leaderboard", "build", "how_it_works"]
 
 MAHREZ = ("Riyad Mahrez", "Leicester City")
 MESSI = ("Lionel Andrés Messi Cuccittini", "Barcelona")  # outside the xG set: no shots
@@ -232,6 +233,29 @@ def test_how_it_works_quotes_the_numbers_from_metrics_json():
     text = " ".join(m.value for m in at.markdown)
     assert str(metrics["xg"]["logistic"]["test_roc_auc"]) in text
     assert f"{metrics['xg']['n_train_shots']:,} shots" in text
+
+
+def test_build_a_player_says_it_is_a_toy_and_answers_for_both_games():
+    at = _run("build")
+    _assert_clean(at)
+    html = unescape(_html(at))
+    assert "A toy" in html and "in the men's game" in html and "in the women's" in html
+    assert len(at.slider) == 11
+
+
+def test_build_a_player_follows_the_sliders_and_a_starting_player():
+    at = _run("build")
+    before = _html(at)
+    at.slider(key="build_shots_p90").set_value(100).run()
+    at.slider(key="build_non_penalty_goals_p90").set_value(100).run()
+    _assert_clean(at)
+    assert _html(at) != before                              # a sharper shooter, other neighbours
+    label = next(label for label in at.selectbox(key="build_start").options if label.startswith("Riyad Mahrez ("))
+    at.selectbox(key="build_start").set_value(label).run()
+    _assert_clean(at)
+    assert at.session_state["build_group"] == "Midfielder"
+    assert at.slider(key="build_dribbles_completed_p90").value >= 90
+    assert "Riyad Mahrez's own season is left off" in unescape(_html(at))
 
 
 def test_every_search_label_is_unique():

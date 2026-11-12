@@ -12,10 +12,12 @@ import pytest
 
 from src.findings import FINDINGS_PATH, MIN_SHOTS_FOR_FINISHING_CARD
 from src.profile import (
+    BUILT_PLAYER,
     LOOKALIKES_PER_GAME,
     build_compare_view,
     build_leaderboard,
     build_player_profile,
+    build_your_own,
     find_linked_player,
     find_player,
     finishing_census,
@@ -129,6 +131,21 @@ def test_a_hand_typed_link_is_forgiven_its_case_accents_and_gaps(pool):
     assert find_linked_player(pool, "Sergio Leonel Agüero del Castillo", team="Real Madrid") == aguero_2015_16
     assert find_linked_player(pool, "Nobody At All") is None
     assert find_linked_player(pool, None) is None and find_linked_player(pool, "") is None
+
+
+def test_build_a_player_set_to_a_real_ones_standing_finds_him(pool):
+    row = find_player(pool, *MAHREZ)
+    standing = pool.percentiles[("statsbomb", row["position_group"])].loc[row.name].to_dict()
+    lists = build_your_own(pool, row["position_group"], standing)
+    assert lists["male"][0].name == "Riyad Mahrez"          # the toy measures in the real space
+    # Left off, his place goes to the players his own page lists.
+    without = {m.name for m in build_your_own(pool, row["position_group"], standing, exclude=MAHREZ)["male"]}
+    own_page = {m.name for m in build_player_profile(pool, *MAHREZ).lookalikes["male"]}
+    assert "Riyad Mahrez" not in without and len(without & own_page) >= 3
+    for matches in build_your_own(pool, "Forward", {}).values():
+        assert len(matches) == LOOKALIKES_PER_GAME and BUILT_PLAYER[0] not in {m.player for m in matches}
+    with pytest.raises(ValueError, match="outfield"):
+        build_your_own(pool, "Goalkeeper", {})
 
 
 def test_compare_view_has_a_verdict_and_one_row_per_stat(pool):

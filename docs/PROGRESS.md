@@ -6,6 +6,30 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-11-12 (late afternoon) — Build a player (the "Players like Guilherme" toy)
+
+Guilherme picked it after the dbt pilot, and asked to close the session after it.
+- **`profile.build_your_own`:**
+  - Each slider is a standing within the league (0-1). It becomes the group's league-adjusted
+    rate at that quantile, so the built player sits in the lookalikes' own space.
+  - It is ranked by the same `rank_matches`. `_lookalikes` and the new function share
+    `_match_lists`.
+  - Outfield, StatsBomb only. Keepers are refused.
+- **`views/build.py`, "Build a player"** in the top navigation:
+  - Its first line says it is a toy.
+  - A position, 11 sliders, an optional real player to start from, and Reset.
+  - A "Your player" summary and the two games' lists. A name opens that player's page.
+- **The toy is measured in the real space:** Mahrez rebuilt from his own percentiles finds Mahrez
+  first, at distance ~0. Left off, his place goes to Mané and Morales, his own page's lookalikes.
+  This is also why a starting player is excluded: at distance ~0 he squashed every other
+  closeness bar to nothing.
+- All sliders at 50 (the median forward) gives Floyd Ayité (Bastia) and Makenzy Doniak (San
+  Diego Wave).
+- **Verified:** the full suite passes (new tests in test_profile.py and test_app_smoke.py, the page
+  in the every-page smoke). A real-browser screenshot of the page, local.
+
+---
+
 ## 2026-11-12 (afternoon) — dbt + DuckDB pilot
 
 Guilherme said "segue" to the proposed pilot (the career pick from ROADMAP's wild ideas).
@@ -85,41 +109,6 @@ everything": one commit and push per item, with the CI and the live app checked 
   run, set off by that push, hit the redeploy and failed; on a push it now waits 150 s.
 - **Verified:** 285 tests pass locally before any change; CI green on `cddb68b`; the rewritten
   tool finds the live Home in 8 s and returns 1 for a marker that isn't there.
-
----
-
-## 2026-10-17 (late afternoon) — Loose ends: Home price card, initials, page width, after-push check
-
-Guilherme asked for the two open items, a fix for the side margins ("I don't love the space on
-both sides of every page"), and an always-on look at the live app after each push.
-- **Home price card covers both men's seasons.** Each man is matched within his own provider,
-  as on his page. It now reads 91% (681 of 749). The other three cards can't include Wyscout:
-  finishing needs xG (PL 2015/16 only), and the cross-game card needs women's leagues.
-- **No Wyscout name is left as an initial.**
-  - `find_name_candidates` also matches "D. Alli" by surname and initial. The surname is
-    compared without spaces, because "N'Diaye" normalises to "n diaye" against Transfermarkt's
-    "Ndiaye", but it must be whole words.
-  - `app_data.spell_out_initials` then shows the confirmed Transfermarkt name: Dele Alli (who
-    also gained his €80M value), Badou Ndiaye, Keita Baldé.
-  - 2,911 values. StatsBomb's matches are unchanged.
-- **Wider pages.** Content max width went from 1200 px to 1520 px. Running text is capped at
-  ~980 px so it stays readable, and mobile padding shrinks. The page title no longer hides under
-  the top bar ("HOW IT WORKS" was cut off, live too).
-- **After-push check:**
-  - CI comes from GitHub's REST API (no `gh`). The live app is checked with the new
-    `tools/screenshot.py` (ML_TOOLING.md has why the plain approach failed).
-  - Anonymous visits to the live URL got "You do not have access… / 404" while Guilherme, signed
-    in, saw the app. He was asked to check in an incognito window, since it may be private.
-  - `86cf569`: CI green.
-  - **Resolved:** the app had been running on another subdomain
-    (`football-analytics-portfolio-tzl6…streamlit.app`), so every documented link hit "You do not
-    have access… / does not exist". Guilherme restored `gpfootball-analytics-portfolio`, and an
-    anonymous rendered visit now shows the latest deploy (3,794 players, 2,911 values, wider
-    pages).
-- **Verified:**
-  - 285 tests pass.
-  - Real-browser screenshots at 1900 px (local): Home, and How it works before and after.
-  - The rebuild's xG tables were float-noise only and restored from git.
 
 ---
 

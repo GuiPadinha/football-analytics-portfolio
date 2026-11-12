@@ -24,7 +24,7 @@ ROC-AUC) lives on the How it works page, next to what each number means.
 
 ## Views
 
-Top navigation (`st.navigation(position="top")`): Home, Players, Compare, Leaderboard, How it works.
+Top navigation (`st.navigation(position="top")`): Home, Players, Compare, Leaderboard, Build a player, How it works.
 Each page is a script under `views/`; `app.py` is only the frame and the stylesheet.
 
 **Home** — a search box, a strip of whole-number facts, and four *computed* finding cards (the
@@ -55,6 +55,12 @@ A comparison has its own address too (`/compare?player_a=Harry Kane&player_b=Jam
 goals − xG (Premier League only), value (€M). Filters for game, position and name; a row opens the
 player. Blank means not available, never guessed.
 
+**Build a player** (2026-11-12): a toy, and it says so in its first line. A position and eleven
+sliders, each a standing within the league (50 = the median player in that position), or a real
+player to start from. It shows the closest real players in both games, with the lookalikes'
+matching (`profile.build_your_own`), on StatsBomb's outfield pool only. It is the one page where
+the numbers are typed in: no event data exists for a semi-pro.
+
 **How it works** — the data, how each of the three answers is made, the shot model's accuracy
 (`metrics.json` plus a per-tournament chart), style-group silhouettes and the limits, stated plainly.
 
@@ -74,6 +80,7 @@ The pages are thin: what they say is decided in tested `src/` functions.
 | Compare verdict | `pair_closeness`, `build_compare_verdict` | [similarity.py](../src/similarity.py), [narrative.py](../src/narrative.py) |
 | Home cards | `findings.build_findings` → `app_data/findings.json` | [findings.py](../src/findings.py) |
 | Leaderboard | `profile.build_leaderboard` | [profile.py](../src/profile.py) |
+| Build a player | `profile.build_your_own` (a slider standing → that quantile of the group's league-adjusted rate, then `rank_matches`) | [profile.py](../src/profile.py) |
 | Market value | `build_market_value_table` (precomputed), `profile.market_value_of` | [market_value.py](../src/market_value.py) |
 | How it works | `metrics.json`, `compute_silhouette_scores` | [metrics.py](../src/metrics.py), [similarity.py](../src/similarity.py) |
 
