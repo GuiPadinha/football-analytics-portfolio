@@ -30,6 +30,10 @@ it works), with native charts and no matplotlib in the app. Session detail is in
    Its next step, if he wants it: raw events through dbt (needs the event cache re-downloaded).
    **Build a player done** (2026-11-12): a toy page with sliders. The session closed there; the
    rest (raw-event dbt, 5b, the other wild ideas) waits for another session (his call).
+   **Open problem, do first:** a push that changes a shared module (`src/*.py`, `views/data.py`)
+   leaves the live app half-updated and needs a manual reboot (twice on 2026-11-12). Find a fix
+   or at least a loud warning; ML_TOOLING.md has what is known. Until then: after such a push,
+   ask Guilherme to reboot and check every new page.
 2. **Phase 5b** (hierarchical finishing). 5a (2026-11-12) showed one season can't separate
    skill from luck: 8 of 164 shooters outside their 90% range, 8.1 expected by luck. 5b pools
    seasons and players; the 16 cached Barcelona seasons are the obvious multi-season test bed.

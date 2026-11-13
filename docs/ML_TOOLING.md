@@ -35,6 +35,14 @@ Windows-specific friction hit while building this project. Written so they don't
   (needs Guilherme's sign-in). The keep-alive now also opens Mahrez's page, so this fails a run
   instead of hiding behind a working Home. After a push that changes a module the pages import,
   check a player page, not only Home.
+- **It happened twice in one day, so it is an open problem (2026-11-12).** The second time: the
+  push that added the Build a player page changed `src/profile.py`; the new page died with an
+  `ImportError` on `build_your_own` while CI was green and Mahrez's page still worked. Another
+  reboot fixed it. Not yet known (not verified): whether Cloud's file watcher can be made to
+  reload shared modules, or whether a push can be made to restart the app by itself. The
+  keep-alive opens Home and Mahrez's page only, so it would not have caught this one: it should
+  also open the newest page. Until there is a fix, after any push that changes a module the
+  pages import, ask Guilherme for a reboot and check every page that is new or changed.
 - **A push redeploys the app, and a visit during the restart fails.** The keep-alive's own
   push-triggered run died after 29 s (browser connection closed), while the same pages loaded
   fine minutes later. On a push the workflow now waits 150 s first.

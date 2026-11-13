@@ -27,6 +27,9 @@ Guilherme picked it after the dbt pilot, and asked to close the session after it
   Diego Wave).
 - **Verified:** the full suite passes (new tests in test_profile.py and test_app_smoke.py, the page
   in the every-page smoke). A real-browser screenshot of the page, local.
+- **Live: a second half-updated deploy.** The new page threw an `ImportError` on `build_your_own`
+  (CI green; Mahrez's page fine) until Guilherme rebooted the app again. Second time in one
+  day, so it is an open problem, not bad luck (ML_TOOLING.md; first item in CLAUDE.md's next steps).
 
 ---
 
