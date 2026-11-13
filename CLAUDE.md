@@ -23,17 +23,16 @@ it works), with native charts and no matplotlib in the app. Session detail is in
 [docs/PROGRESS.md](docs/PROGRESS.md); phases and backlog are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 **Next session, start here (agreed order):**
-1. **Loose ends of the 2026-11-12 night shift** (PROGRESS.md; all pushed, live checked). Still
-   his: GitHub's About box (description, topics, website link; texts given in chat). MIT licence
-   confirmed by him (2026-11-12). About box and profile bio done by him (2026-11-12).
-   **dbt + DuckDB pilot done** (2026-11-12, his "segue"): `warehouse/`, see README "The dbt layer".
-   Its next step, if he wants it: raw events through dbt (needs the event cache re-downloaded).
-   **Build a player done** (2026-11-12): a toy page with sliders. The session closed there; the
-   rest (raw-event dbt, 5b, the other wild ideas) waits for another session (his call).
-   **Open problem, do first:** a push that changes a shared module (`src/*.py`, `views/data.py`)
-   leaves the live app half-updated and needs a manual reboot (twice on 2026-11-12). Find a fix
-   or at least a loud warning; ML_TOOLING.md has what is known. Until then: after such a push,
-   ask Guilherme to reboot and check every new page.
+1. **Open problem, do first:** a push that changes a shared module (`src/*.py`, `views/data.py`)
+   leaves the live app half-updated and needs a manual reboot (twice on 2026-11-12: links/5a, then
+   Build a player). Find a fix, or at least a loud warning (the keep-alive should also open the
+   newest page); ML_TOOLING.md has what is known. Until then: after such a push, ask Guilherme to
+   reboot (share.streamlit.io, app, ⋮, Reboot) and check every new or changed page live.
+   Done on 2026-11-12, for context (PROGRESS.md): keep-alive, shareable links, Phase 5a, MIT
+   licence, About box and bio (his), the dbt + DuckDB pilot (`warehouse/`, README "The dbt
+   layer"), the Build a player page.
+   Open choices, his call: raw events through dbt (needs the 11 GB event cache re-downloaded; it
+   vanished for unknown reasons); the other wild ideas in ROADMAP.md.
 2. **Phase 5b** (hierarchical finishing). 5a (2026-11-12) showed one season can't separate
    skill from luck: 8 of 164 shooters outside their 90% range, 8.1 expected by luck. 5b pools
    seasons and players; the 16 cached Barcelona seasons are the obvious multi-season test bed.
