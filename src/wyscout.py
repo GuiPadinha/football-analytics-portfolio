@@ -181,6 +181,7 @@ def _cached_file(name):
         print(f"Downloading Wyscout {name} into {WYSCOUT_CACHE_DIR}")
 
         def fetch():
+            """One HTTP read, wrapped so `with_retries` can repeat it."""
             with urllib.request.urlopen(url, timeout=300) as response:
                 return response.read()
 

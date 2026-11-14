@@ -306,6 +306,7 @@ def finishing_census(pool, min_expected_goals=CENSUS_MIN_EXPECTED_GOALS):
 def _stat_bars(row, percentiles, group_size):
     """Strength and weakness rows for one player, best / worst first."""
     def detail(stat):
+        """The small print under a stat bar: the season total behind the rate."""
         if stat == "save_pct":
             saves, faced = int(round(row["saves"])), int(round(row["saves"] + row["goals_conceded"]))
             return f"{saves} saves from {faced} shots on target"
@@ -493,6 +494,7 @@ class CompareView:
 
 
 def _compare_player(pool, row):
+    """One side of Compare: identity, minutes, market value and finishing for a pool row."""
     value, _, _ = market_value_of(pool, row["player"], row["team"])
     shots = pool.shots[(pool.shots["player"] == row["player"]) & (pool.shots["team"] == row["team"])]
     finishing = finishing_from_shots(shots["predicted_xg"].values, shots["is_goal"].sum()) if len(shots) else None

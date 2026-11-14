@@ -565,6 +565,7 @@ def _leads(a, b, closeness):
     gap = closeness.standing_a - closeness.standing_b
 
     def visibly_ahead(leader, other, stat):
+        """Whether the leader's rate is non-zero and ahead by the margin a reader would notice."""
         return leader.per90[stat] > 0 and leader.per90[stat] >= MIN_LEAD_RATIO * other.per90[stat]
 
     leadable = [
@@ -627,14 +628,17 @@ def format_rate(value):
 
 
 def _count_word(n):
+    """A small count in words ("three"), larger ones as digits, which reads better in prose."""
     return NUMBER_WORDS[n] if 0 <= n < len(NUMBER_WORDS) else f"{n:,}"
 
 
 def _plural(n, word):
+    """The word, pluralised with -s unless n is 1."""
     return word if n == 1 else f"{word}s"
 
 
 def _with_article(text):
+    """The text with "A" or "An" in front, by its first letter."""
     return f"{'An' if text[0].lower() in 'aeiou' else 'A'} {text}"
 
 
@@ -644,4 +648,5 @@ def _join(items):
 
 
 def _missing(value):
+    """True for None and for pandas' missing values (NaN, NA), which `is None` alone misses."""
     return value is None or pd.isna(value)

@@ -1126,6 +1126,7 @@ def pair_closeness(features, player_a, player_b):
     )
 
     def place_on_list(owner, other_row):
+        """Where `other_row` ranks in `owner`'s lookalike list (same game only), and the list length."""
         ranked = rank_matches(pool, space_columns, *owner, within_position_group=False)
         same_game = ranked[ranked["gender"] == other_row["gender"]].reset_index(drop=True)
         hit = same_game.index[(same_game["player"] == other_row["player"]) & (same_game["team"] == other_row["team"])]

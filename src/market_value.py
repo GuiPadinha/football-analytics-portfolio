@@ -148,6 +148,7 @@ def _download_csv(filename, cache_dir=CACHE_DIR):
         )
 
         def fetch():
+            """One HTTP read, wrapped so `with_retries` can repeat it."""
             with urllib.request.urlopen(request, timeout=60) as response:
                 return response.read()
 
@@ -181,6 +182,7 @@ def _token_rarity_scores(norm_names):
 
 
 def _rarity_score(tokens, token_rarity):
+    """How distinctive a set of name tokens is: common tokens ("da", "silva") add little."""
     return sum(token_rarity.get(t, 0.0) for t in tokens)
 
 
@@ -232,6 +234,7 @@ def find_name_candidates(per90_players, tm_players):
             rows_by_token.setdefault(token, []).append(idx)
 
     def best_subset_rows(norm_name):
+        """Transfermarkt rows whose name tokens contain, or are contained in, this player's tokens."""
         tokens = frozenset(norm_name.split())
         nearby = tm.loc[sorted(set().union(*(rows_by_token.get(t, []) for t in tokens)))]
         fits = nearby["tokens"].map(
@@ -244,6 +247,7 @@ def find_name_candidates(per90_players, tm_players):
         return list(nearby.index[scores == scores.max()])
 
     def initial_and_surname_rows(name):
+        """Candidate rows for an initial-plus-surname name ("D. Alli"); the club check must confirm one."""
         # Wyscout keeps a few players as "D. Alli": the initial of a given name the full name
         # doesn't show (Bamidele "Dele" Alli). Same surname, same initial is a weak name signal,
         # so these rows are only candidates; the club check still has to confirm one.
@@ -258,6 +262,7 @@ def find_name_candidates(per90_players, tm_players):
         # space on one side only ("N'Diaye" -> "n diaye", Transfermarkt's "Ndiaye"). It must still
         # be whole trailing words, never the end of one ("Alli" isn't the end of "Gabalalli").
         def fits(tokens):
+            """True when the tokens start with the initial and end in the surname (spaces ignored)."""
             return tokens[0].startswith(initial) and any(
                 "".join(tokens[i:]) == surname for i in range(1, len(tokens))
             )
