@@ -6,6 +6,28 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-11-14 (night) — dbt expansion, step 1 done: the player table from raw events
+
+Guilherme: "commit e push e procede". The pilot went out as `b509319`; this is the rest of step 1.
+- **Landing grew:** lineups, one row per stint (a player's spell in one position), and the
+  season's match sheet (the one small download; team names are canonical there). Seven more
+  event columns joined the contract, so the Premier League was re-landed with `--force`.
+- **Models:** `stg_lineup_stints`, `stg_matches`; `int_team_names` (a source's team name → the
+  sheet's), `int_player_match_minutes`, `int_player_seasons` (group by most season minutes),
+  `int_player_match_actions` (16 counts, outfield and goalkeeper, as `count(*) filter`);
+  marts `player_per90_outfield` and `player_per90_goalkeepers`. The 26 position labels are a
+  dbt seed. The action lists and the per-90 SQL are macros, shared with the parity tests.
+- **Parity with `app_data/player_per90.parquet`, Premier League 2015/16:** 300 outfield players
+  and 27 goalkeepers, same group and nickname, same counts, minutes and rates within 1e-9.
+  `dbt build`: 53 of 53. Negative controls: a misspelt tackle and punch failed both tests (300
+  and 27 rows); sorting the group minutes the wrong way failed 171 players.
+- **Without the raw layer** (CI): 20 nodes, green.
+- **Not done:** the other 13 competitions are not landed (`python -m src.landing --all`), so
+  parity is proven on one league. Ligue 1 is the one that exercises `int_team_names`.
+- **Next:** land and test the other StatsBomb competitions, then the incremental model.
+
+---
+
 ## 2026-11-14 (evening) — dbt expansion, step 1 pilot: raw events → shot features in SQL
 
 Guilherme said "procede" to a pilot of the landing step. Not committed yet.

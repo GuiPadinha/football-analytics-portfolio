@@ -15,10 +15,10 @@ the conclusions-first redesign of 2026-10), 9 ongoing; 5b–7 not started. Histo
 **Next session, start here (agreed order):**
 1. **dbt expansion** (his notes, 2026-11-14; plan in ROADMAP.md, wild ideas): raw events →
    staging → marts with parity kept, one incremental model, dbt docs published, the app as an
-   exposure; then README "The dbt layer". Step 1 is half done (2026-11-14, PROGRESS.md):
-   `python -m src.landing` lands the cache as Parquet and `int_shot_features` equals the
-   pandas shots. Next: the player table from raw events (lineups for minutes), then the
-   incremental model.
+   exposure; then README "The dbt layer". Step 1 is done for the Premier League (2026-11-14,
+   PROGRESS.md): `python -m src.landing` lands the cache as Parquet; the shot features and the
+   per-90 player tables built in SQL equal the pandas ones. Next: land the other StatsBomb
+   competitions (`--all`) and extend parity to them, then the incremental model.
    Splitting `src/similarity.py` (1,200 lines: extraction, per-90, clustering) belongs here: its
    extraction half is what moves to SQL.
 2. **Half-updated deploys:** fixed in code on 2026-11-14 (`src/freshness.py`; ML_TOOLING.md), not
@@ -76,14 +76,14 @@ LICENSE                  ← MIT, code only; the data keeps its providers' terms
 requirements.txt         ← app runtime deps only (what Streamlit Cloud installs; no matplotlib)
 requirements-dev.txt     ← + ingestion, truststore, matplotlib/mplsoccer, jupyter, pytest (includes requirements.txt)
 requirements-warehouse.txt ← dbt-core + dbt-duckdb + duckdb, for warehouse/ only
-warehouse/               ← dbt project on DuckDB: over app_data/ (stg_shots → player_xg, team_xg) and over the raw events (stg_events → int_shot_features, local only); parity tests against the pandas tables
+warehouse/               ← dbt project on DuckDB: over app_data/ (stg_shots → player_xg, team_xg) and over the raw events, lineups and match sheets (→ int_shot_features, player_per90_outfield/_goalkeepers; local only); parity tests against the pandas tables
 metrics.json             ← headline numbers, single source (`python -m src.metrics`)
 src/
   config.py          ← named Dataset constants (competition/season ids, has_360, gender)
   net.py             ← download plumbing: OS trust store (truststore) + retry/backoff
   data_loader.py     ← StatsBomb + SkillCorner ingestion, per-match pickle cache
   wyscout.py         ← Wyscout 2017/18 public set: download, minutes, per-90 tables (own stat list)
-  landing.py         ← cache pickles → one Parquet per match, the raw layer dbt reads (`python -m src.landing`)
+  landing.py         ← cache pickles (events, lineups) + match sheets → Parquet, the raw layer dbt reads (`python -m src.landing`)
   features.py        ← xG feature engineering (distance, angle, assist type, flags)
   models.py          ← logistic pipeline, CV, calibration, GBM, player xG table
   similarity.py      ← per-90 features, league normalisation, clustering, find_similar_players

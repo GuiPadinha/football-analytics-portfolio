@@ -71,3 +71,69 @@ models:
                 values: ["None", "Cross", "Through Ball", "Cut Back", "Standard Pass"]
       - name: shot_statsbomb_xg
         data_tests: [probability]
+
+  - name: int_team_names
+    description: Each source's team names per match, mapped to the match sheet's names.
+    columns:
+      - name: team
+        description: Null when two names of one match are unknown, which would be a guess.
+        data_tests: [not_null]
+
+  - name: int_player_match_minutes
+    description: One row per player and match with minutes played and the position played longest.
+    data_tests:
+      - unique_together:
+          arguments:
+            columns: [match_id, team, player]
+    columns:
+      - name: minutes_played
+        data_tests: [not_null]
+
+  - name: int_player_seasons
+    description: One row per player, club and season with total minutes and the position group of most minutes.
+    data_tests:
+      - unique_together:
+          arguments:
+            columns: [competition_id, season_id, team, player]
+    columns:
+      - name: position_group
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [Goalkeeper, Defender, Midfielder, Forward]
+
+  - name: int_player_match_actions
+    description: One row per player and match with raw action counts, outfield and goalkeeper.
+    data_tests:
+      - unique_together:
+          arguments:
+            columns: [match_id, team, player]
+
+  - name: player_per90_outfield
+    description: >
+      One row per outfield player, club and season above the minutes floor, with season counts
+      and per-90 rates, built from raw events and lineups. Equals the app's table for the
+      Premier League (tests/assert_outfield_per90_matches_pandas.sql).
+    data_tests:
+      - unique_together:
+          arguments:
+            columns: [competition_id, season_id, team, player]
+
+  - name: player_per90_goalkeepers
+    description: >
+      The goalkeepers' counterpart, with saves, goals conceded, claims, punches, sweeper
+      actions and save percentage (tests/assert_goalkeeper_per90_matches_pandas.sql).
+    data_tests:
+      - unique_together:
+          arguments:
+            columns: [competition_id, season_id, team, player]
+    columns:
+      - name: save_pct
+        data_tests: [probability]
+
+seeds:
+  - name: position_groups
+    description: StatsBomb's 26 position labels and the broad group each belongs to.
+    columns:
+      - name: position
+        data_tests: [unique, not_null]

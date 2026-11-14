@@ -1,0 +1,27 @@
+position,position_group
+Goalkeeper,Goalkeeper
+Right Back,Defender
+Right Center Back,Defender
+Center Back,Defender
+Left Center Back,Defender
+Left Back,Defender
+Right Wing Back,Defender
+Left Wing Back,Defender
+Right Defensive Midfield,Midfielder
+Center Defensive Midfield,Midfielder
+Left Defensive Midfield,Midfielder
+Right Midfield,Midfielder
+Right Center Midfield,Midfielder
+Center Midfield,Midfielder
+Left Center Midfield,Midfielder
+Left Midfield,Midfielder
+Right Attacking Midfield,Midfielder
+Center Attacking Midfield,Midfielder
+Left Attacking Midfield,Midfielder
+Right Wing,Forward
+Left Wing,Forward
+Right Center Forward,Forward
+Center Forward,Forward
+Left Center Forward,Forward
+Striker,Forward
+Secondary Striker,Forward

@@ -25,5 +25,12 @@ select
     shot_key_pass_id,
     coalesce(pass_cross, false) as pass_cross,
     coalesce(pass_through_ball, false) as pass_through_ball,
-    coalesce(pass_cut_back, false) as pass_cut_back
+    coalesce(pass_cut_back, false) as pass_cut_back,
+    coalesce(pass_shot_assist, false) as pass_shot_assist,
+    coalesce(pass_goal_assist, false) as pass_goal_assist,
+    pass_outcome,  -- null means the pass was completed
+    pass_end_location[1] as pass_end_x,
+    dribble_outcome,
+    duel_type,
+    goalkeeper_type
 from {{ source('raw', 'events') }}

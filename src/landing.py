@@ -1,4 +1,4 @@
-"""Land the cached StatsBomb events as Parquet, the raw layer the dbt warehouse reads.
+"""Land the cached StatsBomb data as Parquet, the raw layer the dbt warehouse reads.
 
     python -m src.landing                      # the app's shot competition (PL 2015/16)
     python -m src.landing comp55_season282     # any dataset key of data/manifest.json
@@ -8,13 +8,18 @@ The per-match cache is pickled pandas (`data_loader`), which only Python can rea
 SQL, so each match is rewritten once as one Parquet file:
 
     $FAP_CACHE_DIR/raw/events/competition_id=2/season_id=27/match_3753972.parquet
+    $FAP_CACHE_DIR/raw/lineups/competition_id=2/season_id=27/match_3753972.parquet
+    $FAP_CACHE_DIR/raw/matches/competition_id=2/season_id=27/matches.parquet
 
 One file per match on purpose: a match never changes once played, so a new match is a new file
 and nothing already landed is rewritten. That is what the warehouse's incremental model relies
 on. The competition and season live in the folder names (Hive partitioning), which DuckDB turns
 back into columns.
 
-Nothing is downloaded here: a match missing from the cache is reported, not fetched.
+Lineups are flattened to one row per stint (a player's spell in one position), which is the
+grain minutes are computed at. The match sheet (home and away team names) is the one thing not
+in the cache: it is one small request per competition, made only when its file is missing.
+Events and lineups are never downloaded here: a match missing from the cache is reported.
 """
 
 import io
@@ -27,7 +32,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from src.data_loader import CACHE_DIR
+from src.data_loader import CACHE_DIR, load_matches
 from src.net import write_atomically
 
 REPO = Path(__file__).resolve().parent.parent
@@ -66,7 +71,30 @@ CONTRACT_COLUMNS = {
     "pass_cross": pa.bool_(),
     "pass_through_ball": pa.bool_(),
     "pass_cut_back": pa.bool_(),
+    "pass_shot_assist": pa.bool_(),
+    "pass_goal_assist": pa.bool_(),
+    "pass_outcome": pa.string(),
+    "pass_end_location": pa.list_(pa.float64()),
+    "dribble_outcome": pa.string(),
+    "duel_type": pa.string(),
+    "goalkeeper_type": pa.string(),
 }
+
+LINEUP_SCHEMA = pa.schema([
+    ("match_id", pa.int64()),
+    ("team", pa.string()),
+    ("player_id", pa.int64()),
+    ("player_name", pa.string()),
+    ("player_nickname", pa.string()),
+    ("stint_index", pa.int64()),
+    ("position", pa.string()),
+    ("from_clock", pa.string()),
+    ("to_clock", pa.string()),
+])
+
+MATCH_COLUMNS = [
+    "match_id", "match_date", "match_week", "home_team", "away_team", "home_score", "away_score",
+]
 
 
 def _is_missing(value):
@@ -136,12 +164,74 @@ def events_to_table(events):
     return pa.table(arrays, names=names)
 
 
-def match_path(raw_dir, comp_id, season_id, match_id):
-    """Where one match's events land: Hive-style folders, one file per match."""
+def lineups_to_table(lineups, match_id):
+    """Flatten one match's lineups to one row per stint.
+
+    Args:
+        lineups (dict[str, pandas.DataFrame]): `data_loader.load_lineups`' output, a table per
+            team whose `positions` cell is a list of stints (position, from, to).
+        match_id (int): written on every row; the lineups themselves don't carry it.
+
+    Returns:
+        pyarrow.Table: `LINEUP_SCHEMA`. `stint_index` is the stint's place in the player's
+            list, kept because the first position listed wins a tie on minutes. A squad
+            player who never came on has no stints and so no rows.
+    """
+    rows = []
+    for team, lineup in lineups.items():
+        for player in lineup.to_dict(orient="records"):
+            for stint_index, stint in enumerate(player["positions"]):
+                rows.append({
+                    "match_id": match_id,
+                    "team": team,
+                    "player_id": player["player_id"],
+                    "player_name": player["player_name"],
+                    "player_nickname": player.get("player_nickname"),
+                    "stint_index": stint_index,
+                    "position": stint["position"],
+                    "from_clock": stint["from"],
+                    "to_clock": stint["to"],
+                })
+    return pa.Table.from_pylist(rows, schema=LINEUP_SCHEMA)
+
+
+def match_path(raw_dir, comp_id, season_id, match_id, kind="events"):
+    """Where one match's events or lineups land: Hive-style folders, one file per match."""
     return (
-        Path(raw_dir) / "events" / f"competition_id={comp_id}" / f"season_id={season_id}"
+        Path(raw_dir) / kind / f"competition_id={comp_id}" / f"season_id={season_id}"
         / f"match_{match_id}.parquet"
     )
+
+
+def _write_parquet(table, target):
+    """Write a table to `target` in one move, so a reader never sees half a file."""
+    buffer = io.BytesIO()
+    pq.write_table(table, buffer, compression="zstd")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    write_atomically(target, buffer.getvalue())
+
+
+def land_matches(dataset, raw_dir=RAW_DIR, force=False, fetch=load_matches):
+    """Land one competition's match sheet (who played whom); download it only if missing.
+
+    Args:
+        dataset (dict): one entry of `data/manifest.json`'s `datasets`.
+        raw_dir (str | Path): root of the raw layer.
+        force (bool): fetch and rewrite even if the file exists.
+        fetch (callable): `(competition_id, season_id) -> DataFrame`, swappable in tests.
+
+    Returns:
+        bool: True if the file was written, False if it was already there.
+    """
+    target = (
+        Path(raw_dir) / "matches" / f"competition_id={dataset['comp_id']}"
+        / f"season_id={dataset['season_id']}" / "matches.parquet"
+    )
+    if target.exists() and not force:
+        return False
+    matches = fetch(dataset["comp_id"], dataset["season_id"])[MATCH_COLUMNS]
+    _write_parquet(pa.Table.from_pandas(matches, preserve_index=False), target)
+    return True
 
 
 def land_dataset(dataset, raw_dir=RAW_DIR, cache_dir=CACHE_DIR, force=False):
@@ -156,26 +246,33 @@ def land_dataset(dataset, raw_dir=RAW_DIR, cache_dir=CACHE_DIR, force=False):
 
     Returns:
         dict: counts of matches `landed`, `skipped` (already there) and `missing` (not cached).
+            A match counts once: landed if its events or its lineups were written, missing if
+            either pickle is absent.
     """
     counts = {"landed": 0, "skipped": 0, "missing": 0}
     for match_id in dataset["match_ids"]:
-        target = match_path(raw_dir, dataset["comp_id"], dataset["season_id"], match_id)
-        if target.exists() and not force:
+        targets = {
+            kind: match_path(raw_dir, dataset["comp_id"], dataset["season_id"], match_id, kind)
+            for kind in ("events", "lineups")
+        }
+        todo = [kind for kind, target in targets.items() if force or not target.exists()]
+        if not todo:
             counts["skipped"] += 1
             continue
-        source = Path(cache_dir) / f"events_{match_id}.pkl"
-        if not source.exists():
+        sources = {kind: Path(cache_dir) / f"{kind}_{match_id}.pkl" for kind in todo}
+        if not all(source.exists() for source in sources.values()):
             counts["missing"] += 1
             continue
-        with open(source, "rb") as cache_file:
-            events = pickle.load(cache_file)
-        if not isinstance(events, pd.DataFrame) or events.empty:
-            counts["missing"] += 1
-            continue
-        buffer = io.BytesIO()
-        pq.write_table(events_to_table(events), buffer, compression="zstd")
-        target.parent.mkdir(parents=True, exist_ok=True)
-        write_atomically(target, buffer.getvalue())
+        for kind, source in sources.items():
+            with open(source, "rb") as cache_file:
+                cached = pickle.load(cache_file)
+            if kind == "events":
+                if not isinstance(cached, pd.DataFrame) or cached.empty:
+                    raise ValueError(f"events_{match_id}.pkl holds no events")
+                table = events_to_table(cached)
+            else:
+                table = lineups_to_table(cached, match_id)
+            _write_parquet(table, targets[kind])
         counts["landed"] += 1
     return counts
 
@@ -195,6 +292,7 @@ def main(argv=None):
         return 2
     missing = 0
     for key in keys:
+        land_matches(datasets[key], force=force)
         counts = land_dataset(datasets[key], force=force)
         missing += counts["missing"]
         print(f"{key} ({datasets[key]['label']}): {counts['landed']} landed, "

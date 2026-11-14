@@ -16,6 +16,11 @@ sources:
         description: >
           The same per-player aggregation built by pandas (`models.build_player_xg_table`). Used
           only by the parity test: the dbt mart must reproduce it exactly.
+      - name: player_per90
+        description: >
+          The app's player table: season counts and per-90 rates for every player of 14
+          competitions, plus the league-adjusted and cluster columns added after. Used only by
+          the parity tests of the per-90 marts.
 
   - name: raw
     description: >
@@ -23,8 +28,15 @@ sources:
       match under $FAP_CACHE_DIR/raw (11 GB of source data stay out of git). tools/warehouse.py
       sets FAP_RAW_DIR and leaves these models out when nothing has been landed, which is the
       case in CI.
+    meta:
+      # {name} is the table's name: each one is a folder of Parquet files. union_by_name lines
+      # the files up by column name (a match lacks the columns nothing in it set), and
+      # hive_partitioning turns the competition_id=…/season_id=… folders into columns.
+      external_location: "read_parquet('{{ env_var('FAP_RAW_DIR', 'raw-not-landed') }}/{name}/*/*/*.parquet', union_by_name = true, hive_partitioning = true)"
     tables:
       - name: events
-        description: One row per match event, every StatsBomb column. Competition and season come from the folder names.
-        meta:
-          external_location: "read_parquet('{{ env_var('FAP_RAW_DIR', 'raw-not-landed') }}/events/*/*/*.parquet', union_by_name = true, hive_partitioning = true)"
+        description: One row per match event, every StatsBomb column. One file per match.
+      - name: lineups
+        description: One row per stint, a player's spell in one position in one match. One file per match.
+      - name: matches
+        description: One row per match, the season's match sheet (home and away team, score). One file per season.

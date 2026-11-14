@@ -502,6 +502,11 @@ Key gotchas and lessons — most recent first:
   `sqrt(power(…))`) rounded to two different numbers. The fix is `abs(a - b) > 1e-9`, which
   needs a join key. The shots table has no event id, so the test compares the exact columns
   with `except all` and the derived floats per (x, y).
+- **`qualify`, and two DuckDB limits** (2026-11-14). "The row with the most minutes per player"
+  is `qualify row_number() over (partition by … order by minutes desc) = 1`: `qualify` filters
+  on a window function as `having` does on an aggregate. DuckDB refuses it next to
+  `group by all`, and refuses an aggregate inside a window's `order by` under `group by all`;
+  name the grouping columns.
 - **Where SQL stops** (2026-11-14). Feature extraction and aggregation moved to SQL cleanly
   (the score state is two window functions instead of a Python loop). The model does not: the
   out-of-fold xG needs scikit-learn's grouped folds. So the flow is raw → SQL features →
