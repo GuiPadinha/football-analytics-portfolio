@@ -6,54 +6,35 @@ Project source of truth. Read this first every session, then load linked docs on
 
 ## Current Status (updated 2026-11-14)
 
-**Where we are:** Phases 0–4 ✅ (4c closed 2026-10-01 with two women's tournaments; **4e**, new data
-sources + 360, started 2026-10-03 with the women's leagues), Phase 8 ✅ ([live app](https://gpfootball-analytics-portfolio.streamlit.app)),
-Phase 9 ongoing. Phase 5a ✅ (2026-11-12: out-of-fold xG, a luck range per player); 5b–7 not started. The 2026-09-30 repo health check
-and all its fixes were completed on 2026-10-02: HTTPS via the OS trust store, Python 3.12, the
-`app.py` restructure + app tests, and the repo/doc declutter. A deep audit (10-02/03) then found
-and fixed three data bugs the live app was showing (goalkeeper save %, Ligue 1 clubs split under two
-names, wrong-identity market values) plus a radar crash. On 10-03 the live app moved to Python
-3.14, keepers started counting only on-target shots, and market values started matching on
-StatsBomb's nickname, with the club check breaking ties (Luis Suárez). Then the pool grew to 9
-competitions (three more women's leagues), and Guilherme judged the app "numbers, no insights,
-cheap-looking". The agreed redesign, **conclusions first**, then shipped in stages (10-06 → 10-10):
-rule-based text (`src/narrative.py`), league-adjusted percentiles, and new pages on top navigation
-(Home with computed findings, Players as three questions, Compare with a verdict, Leaderboard, How
-it works), with native charts and no matplotlib in the app. Session detail is in
-[docs/PROGRESS.md](docs/PROGRESS.md); phases and backlog are in [docs/ROADMAP.md](docs/ROADMAP.md).
+**Where we are:** Phases 0–4 ✅ (4e, new data sources + 360, open since 2026-10-03), 5a ✅
+(2026-11-12, a luck range per player), 8 ✅ ([live app](https://gpfootball-analytics-portfolio.streamlit.app),
+the conclusions-first redesign of 2026-10), 9 ongoing; 5b–7 not started. History:
+[docs/PROGRESS.md](docs/PROGRESS.md) and PROGRESS_ARCHIVE.md; phases and backlog:
+[docs/ROADMAP.md](docs/ROADMAP.md).
 
 **Next session, start here (agreed order):**
-1. **Half-updated deploys: fixed in code on 2026-11-14** (`src/freshness.py`, reproduced and
-   verified locally; ML_TOOLING.md). Still unproven on Cloud: after the next push that changes a
-   shared module, check every new or changed page live; if one breaks, reboot (share.streamlit.io,
-   app, ⋮, Reboot) and reopen the problem.
-   Done on 2026-11-12, for context (PROGRESS.md): keep-alive, shareable links, Phase 5a, MIT
-   licence, About box and bio (his), the dbt + DuckDB pilot (`warehouse/`, README "The dbt
-   layer"), the Build a player page.
-   **dbt expansion (his notes, 2026-11-14; plan in ROADMAP.md, wild ideas):** raw events → staging
-   → marts with parity kept, one incremental model, dbt docs published, the app as an exposure.
-   Needs the 11 GB event cache re-downloaded (it vanished for unknown reasons).
-2. **Phase 5b** (hierarchical finishing). 5a (2026-11-12) showed one season can't separate
-   skill from luck: 8 of 164 shooters outside their 90% range, 8.1 expected by luck. 5b pools
-   seasons and players; the 16 cached Barcelona seasons are the obvious multi-season test bed.
-3. More men's data, if wanted, is Understat now (Phase 4e list). Wyscout's shots were tested for
-   xG on 10-17 and rejected (ML_LEARNING_LOG.md); MPG Stats was parked (DATA.md).
+1. **dbt expansion** (his notes, 2026-11-14; plan in ROADMAP.md, wild ideas): raw events →
+   staging → marts with parity kept, one incremental model, dbt docs published, the app as an
+   exposure; then README "The dbt layer". The event cache was re-downloaded on 2026-11-14.
+   Splitting `src/similarity.py` (1,200 lines: extraction, per-90, clustering) belongs here: its
+   extraction half is what moves to SQL.
+2. **Half-updated deploys:** fixed in code on 2026-11-14 (`src/freshness.py`; ML_TOOLING.md), not
+   yet proven on Cloud. After the next push that changes a shared module, check every new or
+   changed page live; if one breaks, reboot (share.streamlit.io, app, ⋮, Reboot) and reopen it.
+3. **Phase 5b** (hierarchical finishing): one season can't separate skill from luck (8 of 164
+   shooters outside their 90% range, 8.1 expected by luck). Pool seasons and players; the 16
+   Barcelona seasons are the test bed. Ideally reads from the dbt marts.
+4. More men's data, if wanted: Understat (Phase 4e list). Wyscout shots rejected for xG on 10-17
+   (ML_LEARNING_LOG.md); MPG Stats parked (DATA.md).
 
-Environment: the live app runs Python 3.14 at gpfootball-analytics-portfolio.streamlit.app; local
-is 3.12; CI tests both. `FAP_CACHE_DIR` (cache outside OneDrive) is visible after VS Code's
-2026-10-03 restart.
-
-**Where things live (since 2026-10-10, the OneDrive ISCTE → Google Drive migration):** the working
-tree is `G:\My Drive\Projetos\football-analytics-portfolio` (synced by Google Drive). Its **`.git`
-is deliberately outside Drive**, in `C:\dev\gitdirs\football-analytics-portfolio.git` (the `.git`
-file in the repo root points there): with `.git` inside Drive, the sync corrupted `.git/index`
-within minutes. Don't move it back. The venv is `C:\Users\guilh\venvs\football-analytics-portfolio`
-(outside Drive: thousands of files, not relocatable); run Python with `PYTHONDONTWRITEBYTECODE=1`
-so no `__pycache__` gets synced. The cache is `C:\Users\guilh\fap-cache` (11 GB, local only,
-re-downloadable; found missing on 2026-11-12, so the next full rebuild downloads it again). In a fresh clone run `git config core.hooksPath .githooks` once. The old
-OneDrive copy is obsolete (`C:\dev\football-analytics-portfolio` and the copy in the Drive archive were
-deleted on 2026-10-17); a full snapshot of the old working copy is `OneDrive ISCTE (arquivo)\_snapshots\football-analytics-portfolio_2026-10-10.zip`
-in Drive.
+**Where things live:** working tree `G:\My Drive\Projetos\football-analytics-portfolio` (Google
+Drive). **`.git` is deliberately outside Drive**, in `C:\dev\gitdirs\football-analytics-portfolio.git`
+(the `.git` file in the root points there): inside Drive, the sync corrupted `.git/index` within
+minutes. Don't move it back. Venv: `C:\Users\guilh\venvs\football-analytics-portfolio` (outside
+Drive); run Python with `PYTHONDONTWRITEBYTECODE=1` so no `__pycache__` gets synced. Cache:
+`$FAP_CACHE_DIR` = `C:\Users\guilh\fap-cache` (local only, re-downloadable). Fresh clone:
+`git config core.hooksPath .githooks` once. Live app on Python 3.14, local 3.12, CI tests both.
+The pre-Drive snapshot (2026-10-10) is in `OneDrive ISCTE (arquivo)\_snapshots` in Drive.
 
 Key numbers: xG logistic test ROC-AUC **0.765** (EURO 2024, in-game shots only, penalty shootouts
 dropped). Five more held-out tournaments rank as well (0.76–0.81): World Cup 2022 0.808, AFCON 2023
@@ -117,8 +98,8 @@ app_data/                ← precomputed Parquet the app reads (small, committed
 notebooks/               ← 01 exploration, 02 xG model, 03 similarity (the teaching surface)
 tests/                   ← pytest suite incl. AppTest smoke tests of every app page; conftest.py
 outputs/                 ← pipeline PNGs, committed (README embeds them; pipeline is the only writer)
-data/                    ← processed tables (gitignored) + manifest.json (committed); the ~8.5 GB
-                           per-match cache is data/cache/, or $FAP_CACHE_DIR (outside OneDrive here)
+data/                    ← processed tables (gitignored) + manifest.json (committed); the per-match
+                           cache is data/cache/, or $FAP_CACHE_DIR (outside Drive here)
 docs/
   FRAMEWORK.md           ← what the tool is for (purpose, user, scope)
   ARCHITECTURE.md        ← import graph, data flow, pure/IO-split pattern
@@ -130,7 +111,7 @@ docs/
   PROGRESS_ARCHIVE.md    ← full history, incl. the original S1–S9 build
   ML_LEARNING_LOG.md     ← ML/data gotchas and decisions
   ML_THEORY.md           ← textbook theory reference
-  ML_TOOLING.md          ← Windows/environment gotchas
+  ML_TOOLING.md          ← Windows/environment gotchas (+ ML_TOOLING_ARCHIVE.md: obsolete ones)
   CONTEXT.md             ← owner, learning goals, career context
   PITCH.md               ← pre-demo cheat sheet, refreshed by hand
   img/                   ← screenshots of the live app that the README embeds (taken with tools/screenshot.py)
@@ -167,17 +148,10 @@ at the PNG; it waits for Streamlit to really render, which a plain headless `--s
 2. Log any new environment/tooling obstacle to [docs/ML_TOOLING.md](docs/ML_TOOLING.md), any new ML/data gotcha to [docs/ML_LEARNING_LOG.md](docs/ML_LEARNING_LOG.md) — as it happens, not just when asked to retrospectively
 3. Give 3-line summary: done / unresolved / commit message suggestion
 
-**This is enforced, not just requested (added 2026-07-09):** relying on memory to follow the rule
-above failed within a single session (a real retry attempt went unlogged until asked twice). Two
-mechanisms now backstop it — see `.githooks/pre-commit`'s own header comment for full detail:
-- **Local hook** (`.githooks/pre-commit`, active once `git config core.hooksPath .githooks` has
-  been run in a given clone): blocks a commit that touches `src/`/`app.py`/`tests/`/`notebooks/`
-  without touching `docs/PROGRESS.md`, `docs/ML_TOOLING.md`, or `docs/ML_LEARNING_LOG.md`. Escape hatch
-  for genuinely trivial commits: `DOC_CHECK_ACK=1 git commit ...` (prefer this over `--no-verify`,
-  which would skip every hook, not just this check).
-- **CI backstop** (`.github/workflows/tests.yml`'s "Check evolving docs were touched" step): the
-  same check against every push/PR diff, as a non-blocking `::warning::` annotation — fires even
-  if the local hook was never enabled (e.g. a fresh clone).
+**Enforced, not just requested** (memory alone failed within a session, 2026-07-09):
+`.githooks/pre-commit` blocks a commit touching `src/`, `app.py`, `tests/` or `notebooks/` without
+`docs/PROGRESS.md`, `ML_TOOLING.md` or `ML_LEARNING_LOG.md` (escape hatch for trivial commits:
+`DOC_CHECK_ACK=1 git commit ...`, never `--no-verify`); CI repeats the check as a warning.
 
 ---
 
@@ -193,15 +167,10 @@ mechanisms now backstop it — see `.githooks/pre-commit`'s own header comment f
 
 ---
 
-## Model Selection
+## Model choice
 
-| Task | Model |
-|---|---|
-| Code, debugging, features, notebooks (90% of work) | **Sonnet** (default) |
-| Architecture, repeated failures, complex ML tradeoffs | Opus (only if Sonnet fails 2–3×) |
-| Quick lookups, syntax, reformatting | Haiku (Claude.ai sidebar, not Claude Code) |
-
-Token efficiency: `/compact` when session history is long; `/clear` when switching modules; point to files directly, don't paste code into chat.
+Guilherme picks the model (Sonnet, Opus, Fable, Haiku) per session; never switch or escalate on
+your own. Token efficiency: `/compact` when history is long; point to files, don't paste code.
 
 ---
 
