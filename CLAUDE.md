@@ -30,8 +30,9 @@ it works), with native charts and no matplotlib in the app. Session detail is in
    Done on 2026-11-12, for context (PROGRESS.md): keep-alive, shareable links, Phase 5a, MIT
    licence, About box and bio (his), the dbt + DuckDB pilot (`warehouse/`, README "The dbt
    layer"), the Build a player page.
-   Open choices, his call: raw events through dbt (needs the 11 GB event cache re-downloaded; it
-   vanished for unknown reasons); the other wild ideas in ROADMAP.md.
+   **dbt expansion (his notes, 2026-11-14; plan in ROADMAP.md, wild ideas):** raw events → staging
+   → marts with parity kept, one incremental model, dbt docs published, the app as an exposure.
+   Needs the 11 GB event cache re-downloaded (it vanished for unknown reasons).
 2. **Phase 5b** (hierarchical finishing). 5a (2026-11-12) showed one season can't separate
    skill from luck: 8 of 164 shooters outside their 90% range, 8.1 expected by luck. 5b pools
    seasons and players; the 16 cached Barcelona seasons are the obvious multi-season test bed.

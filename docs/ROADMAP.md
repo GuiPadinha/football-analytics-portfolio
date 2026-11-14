@@ -438,8 +438,17 @@ Guilherme's decision yet).
   data-engineering roles, arguably ahead of more ML depth while applications are open.
   **🟡 Piloted 2026-11-12** (`warehouse/`, `python -m tools.warehouse`, a CI job): staging over
   `app_data/shots_with_xg.parquet`, marts `player_xg` and `team_xg`, 14 data tests including
-  parity with the pandas player table. Still to do: raw events → staging (the 11 GB event cache
-  is gone, so this starts with a re-download), and the app reading the marts.
+  parity with the pandas player table.
+  **Expansion plan (Guilherme's notes, recorded 2026-11-14; not started).** Goal: from pilot to
+  interview argument ("dbt + DuckDB warehouse with data tests and CI").
+  1. Build the player table from the raw events inside dbt (event staging → marts), not from
+     tables pandas already made. Keep the parity test against what the app uses. Starts with a
+     re-download: the 11 GB event cache is gone.
+  2. At least one incremental model (e.g. shots per match), with `is_incremental()` explained in
+     the SQL.
+  3. dbt docs published (GitHub Pages or similar) with the dependency graph; link in the README.
+  4. The app as an `exposure` in the YAML.
+  Then update the README's "The dbt layer" and CLAUDE.md's "Next session".
 - **LLM scout reports next to the rule-based text.** Precomputed offline (no API key in the app),
   one per player, then checked automatically: every number an LLM sentence quotes must match the
   player's profile. The rule-based text stays the source of truth (PRODUCT_SPEC.md: "never an
@@ -468,7 +477,7 @@ Guilherme's decision yet).
   StatsBomb's nickname, and the club check breaks same-name ties (Luis Suárez): ~99% match rate on
   the men's leagues (see [DATA.md](DATA.md)).
 - **Side-by-side "Compare players" view** — 2026-07-14.
-- **Auto-generated scouting-report blurb** — `build_scouting_blurb`, 2026-07-14.
+- **Auto-generated scouting-report blurb** — `build_scouting_blurb`, 2026-07-14 (replaced by `src/narrative.py` in the 2026-10 redesign; code removed 2026-11-14).
 - **2026-10-02 re-audit fixes** — the similarity-table cache now rebuilds when its columns change;
   the doc-lint also covers the per-tournament AUCs and the silhouette range; restructure leftovers
   (dead archive links, a Makefile mention) cleaned up; notebooks re-executed on 3.12.
