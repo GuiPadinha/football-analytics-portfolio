@@ -132,6 +132,12 @@ models:
         data_tests: [probability]
 
 seeds:
+  - name: competitions
+    description: The app's nine StatsBomb leagues, with the name the app shows for each (src/config.py SIMILARITY_SETS).
+    columns:
+      - name: competition
+        data_tests: [unique, not_null]
+
   - name: position_groups
     description: StatsBomb's 26 position labels and the broad group each belongs to.
     columns:

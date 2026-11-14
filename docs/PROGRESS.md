@@ -22,9 +22,15 @@ Guilherme: "commit e push e procede". The pilot went out as `b509319`; this is t
   `dbt build`: 53 of 53. Negative controls: a misspelt tackle and punch failed both tests (300
   and 27 rows); sorting the group minutes the wrong way failed 171 players.
 - **Without the raw layer** (CI): 20 nodes, green.
-- **Not done:** the other 13 competitions are not landed (`python -m src.landing --all`), so
-  parity is proven on one league. Ligue 1 is the one that exercises `int_team_names`.
-- **Next:** land and test the other StatsBomb competitions, then the incremental model.
+- **Then all nine leagues** (commit after `b205143`): `python -m src.landing --all` landed the
+  manifest's 16 datasets (2,616 matches, 796 MB, ~12 min). The parity tests now compare every
+  landed league of the app, joined on competition (a `competitions` seed carries the app's
+  names): **2,170 players, the app's whole StatsBomb pool** (2,001 outfield + 169 keepers),
+  57 of 57 in 58 s. `int_team_names` renamed 40 match/source names. A new warn-level test lists
+  app leagues not landed, so parity on one league cannot pass for parity on nine.
+  `tests/test_warehouse_seeds.py` keeps the two seeds equal to the Python constants.
+- **CI and live app after `b205143`:** tests green; Home renders ("Scout by data").
+- **Next:** the incremental model (step 2), dbt docs (3), the app as an exposure (4).
 
 ---
 

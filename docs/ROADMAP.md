@@ -448,7 +448,9 @@ Guilherme's decision yet).
      Parquet; `stg_events` → `int_shot_features` reproduces the app's 9,908 Premier League
      shots column for column. **Player table done the same day:** lineups and match sheets
      landed too; `player_per90_outfield` and `player_per90_goalkeepers` equal the app's 327
-     Premier League players. Left: land the other competitions and extend the parity tests.
+     Premier League players. **✅ Step 1 done 2026-11-14:** all nine leagues landed; the marts equal the app's
+     2,170 StatsBomb players. Still in pandas by design: league normalisation, clustering,
+     the xG model.
   2. At least one incremental model (e.g. shots per match), with `is_incremental()` explained in
      the SQL.
   3. dbt docs published (GitHub Pages or similar) with the dependency graph; link in the README.

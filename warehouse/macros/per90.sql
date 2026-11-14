@@ -23,6 +23,7 @@ with season_actions as (
 select
     seasons.competition_id,
     seasons.season_id,
+    competitions.competition,  -- the app's name for the league; null outside its player pool
     seasons.player,
     seasons.nickname,
     seasons.team,
@@ -39,25 +40,36 @@ left join season_actions
     on season_actions.competition_id = seasons.competition_id
     and season_actions.season_id = seasons.season_id
     and season_actions.team = seasons.team and season_actions.player = seasons.player
+left join {{ ref('competitions') }} as competitions
+    on competitions.competition_id = seasons.competition_id
+    and competitions.season_id = seasons.season_id
 where seasons.minutes_played >= {{ var('min_minutes') }}
 {% endmacro %}
 
 {% macro per90_parity(model, counts, rates, where_pandas) %}
--- Parity with the table the app ships (app_data/player_per90.parquet), Premier League
--- 2015/16: same players, same group, same counts; minutes and rates within 1e-9 (sums of
--- floats added in a different order differ in the last bits). Any row returned is a mismatch.
+-- Parity with the table the app ships (app_data/player_per90.parquet), for every StatsBomb
+-- league that has been landed: same players, same group, same counts; minutes and rates
+-- within 1e-9 (sums of floats added in a different order differ in the last bits). Any row
+-- returned is a mismatch. A league not landed yet is skipped, not failed: the second test
+-- below (assert_every_app_league_is_landed) is the one that says which are missing.
 with dbt as (
-    select * from {{ ref(model) }} where competition_id = 2 and season_id = 27
+    select * from {{ ref(model) }} where competition is not null
 ),
 
 pandas as (
     select * from {{ source('app_data', 'player_per90') }}
-    where competition = 'Premier League 2015/16' and {{ where_pandas }}
+    where provider = 'statsbomb' and {{ where_pandas }}
+      and competition in (select competition from dbt)
 )
 
-select coalesce(dbt.player, pandas.player) as player, coalesce(dbt.team, pandas.team) as team
+select
+    coalesce(dbt.competition, pandas.competition) as competition,
+    coalesce(dbt.player, pandas.player) as player,
+    coalesce(dbt.team, pandas.team) as team
 from dbt
-full outer join pandas on dbt.player = pandas.player and dbt.team = pandas.team
+full outer join pandas
+    on dbt.competition = pandas.competition
+    and dbt.player = pandas.player and dbt.team = pandas.team
 where dbt.player is null
    or pandas.player is null
    or dbt.position_group <> pandas.position_group

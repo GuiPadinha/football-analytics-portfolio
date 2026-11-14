@@ -15,10 +15,10 @@ the conclusions-first redesign of 2026-10), 9 ongoing; 5b–7 not started. Histo
 **Next session, start here (agreed order):**
 1. **dbt expansion** (his notes, 2026-11-14; plan in ROADMAP.md, wild ideas): raw events →
    staging → marts with parity kept, one incremental model, dbt docs published, the app as an
-   exposure; then README "The dbt layer". Step 1 is done for the Premier League (2026-11-14,
-   PROGRESS.md): `python -m src.landing` lands the cache as Parquet; the shot features and the
-   per-90 player tables built in SQL equal the pandas ones. Next: land the other StatsBomb
-   competitions (`--all`) and extend parity to them, then the incremental model.
+   exposure; then README "The dbt layer". Step 1 is done (2026-11-14, PROGRESS.md):
+   `python -m src.landing --all` lands the cache as Parquet; the shot features (Premier League)
+   and the per-90 player tables (all nine StatsBomb leagues, 2,170 players) built in SQL equal
+   the pandas ones. Next: the incremental model, then dbt docs and the exposure.
    Splitting `src/similarity.py` (1,200 lines: extraction, per-90, clustering) belongs here: its
    extraction half is what moves to SQL.
 2. **Half-updated deploys:** fixed in code on 2026-11-14 (`src/freshness.py`; ML_TOOLING.md), not
