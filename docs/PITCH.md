@@ -5,7 +5,7 @@
 A living pre-demo cheat sheet, not enforced by the doc-freshness hook (it isn't a *current-state*
 doc the metrics.json doc-lint checks, and it isn't append-only history like PROGRESS.md — it's a
 talking-points sheet, refresh it by hand before each pitch). First written 2026-07-13 ahead of a
-colleague pitch (date TBD — today or the next day at the time of writing).
+colleague pitch. Last refreshed 2026-11-14 (5a luck range, Build a player, dbt, shareable links).
 
 ---
 
@@ -31,13 +31,17 @@ The app now leads with conclusions, so the demo does too (redesigned 2026-10-10)
    and the caveat that style is not level) and the closest man-woman pair.
 2. **Open a well-known player** (search "Mahrez") — read the *short version* aloud: style, whether
    the goals are real, who plays like him for less. Then scroll the three questions it summarises.
-3. **"Are the goals real?"** — the exact-odds sentence and the shot map (hover a shot). The line:
-   "one season of shots barely separates skill from luck, so the page quotes odds, not a verdict."
+3. **"Are the goals real?"** — the exact-odds sentence, the luck range (the goals an average
+   finisher would score from the same shots, 90% of the time, from out-of-fold xG) and the shot
+   map. The line: "8 of 164 Premier League shooters fall outside their range, about what luck
+   alone predicts: one season can't tell a finisher from a lucky one, so the page quotes odds."
 4. **"Who plays like this?"** — men's and women's tabs, the "Cheaper" tags, the similar-style-is-
    not-level note. Click a name: the whole page recomputes for them.
 5. **Compare** (button on the player page) — Coutinho vs Zaha: a verdict, then the bars. A good
    closer: "it says they are not interchangeable, and why".
-6. **How it works** — only if asked how it's built: the accuracy table across 6 tournaments, the
+6. **Build a player** — optional, light: sliders for a style, see who plays like it. It says
+   it's a toy. Every page has a shareable link (copy the URL).
+7. **How it works** — only if asked how it's built: the accuracy table across 6 tournaments, the
    limits section. Close on the credibility numbers below.
 
 ---
@@ -52,8 +56,9 @@ The app now leads with conclusions, so the demo does too (redesigned 2026-10-10)
   tournaments it never trained on, **2 of them women's** — used to check it generalises.
 - **2,911** players matched to a real Transfermarkt market value (men's competitions only, each
   confirmed at the player's club that season — see the Roadmap section below for the coverage caveat).
-- **~260** automated tests, including smoke tests of every app page, run on every push on Python
-  3.12 and 3.14; a one-command rebuild (`python -m src.pipeline`) that reproduces every number and
+- **~310** automated tests, including smoke tests of every app page, run on every push on Python
+  3.12 and 3.14, plus a **dbt + DuckDB** layer with 14 data tests (one proves the dbt player table
+  equals the pandas one, row for row) built in CI; a one-command rebuild (`python -m src.pipeline`) that reproduces every number and
   chart byte-for-byte; and a live deployed app.
 
 *(The first two lines are on Home's stats strip; market value
@@ -91,8 +96,11 @@ via `python -m src.metrics`).
   value matching is name-based (no shared player ID exists) — a real match can be missed on a
   name/position collision, and women's-league players have no market value at all (the
   Transfermarkt mirror used here only covers men's football).
-- **Phase 5 (not started):** uncertainty on the xG number (bootstrap intervals), a hierarchical
-  finishing model — "is this player's over/underperformance statistically real."
+- **Phase 5:** 5a done (out-of-fold xG, a luck range per player). 5b next: a hierarchical finishing
+  model pooling seasons and players — "is this over/underperformance real."
+- **Data engineering (next):** the dbt layer grows from pilot to warehouse: raw StatsBomb events →
+  staging → marts, an incremental model, published dbt docs with the lineage graph, the app as an
+  exposure.
 - **Phase 6 (not started):** Mahalanobis/PCA-whitened distance for similarity (today's Euclidean
   double-counts correlated stats), possession-adjusted defensive actions.
 - **Phase 7 (not started):** 360°-context xG (defender positions at the moment of the shot) +

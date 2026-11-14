@@ -102,7 +102,7 @@ by hand.
 - **2026-09-30 / 10-01** — Repo health check, then its plan executed phase by phase: HTTPS fixed
   via the OS trust store + retrying downloads, Python 3.12 readiness (CI matrix), `app.py`
   restructure + app tests, and **Phase 4c closed**. Women's EURO 2025 + Women's World Cup 2023
-  are now scored (0.763 / 0.777). **Phase 4e** (new data sources + 360) is pinned.
+  are now scored (0.763 / 0.777). **Phase 4e** (new data sources + 360) is in progress since 2026-10-03.
 
 ---
 
@@ -144,7 +144,7 @@ of Phase 4's ingestion pipeline and 3b (`metrics.json`) must exist before the da
 - **3e — Data manifest:** `data/manifest.json` pinning comp/season/match IDs + row counts + content
   hash per dataset; catches upstream StatsBomb changes; feeds Phase 4.
 
-## Phase 4 — Multi-competition ingestion + data expansion  ✅ 4a–4d done · 📌 4e pinned
+## Phase 4 — Multi-competition ingestion + data expansion  ✅ 4a–4d done · 🟡 4e in progress
 
 The flagship overlap item: engineering-at-scale in service of ML. Turns Module A's "generalises
 from n=2 contexts" into a defensible claim and fixes Module B's single-season thinness.
@@ -191,7 +191,7 @@ from n=2 contexts" into a defensible claim and fixes Module B's single-season th
   [DATA.md](DATA.md#candidate-alternative--supplementary-data-sources-not-yet-used) (match-level
   stats + standings, not a per-shot xG source).
 
-## Phase 4e — Data expansion: new sources + 360 (📌 pinned 2026-10-01, not started)
+## Phase 4e — Data expansion: new sources + 360 (📌 pinned 2026-10-01; 🟡 started 2026-10-03 with the women's leagues, Wyscout 2017/18 added)
 
 Guilherme's ask: "a pin for strengthening ingestion of more data (Kaggle may have something), and
 for using 360". Every item below was checked on 2026-10-01, not assumed. The prerequisites are
