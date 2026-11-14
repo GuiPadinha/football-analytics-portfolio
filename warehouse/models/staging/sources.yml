@@ -16,3 +16,15 @@ sources:
         description: >
           The same per-player aggregation built by pandas (`models.build_player_xg_table`). Used
           only by the parity test: the dbt mart must reproduce it exactly.
+
+  - name: raw
+    description: >
+      The raw layer: StatsBomb events landed as Parquet by `python -m src.landing`, one file per
+      match under $FAP_CACHE_DIR/raw (11 GB of source data stay out of git). tools/warehouse.py
+      sets FAP_RAW_DIR and leaves these models out when nothing has been landed, which is the
+      case in CI.
+    tables:
+      - name: events
+        description: One row per match event, every StatsBomb column. Competition and season come from the folder names.
+        meta:
+          external_location: "read_parquet('{{ env_var('FAP_RAW_DIR', 'raw-not-landed') }}/events/*/*/*.parquet', union_by_name = true, hive_partitioning = true)"

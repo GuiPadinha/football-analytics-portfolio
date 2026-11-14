@@ -6,6 +6,32 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-11-14 (evening) — dbt expansion, step 1 pilot: raw events → shot features in SQL
+
+Guilherme said "procede" to a pilot of the landing step. Not committed yet.
+- **Cache check first:** 3,102 matches cached (events + lineups, 11 GB); all 2,616 match ids of
+  `data/manifest.json` are there. The 486 extra are not in the manifest (not looked into).
+- **Landing (`src/landing.py`, `python -m src.landing`):** the cache is pickled pandas, which
+  dbt cannot read. Each match becomes one Parquet file under
+  `$FAP_CACHE_DIR/raw/events/competition_id=…/season_id=…/`. Premier League 2015/16 landed: 380
+  matches, 1,313,773 events, 112 MB, ~1 minute. Flags become booleans, locations lists of
+  floats, nested columns (freeze frames, tactics) JSON strings. 27 "contract" columns are always
+  written, typed, because statsbombpy drops a column from a match where nothing set it.
+- **dbt:** source `raw.events` (a `read_parquet` glob, `union_by_name`), `stg_events` (view),
+  `int_shot_features` (the SQL twin of `features.extract_shot_features`: geometry, flags, assist
+  type by a join to the key pass, score state by two window functions).
+- **Parity:** `assert_shot_features_match_pandas` compares it to `app_data/shots_with_xg.parquet`:
+  9,908 shots, every column equal. `dbt build`: 31 of 31. Negative control: changing the
+  shoot-out filter made the test fail with 5,424 rows.
+- **CI is unchanged:** with no raw layer, `tools/warehouse.py` excludes `source:raw+` and runs
+  the 17 nodes it ran before (checked locally by pointing `FAP_CACHE_DIR` at nothing).
+- **Gotcha (ML_LEARNING_LOG.md):** rounding both sides to 9 decimals is not a float comparison.
+- **Next:** the same for the player table (`similarity.py`'s extraction half, with lineups for
+  minutes), then the incremental model. The xG model itself stays in Python: SQL builds
+  features and aggregates, scikit-learn scores.
+
+---
+
 ## 2026-11-14 (later) — Audit and cleanup
 
 Guilherme asked for an audit and refactor before the dbt expansion, and approved the cleanup.
@@ -89,62 +115,7 @@ Guilherme said "segue" to the proposed pilot (the career pick from ROADMAP's wil
 
 ---
 
-## 2026-11-12 — Night shift: keep-alive, hygiene, shareable links, Phase 5a (full autonomy given)
-
-Guilherme asked for a sweep of the repo after 26 days away, then said "commit and proceed with
-everything": one commit and push per item, with the CI and the live app checked after each.
-- **The live app was asleep.** An anonymous visit got Streamlit's "gone to sleep" page (open in
-  ROADMAP.md since 10-01). Woken by hand, then fixed for good:
-  - `tools/screenshot.py` now wakes a sleeping app (clicks the page's button), runs on Linux, and
-    exits 1 when its marker is missing.
-  - It also reads the app's iframe. On Streamlit Cloud the top document's text is empty, so the
-    10-17 version never found its marker on the live URL (ML_TOOLING.md).
-  - `.github/workflows/keepalive.yml` runs it every four hours. The Cloud's limit is 12 hours
-    without traffic (its docs, read today). Known limit: GitHub pauses scheduled workflows after
-    60 days without a commit.
-- **Repo hygiene:** `.gitattributes` (LF everywhere; notebooks out of GitHub's language bar, which
-  read 87% "Jupyter Notebook"), `pytest.ini` (no `.pytest_cache` in the synced folder), the dev
-  container on Python 3.12, and the redesign's mock-ups kept under `docs/redesign-2026-10/`.
-- **GitHub front door:** the README opens with what the app answers and a screenshot of its Home
-  (`docs/img/app_home.png`), instead of "Phase 8 (deployed 2026-07-09)". It gained a "Data and
-  licence" section crediting the four sources. The code is now MIT-licensed (`LICENSE`): Claude's
-  pick under the autonomy given, confirmed by Guilherme the same day.
-- **Shareable links, and the look at the Wyscout pool** (CLAUDE.md's agreed next step 1):
-  - A player's page and a comparison each have their own address, e.g.
-    `/players?player=Mohamed Salah&league=Premier League 2017/18` and
-    `/compare?player_a=Harry Kane&player_b=Jamie Vardy`. The page rewrites the address in full
-    (name, club, league) whenever the player changes, so copying it shares that exact page.
-  - A link is followed once per visit. After that the address mirrors the page, so a later pick
-    in the search box isn't undone by the address the visit started from.
-  - `profile.find_linked_player` forgives case, accents and a missing club or league; a name in
-    both seasons' data resolves to the season with the most minutes. An unknown name gets a
-    warning and the starting points.
-  - Looked at in a real browser (local, through the new links): Salah 2017/18's page (32 goals,
-    €80M, lookalikes Agüero, Immobile, Depay, Dybala, Mbappé), Salah against Kane 2017/18, and
-    the cross-provider refusal. All read correctly.
-  - One fix from that look: a comparison of two players without shot data showed two "n/a"
-    panels; it now says so once.
-- **Phase 5a, uncertainty on goals − xG** (agreed next step 2; committed locally, not pushed, at
-  Guilherme's "we'll review the push later"):
-  - xG is out-of-fold (`models.out_of_fold_xg`, 5 folds by match), rebuilt with the new
-    `python -m src.app_data --xg-only` (seconds; the player table and prices are untouched).
-  - Each player gets a 90% luck range (`narrative.likely_goals_range`), shown as a "What luck
-    alone gives" tile (Mahrez: 17 goals, 8–17). How it works quotes the census live
-    (`profile.finishing_census`): 8 of 164 outside, 8.1 expected by luck.
-  - Home moved: Agüero +6.5 → +6.7 (1 in 22 → 1 in 25), Jerome 1 in 27 → 1 in 26.
-  - Model uncertainty measured and left out (~8% of the luck). ML_LEARNING_LOG.md has the numbers.
-  - `findings.json` is now written with LF on Windows too.
-- **Wild ideas mapped** in ROADMAP.md (Phase 9): no-server app, tournament stories, dbt + DuckDB,
-  LLM reports with a fact-check, build-your-own-player, each with a cost and a verdict.
-- **The 11 GB cache is gone:** `C:\Users\guilh\fap-cache` doesn't exist, and why is not known. The
-  `--xg-only` rebuild didn't need it (it reads `data/`); a full rebuild will download it again.
-- **After the push (Guilherme's OK, same day):** CI green, but the live player page had died with
-  an `ImportError`. The Cloud ran the new pages against the old `views/data.py` it held in
-  memory. Guilherme rebooted the app; Mahrez's page then showed "What luck alone gives". The
-  keep-alive now opens that page too, since Home alone hid the break (ML_TOOLING.md). Its first
-  run, set off by that push, hit the redeploy and failed; on a push it now waits 150 s.
-- **Verified:** 285 tests pass locally before any change; CI green on `cddb68b`; the rewritten
-  tool finds the live Home in 8 s and returns 1 for a marker that isn't there.
+Older entries (2026-11-12 night shift and before): [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md).
 
 ---
 

@@ -40,3 +40,34 @@ models:
     columns:
       - name: team
         data_tests: [unique, not_null]
+
+  - name: stg_events
+    description: One row per match event from the raw layer, renamed and typed. Local only (needs the landed Parquet).
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - name: match_id
+        data_tests: [not_null]
+      - name: event_index
+        data_tests: [not_null]
+      - name: event_type
+        data_tests: [not_null]
+
+  - name: int_shot_features
+    description: >
+      One row per in-game shot with the xG model's features, built in SQL from the raw events.
+      Equals what pandas builds (tests/assert_shot_features_match_pandas.sql).
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - name: is_goal
+        data_tests: [not_null]
+      - name: game_state_score_diff
+        data_tests: [not_null]
+      - name: assist_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["None", "Cross", "Through Ball", "Cut Back", "Standard Pass"]
+      - name: shot_statsbomb_xg
+        data_tests: [probability]

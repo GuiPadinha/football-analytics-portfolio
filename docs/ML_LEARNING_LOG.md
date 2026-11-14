@@ -494,6 +494,21 @@ Key gotchas and lessons — most recent first:
 
 ---
 
+## Data engineering — the dbt layer
+
+- **Rounding is not a tolerance** (2026-11-14). The parity test first compared SQL and pandas
+  floats with `round(x, 9)` on both sides. 9,907 of 9,908 shots matched; one distance sat on a
+  rounding boundary, so a difference in the 15th digit (numpy's `hypot` against DuckDB's
+  `sqrt(power(…))`) rounded to two different numbers. The fix is `abs(a - b) > 1e-9`, which
+  needs a join key. The shots table has no event id, so the test compares the exact columns
+  with `except all` and the derived floats per (x, y).
+- **Where SQL stops** (2026-11-14). Feature extraction and aggregation moved to SQL cleanly
+  (the score state is two window functions instead of a Python loop). The model does not: the
+  out-of-fold xG needs scikit-learn's grouped folds. So the flow is raw → SQL features →
+  Python scores → SQL marts, and the hand-over between them is a Parquet file.
+
+---
+
 ## Module C (candidate) — "PUP" (Performance Under Pressure)
 
 **Status: scoped only, not started.** Full spec in [MODULES.md](MODULES.md).

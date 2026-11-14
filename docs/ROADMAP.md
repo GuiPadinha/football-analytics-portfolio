@@ -444,6 +444,9 @@ Guilherme's decision yet).
   1. Build the player table from the raw events inside dbt (event staging → marts), not from
      tables pandas already made. Keep the parity test against what the app uses. Starts with a
      re-download: the 11 GB event cache is gone.
+     **🟡 Started 2026-11-14:** cache re-downloaded; `src/landing.py` lands the pickles as
+     Parquet; `stg_events` → `int_shot_features` reproduces the app's 9,908 Premier League
+     shots column for column. Left: the player table (per-90, needs lineups for minutes).
   2. At least one incremental model (e.g. shots per match), with `is_incremental()` explained in
      the SQL.
   3. dbt docs published (GitHub Pages or similar) with the dependency graph; link in the README.

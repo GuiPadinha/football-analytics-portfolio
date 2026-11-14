@@ -15,5 +15,7 @@ models:
   fap_warehouse:
     staging:
       +materialized: view
+    intermediate:
+      +materialized: table
     marts:
       +materialized: table

@@ -29,6 +29,14 @@ def main(argv=None):
     from dbt.cli.main import dbtRunner  # imported late: the env vars above must be set first
 
     dirs = ["--project-dir", str(WAREHOUSE), "--profiles-dir", str(WAREHOUSE)]
+    # The models over the raw events need the landed Parquet (python -m src.landing), which is
+    # local only. Without it (CI, a fresh clone) they and everything downstream are left out.
+    raw_dir = Path(os.environ.get("FAP_CACHE_DIR", REPO / "data" / "cache")) / "raw"
+    if (raw_dir / "events").is_dir():
+        os.environ.setdefault("FAP_RAW_DIR", raw_dir.as_posix())
+    else:
+        print(f"No raw layer at {raw_dir}: skipping the models built from raw events.")
+        dirs += ["--exclude", "source:raw+"]
     runner = dbtRunner()
     if "--show" in argv:
         # In memory, the tables die with the session, so build and query in the same invocation.
