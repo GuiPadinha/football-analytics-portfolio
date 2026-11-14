@@ -4,7 +4,7 @@ Project source of truth. Read this first every session, then load linked docs on
 
 ---
 
-## Current Status (updated 2026-11-12)
+## Current Status (updated 2026-11-14)
 
 **Where we are:** Phases 0–4 ✅ (4c closed 2026-10-01 with two women's tournaments; **4e**, new data
 sources + 360, started 2026-10-03 with the women's leagues), Phase 8 ✅ ([live app](https://gpfootball-analytics-portfolio.streamlit.app)),
@@ -23,11 +23,10 @@ it works), with native charts and no matplotlib in the app. Session detail is in
 [docs/PROGRESS.md](docs/PROGRESS.md); phases and backlog are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 **Next session, start here (agreed order):**
-1. **Open problem, do first:** a push that changes a shared module (`src/*.py`, `views/data.py`)
-   leaves the live app half-updated and needs a manual reboot (twice on 2026-11-12: links/5a, then
-   Build a player). Find a fix, or at least a loud warning (the keep-alive should also open the
-   newest page); ML_TOOLING.md has what is known. Until then: after such a push, ask Guilherme to
-   reboot (share.streamlit.io, app, ⋮, Reboot) and check every new or changed page live.
+1. **Half-updated deploys: fixed in code on 2026-11-14** (`src/freshness.py`, reproduced and
+   verified locally; ML_TOOLING.md). Still unproven on Cloud: after the next push that changes a
+   shared module, check every new or changed page live; if one breaks, reboot (share.streamlit.io,
+   app, ⋮, Reboot) and reopen the problem.
    Done on 2026-11-12, for context (PROGRESS.md): keep-alive, shareable links, Phase 5a, MIT
    licence, About box and bio (his), the dbt + DuckDB pilot (`warehouse/`, README "The dbt
    layer"), the Build a player page.
@@ -112,6 +111,7 @@ src/
   metrics.py         ← writes metrics.json
   pipeline.py        ← headless rebuild: data → models → outputs → manifest/metrics
   app_data.py        ← writes app_data/*.parquet for the app (`python -m src.app_data`)
+  freshness.py       ← app.py's stale-module guard: after a deploy, re-import changed shared code
 app_data/                ← precomputed Parquet the app reads (small, committed)
 notebooks/               ← 01 exploration, 02 xG model, 03 similarity (the teaching surface)
 tests/                   ← pytest suite incl. AppTest smoke tests of every app page; conftest.py

@@ -43,6 +43,14 @@ Windows-specific friction hit while building this project. Written so they don't
   keep-alive opens Home and Mahrez's page only, so it would not have caught this one: it should
   also open the newest page. Until there is a fix, after any push that changes a module the
   pages import, ask Guilherme for a reboot and check every page that is new or changed.
+- **Fixed in code (2026-11-14): `src/freshness.py`.** `app.py` runs on every rerun, so it stats
+  `src/*.py`, `views/*.py` and `app_data/*` (size + mtime) and compares that with the fingerprint
+  it saw last (kept in `st.cache_resource`, one per process). On a change it deletes `src.*` and
+  `views.*` from `sys.modules` and clears `st.cache_data`, which is what the reboot did.
+  Reproduced locally first: two copies of the app run with `--server.fileWatcherType none`, a new
+  name added to `src/presentation.py` and imported by a page. The old `app.py` gave the same
+  `ImportError` as the live app; the new one loaded the new code. Not verified on Cloud until
+  the next push that changes a shared module: still check the changed pages live after it.
 - **A push redeploys the app, and a visit during the restart fails.** The keep-alive's own
   push-triggered run died after 29 s (browser connection closed), while the same pages loaded
   fine minutes later. On a push the workflow now waits 150 s first.

@@ -56,7 +56,8 @@ rebuilding every output PNG/manifest/metric.
 | `metrics.py` | `config`, `models`, `similarity` | `pipeline.py` |
 | `pipeline.py` | `config`, `features`, `manifest`, `metrics`, `models`, `similarity`, `visualisation` | `app_data.py` (reuses its constants + shot-table cache); also the entry point `python -m src.pipeline` |
 | `app_data.py` | `config`, `market_value`, `models`, `pipeline`, `similarity` | — (top-level entry point, `python -m src.app_data`) |
-| `app.py` + `views/*.py` (repo root) | `profile`, `narrative`, `findings` data, `presentation`, `similarity` | — (`streamlit run app.py`; reads `app_data/`, never downloads; no matplotlib) |
+| `freshness.py` | — | `app.py` (first import: drops stale `src.*`/`views.*` modules after a deploy) |
+| `app.py` + `views/*.py` (repo root) | `freshness`, `profile`, `narrative`, `findings` data, `presentation`, `similarity` | — (`streamlit run app.py`; reads `app_data/`, never downloads; no matplotlib) |
 
 Two things worth noticing, because they're deliberate design choices, not accidents:
 
