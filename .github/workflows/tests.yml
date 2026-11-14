@@ -36,6 +36,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Lint (unused imports and names, syntax errors)
+        if: matrix.python-version == '3.12'   # a repo check, not a Python one: run it once
+        run: ruff check .
+
       - name: Run tests   # headless matplotlib is forced in tests/conftest.py
         run: pytest -q
 

@@ -13,7 +13,6 @@ from pathlib import Path
 
 import pandas as pd
 
-from src import data_loader
 from src.data_loader import DEFAULT_CACHE_DIR, resolve_cache_dir, safe_bool_column, safe_column
 
 

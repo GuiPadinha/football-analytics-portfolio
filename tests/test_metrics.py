@@ -6,7 +6,7 @@ Two kinds of test here:
   tiny synthetic frames, so they stay offline and deterministic (same reason the manifest
   tests inject a fake loader — CI has no ``data/`` and no network).
 * the **doc-lint** test is the actual point of Phase 3b: it reads the committed
-  ``metrics.json`` and fails if a *current-state* doc (README/CLAUDE/MODULES/DATA/PITCH) quotes
+  ``metrics.json`` and fails if a *current-state* doc (README/CLAUDE/MODULES/DATA) quotes
   a different number. Append-only history (PROGRESS, ROADMAP's dated milestones,
   ML_LEARNING_LOG, the archive) is intentionally NOT checked — an old dated entry is allowed to
   record the 0.798 it reported at the time.
@@ -201,7 +201,7 @@ def test_current_state_docs_match_metrics_json():
     peaks = [group["best_silhouette"] for group in m["similarity"]["groups"].values()]
     low, high = math.floor(min(peaks) * 100) / 100, math.ceil(max(peaks) * 100) / 100
     silhouette_range = f"{low:.2f}–{high:.2f}"
-    expectations.append((silhouette_range, ["CLAUDE.md", "docs/MODULES.md", "docs/PITCH.md"]))
+    expectations.append((silhouette_range, ["CLAUDE.md", "docs/MODULES.md"]))
 
     failures = []
     for value, docs in expectations:
@@ -225,9 +225,9 @@ def test_current_state_docs_match_app_data():
     match_rate = round(100 * len(market_value) / n_mens_players)
 
     expectations = [
-        (f"{len(per90):,} players", ["CLAUDE.md", "README.md", "docs/PITCH.md"]),
-        (f"{n_goalkeepers} goalkeepers", ["README.md", "docs/PITCH.md"]),
-        (f"{len(market_value):,}", ["CLAUDE.md", "docs/DATA.md", "docs/PITCH.md"]),
+        (f"{len(per90):,} players", ["CLAUDE.md", "README.md"]),
+        (f"{n_goalkeepers} goalkeepers", ["README.md"]),
+        (f"{len(market_value):,}", ["CLAUDE.md", "docs/DATA.md"]),
         (f"~{match_rate}%", ["CLAUDE.md", "README.md", "docs/DATA.md"]),
     ]
     failures = [

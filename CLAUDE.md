@@ -113,7 +113,6 @@ docs/
   ML_THEORY.md           ← textbook theory reference
   ML_TOOLING.md          ← Windows/environment gotchas (+ ML_TOOLING_ARCHIVE.md: obsolete ones)
   CONTEXT.md             ← owner, learning goals, career context
-  PITCH.md               ← pre-demo cheat sheet, refreshed by hand
   img/                   ← screenshots of the live app that the README embeds (taken with tools/screenshot.py)
   redesign-2026-10/      ← mock-ups of the conclusions-first redesign (Home, Player, Compare): Claude Design source files, exported 2026-11-12, kept for reference
 tools/warehouse.py           ← dbt build (models + tests) in memory, run from the repo root; target/logs go to the temp folder, not the Drive

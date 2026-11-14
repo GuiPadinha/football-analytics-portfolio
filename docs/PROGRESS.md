@@ -16,6 +16,9 @@ Guilherme asked for an audit and refactor before the dbt expansion, and approved
   `GK_PER90_LEAGUE_Z_COLUMNS`, an unused numpy import. Kept: `load_360_frames` (Phase 7),
   `load_competitions` and `train_calibrated_gbm` (notebooks). A new test replaces the lost
   label check: every stat a page shows has a label (`STAT_LABELS[stat]` would crash otherwise).
+- **Later the same day:** `docs/PITCH.md` deleted (his call; it was stale and hand-refreshed).
+  Ruff added (`ruff.toml`, pyflakes rules only; a CI step on 3.12; pinned in requirements-dev):
+  it found one redundant import in a test, now fixed.
 
 ---
 

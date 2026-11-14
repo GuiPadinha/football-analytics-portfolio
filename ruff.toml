@@ -1,0 +1,4 @@
+# Lint: pyflakes errors only (unused imports/names, redefinitions, syntax errors). A deliberately
+# small rule set added 2026-11-14 so dead code cannot creep back; style stays a human call.
+[lint]
+select = ["F", "E9"]
