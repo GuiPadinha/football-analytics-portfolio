@@ -39,3 +39,6 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# dbt's per-machine anonymous id (written when a dbt command runs outside tools/warehouse.py)
+warehouse/.user.yml

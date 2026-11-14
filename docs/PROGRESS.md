@@ -120,30 +120,7 @@ Guilherme picked it after the dbt pilot, and asked to close the session after it
 
 ---
 
-## 2026-11-12 (afternoon) — dbt + DuckDB pilot
-
-Guilherme said "segue" to the proposed pilot (the career pick from ROADMAP's wild ideas).
-- **Scope:** the raw-event layer was out, because the 11 GB event cache is gone. The pilot sits on
-  what is local: `app_data/shots_with_xg.parquet` → `stg_shots` → `player_xg` and `team_xg`.
-- **Tests (14):**
-  - not null, unique, and `unique_together` on (player, team);
-  - `probability` on every xG;
-  - club totals reconcile with the shots;
-  - parity: the dbt `player_xg` equals the pandas `player_xg_table.parquet` row for row.
-- **The tests can fail:** multiplying xG by 1.0001 failed parity on 463 rows and the
-  reconciliation on 1.
-- **Runner:** `python -m tools.warehouse` runs the build in memory, with no `.duckdb` file in the
-  synced folder. dbt's `target/` and `logs/` go to the temp folder. `--show` prints the club table.
-- **CI:** a `warehouse` job on 3.12 with its own `requirements-warehouse.txt` (dbt-core 1.12.7,
-  dbt-duckdb 1.11.1, duckdb 2.0.0), so dbt's pins never reach the app.
-- **Finding:** Leicester's title season was 67 goals from 67.9 xG, so their finishing was ordinary.
-  West Ham were the most above their chances (+7.3), West Brom the most below (−11.1). A penalty
-  is worth 0.80 xG on average (91 penalties, 74 scored).
-- **Verified:** `dbt build` gave PASS=17 (3 models, 14 tests) locally.
-
----
-
-Older entries (2026-11-12 night shift and before): [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md).
+Older entries (2026-11-12 afternoon and before): [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md).
 
 ---
 
