@@ -6,6 +6,19 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-11-14 (later) — Audit and cleanup
+
+Guilherme asked for an audit and refactor before the dbt expansion, and approved the cleanup.
+- **dbt expansion plan recorded** (his notes): ROADMAP.md wild ideas, CLAUDE.md next session.
+- **Dead code removed:** the July scouting blurb (`build_scouting_blurb`, `style_intensity_label`,
+  `SIGNATURE_STATS_BY_POSITION`; the redesign replaced it with `narrative.py`), two orphaned
+  matplotlib charts (`plot_player_radar_comparison`, `plot_diverging_bar`),
+  `GK_PER90_LEAGUE_Z_COLUMNS`, an unused numpy import. Kept: `load_360_frames` (Phase 7),
+  `load_competitions` and `train_calibrated_gbm` (notebooks). A new test replaces the lost
+  label check: every stat a page shows has a label (`STAT_LABELS[stat]` would crash otherwise).
+
+---
+
 ## 2026-11-14 — Half-updated deploys: a code fix (`src/freshness.py`)
 
 Guilherme said "resume"; this was item 1 of the agreed order.

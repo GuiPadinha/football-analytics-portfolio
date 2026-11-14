@@ -729,8 +729,6 @@ GK_PER90_FEATURE_COLUMNS = [f"{col}_p90" for col in GK_ACTION_COLUMNS]
 # space clustering/`find_similar_players` actually use for the app's multi-competition pool.
 LEAGUE_Z_SUFFIX = "_lz"
 PER90_LEAGUE_Z_COLUMNS = [f"{col}{LEAGUE_Z_SUFFIX}" for col in PER90_FEATURE_COLUMNS]
-GK_PER90_LEAGUE_Z_COLUMNS = [f"{col}{LEAGUE_Z_SUFFIX}" for col in GK_PER90_FEATURE_COLUMNS]
-
 # Each provider's players are described by their own stat list (`src/wyscout.py` says why the
 # Wyscout one is shorter), so every "which columns" question is asked per (provider, position).
 FEATURE_SETS = {

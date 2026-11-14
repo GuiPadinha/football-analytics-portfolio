@@ -8,9 +8,7 @@ import pandas as pd
 import pytest
 
 from src.presentation import (
-    SIGNATURE_STATS_BY_POSITION,
     STAT_LABELS,
-    build_scouting_blurb,
     feature_columns_for,
     format_market_value,
     format_percentile,
@@ -18,7 +16,6 @@ from src.presentation import (
     ordinal,
     percentile_tier,
     popular_name,
-    style_intensity_label,
 )
 from src.similarity import (
     ACTION_COLUMNS,
@@ -47,19 +44,6 @@ def test_format_percentile_ordinal_suffixes(pct, text):
     assert format_percentile(pct) == text
 
 
-def test_style_intensity_label_words_and_signs():
-    assert style_intensity_label(0.1) == "Typical (0.1σ)"
-    assert style_intensity_label(-0.2) == "Typical (0.2σ)"
-    assert style_intensity_label(0.5) == "Somewhat more (+0.5σ)"
-    assert style_intensity_label(-1.0) == "Much less (-1.0σ)"
-    assert style_intensity_label(1.8) == "Far more (+1.8σ)"
-
-
-def test_style_intensity_label_rounds_before_thresholding():
-    # Both display as 0.3σ, so both must get the same word.
-    assert style_intensity_label(0.296) == style_intensity_label(0.304) == "Somewhat more (+0.3σ)"
-
-
 def test_format_market_value():
     assert format_market_value(30_000_000) == "€30.0M"
     assert format_market_value(1_000_000) == "€1.0M"
@@ -82,35 +66,6 @@ def test_feature_columns_for_goalkeepers_vs_outfield():
         assert feature_columns_for(group)[:2] == (ACTION_COLUMNS, PER90_FEATURE_COLUMNS)
 
 
-def test_every_signature_stat_has_a_label_and_belongs_to_its_group():
-    for group, stats in SIGNATURE_STATS_BY_POSITION.items():
-        _, per90_columns, _ = feature_columns_for(group)
-        for stat in stats:
-            assert stat in STAT_LABELS
-            assert stat in per90_columns
-
-
-def test_build_scouting_blurb_names_best_stat_tier_and_value():
-    high = pd.Series({"tackles_p90": 1.2, "interceptions_p90": 0.9})
-    percentiles = pd.Series({"tackles_p90": 0.97, "interceptions_p90": 0.60})
-    blurb = build_scouting_blurb(
-        "Defender", high, "shots_p90", 4, percentiles, pd.Series({"market_value_eur": 850_000})
-    )
-    assert "**Tackles** and **Interceptions** defender" in blurb
-    assert "light on **Shots**" in blurb
-    assert "97th percentile (Elite)" in blurb
-    assert "€850k" in blurb
-
-
-def test_build_scouting_blurb_without_market_value():
-    blurb = build_scouting_blurb(
-        "Goalkeeper", pd.Series({"saves_p90": 1.0}), "punches_p90", 4,
-        pd.Series({"saves_p90": 0.5}), None,
-    )
-    assert blurb.endswith("Market value not on record.")
-    assert "50th percentile (Average)" in blurb
-
-
 def test_ordinal_handles_the_teens_and_large_ranks():
     assert [ordinal(n) for n in (1, 2, 3, 11, 12, 13, 21, 112, 558)] == [
         "1st", "2nd", "3rd", "11th", "12th", "13th", "21st", "112th", "558th",
@@ -122,3 +77,11 @@ def test_popular_name_prefers_the_nickname_and_never_shortens():
     assert popular_name("Harry Kane", None) == "Harry Kane"
     assert popular_name("Geum-Min Lee", float("nan")) == "Geum-Min Lee"
     assert popular_name("Kevin De Bruyne", "  ") == "Kevin De Bruyne"
+
+
+@pytest.mark.parametrize("provider", ["statsbomb", "wyscout"])
+@pytest.mark.parametrize("group", ["Defender", "Midfielder", "Forward", "Goalkeeper"])
+def test_every_stat_a_page_shows_has_a_label(group, provider):
+    # profile.py and views/build.py index STAT_LABELS[stat] directly: a missing label is a crash.
+    _, per90, league_adjusted = feature_columns_for(group, provider)
+    assert [c for c in per90 + league_adjusted if c not in STAT_LABELS] == []

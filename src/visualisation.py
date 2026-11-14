@@ -260,64 +260,6 @@ def plot_player_radar(
     return ax
 
 
-def plot_player_radar_comparison(
-    player_a_row, player_b_row, population, feature_columns, ax=None, title=None,
-    circle_facecolor="#f0f0f0", circle_edgecolor="#cccccc",
-    player_a_color="#1a78cf", player_b_color="#e8752f",
-    player_a_label="Player A", player_b_label="Player B",
-):
-    """Draw two players' per-90 metrics overlaid on one radar (two-player comparison view).
-
-    Same axis-scaling reasoning as `plot_player_radar` (5th-95th percentile of `population`, to
-    avoid one extreme outlier compressing everyone else's radar into an unreadable sliver) — the
-    only difference is drawing both players via mplsoccer's own `draw_radar_compare` (built for
-    exactly this two-radar-overlay case) instead of `draw_radar` once.
-
-    Args:
-        player_a_row, player_b_row (pandas.Series): one row each of a per-player feature table,
-            both must contain `feature_columns` — callers are responsible for only comparing two
-            players from a `population` whose `feature_columns` mean the same thing (i.e. the
-            same position group's feature set).
-        population (pandas.DataFrame): the comparison group used to set each axis's range —
-            typically both players' shared position group.
-        feature_columns (list[str]): columns to plot, one per radar axis.
-        ax (matplotlib.axes.Axes, optional): existing axes to draw on (plain rectangular, not
-            polar — see `plot_player_radar`'s same note); a new figure is created if omitted.
-        title (str, optional): plot title.
-        circle_facecolor, circle_edgecolor (str): ring/background colours, same dark-theme
-            override pattern as `plot_player_radar`.
-        player_a_color, player_b_color (str): each player's own filled shape colour — default to
-            this project's blue/orange accent pair (never two same-temperature hues, per the
-            dataviz skill's colour formula, since the two players need to read as clearly
-            distinct, not "which one is higher/lower" on a shared scale).
-        player_a_label, player_b_label (str): legend labels.
-
-    Returns:
-        matplotlib.axes.Axes: the axes the radar was drawn on.
-    """
-    radar = _radar_axes(population, feature_columns)
-
-    if ax is None:
-        _, ax = plt.subplots(figsize=(8, 8))
-    radar.setup_axis(ax=ax, facecolor=circle_facecolor)
-    radar.draw_circles(ax=ax, facecolor=circle_facecolor, edgecolor=circle_edgecolor)
-    radar.draw_radar_compare(
-        player_a_row[feature_columns].tolist(), player_b_row[feature_columns].tolist(), ax=ax,
-        kwargs_radar={"facecolor": player_a_color, "alpha": 0.5},
-        kwargs_compare={"facecolor": player_b_color, "alpha": 0.5},
-    )
-    radar.draw_param_labels(ax=ax, fontsize=10)
-
-    handles = [
-        plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=c, markersize=10, label=lbl)
-        for lbl, c in [(player_a_label, player_a_color), (player_b_label, player_b_color)]
-    ]
-    ax.legend(handles=handles, loc="upper right", bbox_to_anchor=(1.15, 1.1), fontsize=10)
-    if title:
-        ax.set_title(title, fontsize=13, pad=30)
-    return ax
-
-
 def plot_similar_players_bar(similar, accent_color="steelblue", grid_color="#dddddd", ax=None):
     """Horizontal bar chart of "players like X" results, closest match at top.
 
@@ -415,71 +357,6 @@ def plot_xg_generalisation_bar(generalisation, accent_color="darkorange", grid_c
     for spine in ("top", "right"):
         ax.spines[spine].set_visible(False)
     ax.legend(loc="lower right", fontsize=9)
-    return ax
-
-
-def plot_diverging_bar(
-    labels, values, reference, label_format,
-    above_color="darkorange", below_color="steelblue", grid_color="#dddddd",
-    xlabel="", ax=None,
-):
-    """Horizontal bar chart of values relative to a reference point, coloured by side.
-
-    Shared by two app panels that are the same underlying question — "how does this
-    compare to a baseline, where direction and magnitude both matter" — just on
-    different scales: a player's per-90 percentile profile (reference=50, the
-    position group's median) and a cluster's feature z-score profile (reference=0,
-    the population mean). One diverging-bar implementation covers both rather than
-    two near-identical copies. Follows `plot_similar_players_bar`'s single-hue-for-
-    magnitude convention one step further: a magnitude-only comparison gets one hue
-    with an opacity ramp, but a comparison with a real "which side of a baseline"
-    question gets two warm/cool hues (never two cool hues — the pole colours must
-    read as opposite) either side of a neutral reference line, per the project's
-    dataviz-skill colour formula.
-
-    Args:
-        labels (list[str]): one per bar, in display order (order is re-sorted
-            internally by value, ascending, so the chart reads top-to-bottom).
-        values (list[float]): one per bar, same order as `labels`.
-        reference (float): the "neutral" value bars are compared against — drawn as
-            a dashed vertical line (matching this file's other reference-line
-            charts, e.g. `plot_xg_generalisation_bar`'s no-skill line), and used to
-            pick each bar's colour.
-        label_format (callable): value -> display string drawn at each bar's tip.
-        above_color (str): bar colour for values >= `reference`.
-        below_color (str): bar colour for values < `reference`.
-        grid_color (str): vertical gridline colour, one step off the surface.
-        xlabel (str): x-axis label.
-        ax (matplotlib.axes.Axes, optional): existing axes to draw on.
-
-    Returns:
-        matplotlib.axes.Axes: the axes the bars were drawn on.
-    """
-    order = pd.Series(list(values), index=list(labels)).sort_values()
-    if ax is None:
-        _, ax = plt.subplots(figsize=(7, 0.5 * len(order) + 1))
-
-    colors = [above_color if v >= reference else below_color for v in order]
-    bars = ax.barh(order.index, order.values, color=colors)
-    ax.axvline(reference, color="grey", linestyle="--", linewidth=1)
-
-    span = (order.max() - order.min()) or 1.0
-    offset = span * 0.03
-    for bar, value in zip(bars, order.values):
-        if value >= reference:
-            ax.text(bar.get_width() + offset, bar.get_y() + bar.get_height() / 2,
-                     label_format(value), va="center", ha="left", fontsize=9)
-        else:
-            ax.text(bar.get_width() - offset, bar.get_y() + bar.get_height() / 2,
-                     label_format(value), va="center", ha="right", fontsize=9)
-
-    if xlabel:
-        ax.set_xlabel(xlabel)
-    ax.grid(axis="x", color=grid_color, linewidth=0.8)
-    ax.set_axisbelow(True)
-    for spine in ("top", "right"):
-        ax.spines[spine].set_visible(False)
-    ax.margins(x=0.18)
     return ax
 
 
