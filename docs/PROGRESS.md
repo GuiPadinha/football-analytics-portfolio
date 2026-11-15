@@ -54,6 +54,11 @@ Guilherme: "status, next steps e procede".
   Model trained on each: test ROC-AUC identical (0.7653850018938955), predictions differ by at most
   3.8e-14, out-of-fold xG by 3.5e-14. Needed a cast: a window sum is HUGEINT in DuckDB, float in pandas.
   Default stays pandas (CI has no warehouse). Tests: 2 new in `tests/test_warehouse_tables.py`.
+- **Phase 5b, step 1: Barcelona landed.** `config.FINISHING_SETS` (the 16 La Liga seasons) and
+  `python -m src.landing --finishing` (entries built like the manifest's, but not written to it:
+  no model reads them yet). 486 matches landed from the cache, 11,985 shots (158 to 971 per season).
+  dbt 57/57 with them in. The per-90 outfield mart now has 2,228 rows (was 2,170: the extra 58 are
+  Barcelona players in non-app seasons; the app reads by competition and season, so it is unchanged).
 
 ---
 

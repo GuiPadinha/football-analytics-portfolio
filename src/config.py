@@ -163,6 +163,11 @@ ALL_DATASETS = [
 ]
 SETS_WITH_360 = [ds for ds in ALL_DATASETS if ds.has_360]
 
+# Phase 5b (finishing skill): the 16 Barcelona La Liga seasons, landed in the warehouse beside the
+# app's leagues so a player's shots can be pooled across seasons. Kept out of data/manifest.json
+# (no model or app table reads them yet); `python -m src.landing --finishing` lands them.
+FINISHING_SETS = list(BARCELONA_SEASONS)
+
 # Primary similarity pool (Module B). Used to scope the xG "flagship" shots/ranking that ships
 # alongside the app's similarity pool (Module A's TRAIN_SETS is deliberately untouched by Phase
 # 4b — see the "more league volume didn't help" ML_LEARNING_LOG entry — so a player outside this

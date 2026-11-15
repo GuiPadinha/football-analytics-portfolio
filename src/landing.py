@@ -32,6 +32,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from src import config
 from src.data_loader import CACHE_DIR, load_matches
 from src.net import write_atomically
 
@@ -284,6 +285,14 @@ def main(argv=None):
     datasets = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))["datasets"]
     keys = [arg for arg in argv if not arg.startswith("--")]
     if "--all" in argv:
+        keys = list(datasets)
+    if "--finishing" in argv:
+        # Phase 5b's pooled seasons are not in the manifest; build their entries the same way.
+        from src.manifest import _dataset_entry
+        datasets = {
+            f"comp{ds.comp_id}_season{ds.season_id}": _dataset_entry(ds, load_matches, CACHE_DIR)
+            for ds in config.FINISHING_SETS
+        }
         keys = list(datasets)
     keys = keys or DEFAULT_DATASET_KEYS
     unknown = [key for key in keys if key not in datasets]
