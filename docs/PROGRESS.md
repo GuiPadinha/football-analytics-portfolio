@@ -43,6 +43,17 @@ Guilherme: "status, next steps e procede".
   min). The exposure now depends on the two marts. `tests/test_warehouse_tables.py`: 4 tests.
   Corrected before writing it down: Leverkusen *is* landed; the xG tables stay in pandas because
   the SQL shot-feature parity covers the Premier League only.
+- **Step 6, Leverkusen parity (one-off, local):** `int_shot_features` for competition 9 / season 281
+  against `build_training_dataset([LEVERKUSEN_2023_24])`: 916 shots both sides, `except all` empty
+  both ways, distance/angle differ by at most 2.5e-13. Not a dbt test yet: no committed reference
+  for that season and CI has no raw layer.
+- **Step 6, xG training shots from SQL:** `warehouse_tables.read_training_shots` + `python -m
+  src.pipeline --force --from-warehouse` (`src/pipeline.py`). The match order comes from the cache's
+  match lists (Python owns it), then event position. Against `build_training_dataset(TRAIN_SETS)`:
+  10,824 shots, same columns/dtypes/order, every column equal except `angle_to_goal` (max 3.5e-13).
+  Model trained on each: test ROC-AUC identical (0.7653850018938955), predictions differ by at most
+  3.8e-14, out-of-fold xG by 3.5e-14. Needed a cast: a window sum is HUGEINT in DuckDB, float in pandas.
+  Default stays pandas (CI has no warehouse). Tests: 2 new in `tests/test_warehouse_tables.py`.
 
 ---
 
@@ -113,29 +124,6 @@ Guilherme asked for an audit and refactor before the dbt expansion, and approved
 - **Later the same day:** `docs/PITCH.md` deleted (his call; it was stale and hand-refreshed).
   Ruff added (`ruff.toml`, pyflakes rules only; a CI step on 3.12; pinned in requirements-dev):
   it found one redundant import in a test, now fixed.
-
----
-
-## 2026-11-14 — Half-updated deploys: a code fix (`src/freshness.py`)
-
-Guilherme said "resume"; this was item 1 of the agreed order.
-- **Cause, as far as known:** a push changes files under the running process, and the process keeps
-  the `src.*`/`views.*` modules it already imported. A new page then imports a name the old module
-  lacks (`ImportError`) until a reboot.
-- **Fix:** `app.py` runs on every rerun. It fingerprints `src/*.py`, `views/*.py` and `app_data/*`
-  (size + mtime, stat only) and keeps the last one in `st.cache_resource`. When it changes, it
-  drops the project's modules from `sys.modules` and clears `st.cache_data` before any project
-  import. The pure parts live in `src/freshness.py`, tested in `tests/test_freshness.py`.
-- **Verified locally:** two copies of the app, `--server.fileWatcherType none`, a new name added to
-  `src/presentation.py` and imported by How it works. The old `app.py` gave the live app's
-  `ImportError`; the new one showed the new code. Freshness + app smoke tests pass (34).
-- **Not verified:** on Cloud. The next push that changes a shared module is the real test.
-
----
-
----
-
-Older entries (2026-11-12 late afternoon and before): [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md).
 
 ---
 

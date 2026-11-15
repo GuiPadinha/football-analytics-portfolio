@@ -107,7 +107,24 @@ def _cache_matches_datasets(path, datasets):
     return True
 
 
-def build_shot_tables(force=False, data_dir=DATA_DIR):
+def _training_shots_from_warehouse():
+    """`build_training_dataset(config.TRAIN_SETS)`, read from the dbt shot features instead.
+
+    The SQL features equal the pandas ones on both training seasons (docs/PROGRESS.md,
+    2026-11-15); the match order comes from the cache's match lists, as in pandas.
+    """
+    from src.data_loader import load_matches
+    from src.warehouse_tables import connect_warehouse, read_training_shots
+
+    match_ids = [load_matches(ds.comp_id, ds.season_id)["match_id"].tolist() for ds in config.TRAIN_SETS]
+    connection = connect_warehouse()
+    try:
+        return read_training_shots(connection, config.TRAIN_SETS, match_ids)
+    finally:
+        connection.close()
+
+
+def build_shot_tables(force=False, data_dir=DATA_DIR, from_warehouse=False):
     """Rebuild (or load) the processed xG shot tables.
 
     Mirrors notebook 02's REBUILD cell: pulls and engineers from raw StatsBomb data
@@ -123,7 +140,8 @@ def build_shot_tables(force=False, data_dir=DATA_DIR):
     test_path = data_dir / "shots_test.parquet"
 
     if force or not _cache_matches_datasets(train_path, config.TRAIN_SETS):
-        build_training_dataset(config.TRAIN_SETS).to_parquet(train_path)
+        train = _training_shots_from_warehouse() if from_warehouse else build_training_dataset(config.TRAIN_SETS)
+        train.to_parquet(train_path)
     if force or not _cache_matches_datasets(test_path, config.TEST_SETS):
         build_training_dataset(config.TEST_SETS).to_parquet(test_path)
 
@@ -324,10 +342,10 @@ def run_similarity_pipeline(per90_features, outputs_dir=OUTPUTS_DIR):
     plt.close(fig)
 
 
-def run(force=False, skip_plots=False, data_dir=DATA_DIR, outputs_dir=OUTPUTS_DIR):
+def run(force=False, skip_plots=False, data_dir=DATA_DIR, outputs_dir=OUTPUTS_DIR, from_warehouse=False):
     """Run the full headless rebuild: data -> models -> outputs -> manifest -> metrics.json."""
     print("[1/6] Building xG shot tables...")
-    shots_train, shots_test = build_shot_tables(force=force, data_dir=data_dir)
+    shots_train, shots_test = build_shot_tables(force=force, data_dir=data_dir, from_warehouse=from_warehouse)
     print(f"      train: {len(shots_train)} shots, test: {len(shots_test)} shots")
 
     print("[2/6] Building Phase 4c generalisation shot table...")
@@ -366,8 +384,13 @@ def main():
         "--skip-plots", action="store_true",
         help="Rebuild data + manifest/metrics only; skip model training and PNG regeneration.",
     )
+    parser.add_argument(
+        "--from-warehouse", action="store_true",
+        help="With --force: take the xG training shots from the dbt shot features (needs "
+        "`python -m tools.warehouse --persist`) instead of extracting them with pandas.",
+    )
     args = parser.parse_args()
-    run(force=args.force, skip_plots=args.skip_plots)
+    run(force=args.force, skip_plots=args.skip_plots, from_warehouse=args.from_warehouse)
 
 
 if __name__ == "__main__":

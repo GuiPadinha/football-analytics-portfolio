@@ -2296,3 +2296,26 @@ Guilherme picked it after the dbt pilot, and asked to close the session after it
 - **Live: a second half-updated deploy.** The new page threw an `ImportError` on `build_your_own`
   (CI green; Mahrez's page fine) until Guilherme rebooted the app again. Second time in one
   day, so it is an open problem, not bad luck (ML_TOOLING.md; first item in CLAUDE.md's next steps).
+
+## 2026-11-14 — Half-updated deploys: a code fix (`src/freshness.py`)
+
+Guilherme said "resume"; this was item 1 of the agreed order.
+- **Cause, as far as known:** a push changes files under the running process, and the process keeps
+  the `src.*`/`views.*` modules it already imported. A new page then imports a name the old module
+  lacks (`ImportError`) until a reboot.
+- **Fix:** `app.py` runs on every rerun. It fingerprints `src/*.py`, `views/*.py` and `app_data/*`
+  (size + mtime, stat only) and keeps the last one in `st.cache_resource`. When it changes, it
+  drops the project's modules from `sys.modules` and clears `st.cache_data` before any project
+  import. The pure parts live in `src/freshness.py`, tested in `tests/test_freshness.py`.
+- **Verified locally:** two copies of the app, `--server.fileWatcherType none`, a new name added to
+  `src/presentation.py` and imported by How it works. The old `app.py` gave the live app's
+  `ImportError`; the new one showed the new code. Freshness + app smoke tests pass (34).
+- **Not verified:** on Cloud. The next push that changes a shared module is the real test.
+
+---
+
+---
+
+Older entries (2026-11-12 late afternoon and before): [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md).
+
+---
