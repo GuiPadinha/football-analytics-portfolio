@@ -6,6 +6,23 @@ Add new entries at the top. Move old entries to PROGRESS_ARCHIVE.md when this fi
 
 ---
 
+## 2026-11-15 — dbt expansion, step 2: an incremental model
+
+Guilherme: "status, next steps e procede".
+- **`int_player_match_actions` is incremental:** append, by match (`match_id not in {{ this }}`),
+  `on_schema_change = 'fail'`; the SQL explains `is_incremental()` and the blind spot (a
+  re-landed match keeps its old rows: `--full-refresh`).
+- **A second dbt target, `file`:** `python -m tools.warehouse --persist [--full-refresh]` keeps
+  the tables in `$FAP_CACHE_DIR/warehouse.duckdb`. The default and CI stay in memory, where the
+  model is always a full build.
+- **Proof:** full build 57 of 57; second run 8.2 s → 3.1 s on that model. Deleted the Premier
+  League's 380 matches (10,450 rows) from the persisted table, reran: exactly those came back
+  (75,614 rows, 2,616 matches), both parity tests green. Negative control without the filter:
+  `unique_together` failed with 75,614 duplicates, 8 downstream nodes skipped.
+- **Next:** dbt docs published (step 3), the app as an exposure (4), then README "The dbt layer".
+
+---
+
 ## 2026-11-14 (night) — dbt expansion, step 1 done: the player table from raw events
 
 Guilherme: "commit e push e procede". The pilot went out as `b509319`; this is the rest of step 1.

@@ -69,6 +69,14 @@ Windows-specific friction hit while building this project. Written so they don't
 - dbt writes `target/` and `logs/` next to the project unless `DBT_TARGET_PATH` and
   `DBT_LOG_PATH` say otherwise. In the Drive that is hundreds of synced files, so the runner
   points them at the temp folder.
+- **DuckDB 2.0: relations have no `fetchone()`** (2026-11-15). `con.sql(q).fetchone()` raises
+  ("a relation keeps no result between calls"); use `con.execute(q).fetchone()`.
+- **Git Bash paths inside `python -c` strings** (2026-11-15). Git Bash converts `/c/Users/...` to
+  `C:/Users/...` in environment variables it hands to a Windows program, but not inside a
+  string literal of the code: `duckdb.connect('/c/Users/...')` is read as a network path.
+  Write `C:/Users/...` in code.
+- `python -m tools.warehouse --persist` keeps the tables in `$FAP_CACHE_DIR/warehouse.duckdb`
+  (12 MB, outside the Drive: a database file in a synced folder is the `.git/index` story again).
 
 ## `git status` lists untouched files as modified in the Drive working tree (2026-11-12)
 

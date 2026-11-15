@@ -1,9 +1,15 @@
-# In memory on purpose: `dbt build` creates the models and tests them in one session, and nothing
-# is left behind. Point `path` at a file instead to keep the tables for ad-hoc queries.
+# Two targets. `memory` (the default, and what CI runs): `dbt build` creates the models and tests
+# them in one session, and nothing is left behind. `file` keeps the tables in a DuckDB file between
+# runs, which is what lets an incremental model be incremental; tools/warehouse.py --persist
+# selects it and sets FAP_WAREHOUSE_DB to a path outside the synced Drive folder.
 fap_warehouse:
   target: memory
   outputs:
     memory:
       type: duckdb
       path: ":memory:"
+      threads: 1
+    file:
+      type: duckdb
+      path: "{{ env_var('FAP_WAREHOUSE_DB', 'warehouse-db-not-set.duckdb') }}"
       threads: 1

@@ -511,6 +511,18 @@ Key gotchas and lessons — most recent first:
   (the score state is two window functions instead of a Python loop). The model does not: the
   out-of-fold xG needs scikit-learn's grouped folds. So the flow is raw → SQL features →
   Python scores → SQL marts, and the hand-over between them is a Parquet file.
+- **An incremental model needs a database that outlives the run** (2026-11-15). In the
+  in-memory target `{{ this }}` never exists when a run starts, so `is_incremental()` is always
+  false and the "incremental" model is a full build every time: correct, and proves nothing.
+  `int_player_match_actions` is incremental by match (append the matches not yet in the
+  table), tested on a persisted DuckDB file: delete the Premier League's 380 matches (10,450
+  rows), rerun, exactly those come back, parity green. **"Faster" is not the test.** Negative
+  control: drop the filter and the append duplicates every row, which `unique_together`
+  (match, team, player) catches (75,614 rows), skipping the 8 models downstream. That unique
+  test is what makes an append strategy safe. Known blind spot: a re-landed match keeps its old
+  rows; after `src.landing --force`, `--full-refresh`. The run only went 8 s → 3 s: the filter
+  is a `not in` on `match_id`, but the Parquet is partitioned by competition/season, so DuckDB
+  still opens every file. At 2,616 matches that's fine; at 50,000 the partitioning would matter.
 
 ---
 

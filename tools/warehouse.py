@@ -2,10 +2,14 @@
 
     python -m tools.warehouse            # dbt build: every model, every test
     python -m tools.warehouse --show     # ...then print the club table
+    python -m tools.warehouse --persist  # keep the tables in a DuckDB file: incremental runs
+    python -m tools.warehouse --persist --full-refresh   # rebuild the incremental models
 
 Runs from the repo root, because the sources read `app_data/*.parquet` by relative path. dbt's
-`target/` and `logs/` go to the system temp folder, not into the synced Drive working tree. The
-database is in memory (warehouse/profiles.yml), so nothing is left behind. Exits non-zero when
+`target/` and `logs/` go to the system temp folder, not into the synced Drive working tree. By
+default the database is in memory (warehouse/profiles.yml), so nothing is left behind and every
+incremental model is built in full. --persist keeps the tables in $FAP_CACHE_DIR/warehouse.duckdb
+(local, outside the Drive), so the next run only adds what is new. Exits non-zero when
 a model or test fails, which is what CI keys on.
 """
 
@@ -37,15 +41,20 @@ def main(argv=None):
     else:
         print(f"No raw layer at {raw_dir}: skipping the models built from raw events.")
         dirs += ["--exclude", "source:raw+"]
+    if "--persist" in argv:
+        cache_dir = Path(os.environ.get("FAP_CACHE_DIR", REPO / "data" / "cache"))
+        os.environ.setdefault("FAP_WAREHOUSE_DB", (cache_dir / "warehouse.duckdb").as_posix())
+        dirs += ["--target", "file"]
+    build = ["build", *dirs] + (["--full-refresh"] if "--full-refresh" in argv else [])
     runner = dbtRunner()
     if "--show" in argv:
         # In memory, the tables die with the session, so build and query in the same invocation.
-        result = runner.invoke(["build", *dirs])
+        result = runner.invoke(build)
         if result.success:
             result = runner.invoke(["show", *dirs, "--limit", "20",
                                     "--inline", "select * from {{ ref('team_xg') }} order by xg_diff desc"])
     else:
-        result = runner.invoke(["build", *dirs])
+        result = runner.invoke(build)
     return 0 if result.success else 1
 
 

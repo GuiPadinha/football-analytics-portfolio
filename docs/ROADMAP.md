@@ -452,7 +452,8 @@ Guilherme's decision yet).
      2,170 StatsBomb players. Still in pandas by design: league normalisation, clustering,
      the xG model.
   2. At least one incremental model (e.g. shots per match), with `is_incremental()` explained in
-     the SQL.
+     the SQL. **✅ Done 2026-11-15:** `int_player_match_actions`, append by match, on a
+     persisted DuckDB (`tools.warehouse --persist`); ML_LEARNING_LOG.md has the test.
   3. dbt docs published (GitHub Pages or similar) with the dependency graph; link in the README.
   4. The app as an `exposure` in the YAML.
   Then update the README's "The dbt layer" and CLAUDE.md's "Next session".
