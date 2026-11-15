@@ -154,7 +154,8 @@ hide them.
 ## The dbt layer
 
 `warehouse/` is a dbt project on DuckDB that rebuilds the Python pipeline's tables from the raw
-events, in SQL, and proves they are the same.
+events, in SQL, and proves they are the same. **[Browse the dbt docs](https://guipadinha.github.io/football-analytics-portfolio/)**: every model, test
+and column, and the lineage graph from the raw events to the app.
 
 - **Raw:** `python -m src.landing --all` lands the cached events, lineups and match sheets as
   Parquet, one file per match: 2,616 matches of nine StatsBomb leagues.
@@ -168,8 +169,9 @@ events, in SQL, and proves they are the same.
 - **42 data tests**, including **parity**: the SQL shot features equal the Python ones on 9,908
   shots, column for column, and the per-90 marts equal the app's table for all 2,170 StatsBomb
   players. Each parity test was checked against a deliberately broken model.
-- **CI** runs the models over `app_data/` on every push; the raw layer (11 GB of source data) is
-  local only.
+- **CI** runs the models over `app_data/` on every push and republishes the docs site; the raw
+  layer (11 GB of source data) is local only, so on the site the raw-event models show their SQL
+  and lineage but no column list. The app is declared as a dbt **exposure**, the end of the graph.
 
 What the club table says: Leicester won the 2015/16 title scoring 67 from chances worth 67.9.
 Their finishing was ordinary; they made the chances. Arsenal scored 8.3 fewer than theirs were
@@ -240,7 +242,8 @@ Altair · dbt + DuckDB · GitHub Actions.
 
 ## What's next
 
-- **dbt docs** published with the dependency graph, and the app declared as a dbt exposure.
+- **The app reads the dbt marts** instead of the Python tables, so the warehouse feeds the
+  product rather than shadowing it.
 - **A hierarchical finishing model.** One season can't tell a good finisher from a lucky one: 8 of
   164 Premier League shooters land outside their luck range, about what luck alone predicts.
   Pooling seasons and players can.

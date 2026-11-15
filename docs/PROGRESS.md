@@ -27,6 +27,12 @@ Guilherme: "status, next steps e procede".
   events"), the run commands in one block, a current repo map. Out: internal jargon ("S1–S8 +
   Phase 2 rigor"), the feature-importance and elbow charts, a claim the player page shows an
   archetype (the redesign removed it). DATA.md: cache ~11 GB, 6,204 pickles (measured).
+- **Steps 3–4** (Guilherme: "procede", and step 5 joins the plan): `tools.warehouse --docs DIR`
+  builds in memory and runs `dbt docs generate --static` in the same runner (the catalog needs
+  the tables), one 2.6 MB HTML. CI job `dbt-docs` (after `warehouse`, pushes only) deploys it to
+  https://guipadinha.github.io/football-analytics-portfolio/; Pages enabled in the repo settings (source: GitHub Actions). `exposures.yml`: the app,
+  depending on the three `app_data` sources it reads. Limit: CI has no raw layer, so those
+  models show SQL and lineage, no column catalog.
 
 ---
 

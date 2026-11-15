@@ -1,0 +1,23 @@
+version: 2
+
+# Who uses the warehouse's output, so the docs site's graph ends in the product, not in a table.
+# Today the app reads the Parquet files the Python pipeline writes (views/data.py), which this
+# project declares as the app_data source; the dbt marts are held equal to them by the parity
+# tests. When the app reads the marts instead (ROADMAP.md, dbt expansion step 5), these
+# dependencies become refs to the marts.
+exposures:
+  - name: streamlit_app
+    label: Player Evaluation Framework (live app)
+    type: application
+    maturity: high
+    url: https://gpfootball-analytics-portfolio.streamlit.app
+    description: >
+      The public Streamlit app: a player's style, whether the goals are real (goals against xG,
+      and the range luck alone gives), and who plays like him, next to a market value. Reads
+      app_data/ through views/data.py; it never queries the warehouse directly.
+    owner:
+      name: Guilherme Padinha
+    depends_on:
+      - source('app_data', 'player_per90')
+      - source('app_data', 'shots_with_xg')
+      - source('app_data', 'player_xg_table')

@@ -4,6 +4,7 @@
     python -m tools.warehouse --show     # ...then print the club table
     python -m tools.warehouse --persist  # keep the tables in a DuckDB file: incremental runs
     python -m tools.warehouse --persist --full-refresh   # rebuild the incremental models
+    python -m tools.warehouse --docs site     # ...then write the dbt docs site to site/index.html
 
 Runs from the repo root, because the sources read `app_data/*.parquet` by relative path. dbt's
 `target/` and `logs/` go to the system temp folder, not into the synced Drive working tree. By
@@ -14,6 +15,7 @@ a model or test fails, which is what CI keys on.
 """
 
 import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -47,7 +49,19 @@ def main(argv=None):
         dirs += ["--target", "file"]
     build = ["build", *dirs] + (["--full-refresh"] if "--full-refresh" in argv else [])
     runner = dbtRunner()
-    if "--show" in argv:
+    if "--docs" in argv:
+        # Build first, in the same runner: the in-memory tables must exist when docs generate
+        # reads the catalog (column names and types). --static writes one self-contained HTML
+        # file (manifest and catalog inlined), which any static host serves as is.
+        site = Path(argv[argv.index("--docs") + 1])
+        result = runner.invoke(build)
+        if result.success:
+            result = runner.invoke(["docs", "generate", "--static", *dirs])
+        if result.success:
+            site.mkdir(parents=True, exist_ok=True)
+            shutil.copy(Path(os.environ["DBT_TARGET_PATH"]) / "static_index.html", site / "index.html")
+            print(f"dbt docs written to {site / 'index.html'}")
+    elif "--show" in argv:
         # In memory, the tables die with the session, so build and query in the same invocation.
         result = runner.invoke(build)
         if result.success:

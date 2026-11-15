@@ -19,7 +19,8 @@ the conclusions-first redesign of 2026-10), 9 ongoing; 5b–7 not started. Histo
    `python -m src.landing --all` lands the cache as Parquet; the shot features (Premier League)
    and the per-90 player tables (all nine StatsBomb leagues, 2,170 players) built in SQL equal
    the pandas ones. Step 2 done (2026-11-15): `int_player_match_actions` is incremental by
-   match (`python -m tools.warehouse --persist`). Next: dbt docs published, then the exposure.
+   match (`python -m tools.warehouse --persist`). Steps 3–4 done (2026-11-15): dbt docs on
+   GitHub Pages (CI job `dbt-docs`), the app as an exposure. Next: step 5, the app reads the marts.
    Splitting `src/similarity.py` (1,200 lines: extraction, per-90, clustering) belongs here: its
    extraction half is what moves to SQL.
 2. **Half-updated deploys:** fixed in code on 2026-11-14 (`src/freshness.py`; ML_TOOLING.md), not
@@ -120,9 +121,9 @@ docs/
   CONTEXT.md             ← owner, learning goals, career context
   img/                   ← screenshots of the live app that the README embeds (taken with tools/screenshot.py)
   redesign-2026-10/      ← mock-ups of the conclusions-first redesign (Home, Player, Compare): Claude Design source files, exported 2026-11-12, kept for reference
-tools/warehouse.py           ← dbt build (models + tests) in memory, run from the repo root; target/logs go to the temp folder, not the Drive; --persist keeps a DuckDB file in $FAP_CACHE_DIR (incremental runs)
+tools/warehouse.py           ← dbt build (models + tests) in memory, run from the repo root; target/logs go to the temp folder, not the Drive; --persist keeps a DuckDB file in $FAP_CACHE_DIR (incremental runs); --docs DIR writes the docs site
 tools/screenshot.py          ← opens a (live or local) app page in headless Chrome, wakes it if asleep, screenshots it: the after-push check and the keep-alive
-.github/workflows/tests.yml  ← CI: pytest on 3.12 + 3.14, an app-runtime-only smoke job (3.14), and the dbt build (3.12)
+.github/workflows/tests.yml  ← CI: pytest on 3.12 + 3.14, an app-runtime-only smoke job (3.14), and the dbt build (3.12), and the dbt docs site to GitHub Pages
 .github/workflows/keepalive.yml ← visits the live app every 4 hours so it never sleeps (Streamlit Cloud: 12 hours without traffic)
 .githooks/pre-commit         ← enforces the doc-log rule below
 .streamlit/config.toml       ← app theme

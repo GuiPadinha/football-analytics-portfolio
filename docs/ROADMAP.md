@@ -455,7 +455,13 @@ Guilherme's decision yet).
      the SQL. **✅ Done 2026-11-15:** `int_player_match_actions`, append by match, on a
      persisted DuckDB (`tools.warehouse --persist`); ML_LEARNING_LOG.md has the test.
   3. dbt docs published (GitHub Pages or similar) with the dependency graph; link in the README.
-  4. The app as an `exposure` in the YAML.
+     **✅ Done 2026-11-15:** CI job `dbt-docs` publishes `tools.warehouse --docs` (one static
+     HTML) to https://guipadinha.github.io/football-analytics-portfolio/ on every push to main.
+  4. The app as an `exposure` in the YAML. **✅ Done 2026-11-15** (`warehouse/models/exposures.yml`;
+     depends on the `app_data` sources the app really reads).
+  5. **The app reads the dbt marts** (added by Guilherme, 2026-11-15): `app_data/` comes out of
+     the marts instead of pandas, so the warehouse feeds the product rather than shadowing it.
+     The exposure then depends on refs to the marts.
   Then update the README's "The dbt layer" and CLAUDE.md's "Next session".
 - **LLM scout reports next to the rule-based text.** Precomputed offline (no API key in the app),
   one per player, then checked automatically: every number an LLM sentence quotes must match the

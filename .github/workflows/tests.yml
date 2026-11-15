@@ -109,3 +109,45 @@ jobs:
 
       - name: dbt build (models + tests)
         run: python -m tools.warehouse
+
+  dbt-docs:
+    # Publishes the dbt docs site (models, tests, lineage graph, the app as an exposure) to GitHub
+    # Pages on every push to main, once the warehouse job is green. Same in-memory build as that
+    # job: the raw-layer models have no landed data here, so they appear in the graph with their
+    # SQL and descriptions but without a column catalog.
+    if: github.event_name == 'push'
+    needs: warehouse
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write      # deploy to Pages
+      id-token: write   # Pages verifies the deployment came from this workflow
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: true   # only the newest push's site matters
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dbt and DuckDB
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-warehouse.txt
+
+      - name: Build and generate the docs site
+        run: python -m tools.warehouse --docs site
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v5
