@@ -59,6 +59,23 @@ Guilherme: "status, next steps e procede".
   no model reads them yet). 486 matches landed from the cache, 11,985 shots (158 to 971 per season).
   dbt 57/57 with them in. The per-90 outfield mart now has 2,228 rows (was 2,170: the extra 58 are
   Barcelona players in non-app seasons; the app reads by competition and season, so it is unchanged).
+- **Phase 5b, steps 2-3: the finishing model (`src/finishing.py`, not in the app yet).** Every La
+  Liga shot in the warehouse (17 seasons, 20,908 open-play shots; penalties out) scored by the
+  production xG model, out of fold where it trained and by the fitted model elsewhere. Empirical
+  Bayes: tau (the spread of skill between players, goals per shot) from the method of moments,
+  90% interval by bootstrapping players, shrinkage toward the group. Simulation tests recover a
+  known tau and find none when there is none. Real data, in three honest passes:
+  1. Naive: tau 0.051 per shot. Wrong: Barcelona beat the model's xG in all 17 seasons (+255 goals
+     over 8,148 shots, +0.040 per shot), a shift the whole team shares.
+  2. Centred on the group's shift: tau 0.019-0.021, but still mixing team and player.
+  3. Each shot's baseline raised by its *teammates'* surplus that season (leave-one-out, so Messi
+     is not measured against himself; `team_adjusted_xg`): **tau 0.026 per shot, 90% interval
+     0.015-0.030**, so players do differ. Messi +81 goals over his teammates' baseline (shrunk
+     +59, weight 0.93); Iniesta -19 (-15).
+  Split-half (alternating seasons, 26 players with 30+ shots in the first half): the shrunken
+  estimate does **not** beat the group shift alone (MSE 0.00176 vs 0.00158; raw 0.00214). So: skill
+  spread is there in-sample, and no gain predicting the other seasons, with 26 players. Not
+  shown in the app until that is settled.
 
 ---
 
