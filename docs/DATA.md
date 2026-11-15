@@ -7,9 +7,9 @@
 ## StatsBomb Open Data (primary)
 
 - Library: `statsbombpy` — no API key required; pulls programmatically
-- Data volume: ~8.5 GB locally as of 2026-10 (~4,400 per-match pickles). They live in `data/cache/`
+- Data volume: ~11 GB locally as of 2026-11 (6,204 per-match pickles). They live in `data/cache/`
   (gitignored) unless the `FAP_CACHE_DIR` environment variable points elsewhere. Guilherme's machine
-  uses `C:/Users/guilh/fap-cache` (since 2026-10-02), so OneDrive doesn't sync them.
+  uses `C:/Users/guilh/fap-cache` (since 2026-10-02), so the cloud-synced working tree doesn't sync them.
 
 **Key data objects:**
 - `competitions` — available competitions list

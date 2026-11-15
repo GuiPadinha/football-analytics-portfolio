@@ -20,6 +20,13 @@ Guilherme: "status, next steps e procede".
   (75,614 rows, 2,616 matches), both parity tests green. Negative control without the filter:
   `unique_together` failed with 75,614 duplicates, 8 downstream nodes skipped.
 - **Next:** dbt docs published (step 3), the app as an exposure (4), then README "The dbt layer".
+- **Pushed as `2d4b0cc`.** Live app checked: Home and Mahrez's page render.
+- **README rewritten** (Guilherme: "melhorias integrais, tralha antiga"): the app comes first
+  (what it answers, the pool), then a "How it is built" diagram (Python vs dbt, what the app
+  reads), shorter Module A/B, a new "The dbt layer" (it said "pilot, 14 tests, next step: raw
+  events"), the run commands in one block, a current repo map. Out: internal jargon ("S1–S8 +
+  Phase 2 rigor"), the feature-importance and elbow charts, a claim the player page shows an
+  archetype (the redesign removed it). DATA.md: cache ~11 GB, 6,204 pickles (measured).
 
 ---
 
