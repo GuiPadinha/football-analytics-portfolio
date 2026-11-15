@@ -1,7 +1,7 @@
 # Progress Log — Historical (S1–S8, Phase 0–3)
 
 Sessions from 2026-06-28 through 2026-10-10 (archived 2026-10-03; the 2026-10-02/03, 10-06 and
-10-10 entries moved here on 2026-10-17, the 10-10 evening, 10-17 morning, 10-17 afternoon and 10-17 late-afternoon ones on 2026-11-12).
+10-10 entries moved here on 2026-10-17, the 10-10 evening, 10-17 morning, 10-17 afternoon and 10-17 late-afternoon ones on 2026-11-12; 11-12 late afternoon on 2026-11-15).
 Committed work only.
 → Recent sessions: [PROGRESS.md](PROGRESS.md)
 
@@ -2269,3 +2269,30 @@ Guilherme said "segue" to the proposed pilot (the career pick from ROADMAP's wil
   West Ham were the most above their chances (+7.3), West Brom the most below (−11.1). A penalty
   is worth 0.80 xG on average (91 penalties, 74 scored).
 - **Verified:** `dbt build` gave PASS=17 (3 models, 14 tests) locally.
+
+---
+
+## 2026-11-12 (late afternoon) — Build a player (the "Players like Guilherme" toy)
+
+Guilherme picked it after the dbt pilot, and asked to close the session after it.
+- **`profile.build_your_own`:**
+  - Each slider is a standing within the league (0-1). It becomes the group's league-adjusted
+    rate at that quantile, so the built player sits in the lookalikes' own space.
+  - It is ranked by the same `rank_matches`. `_lookalikes` and the new function share
+    `_match_lists`.
+  - Outfield, StatsBomb only. Keepers are refused.
+- **`views/build.py`, "Build a player"** in the top navigation:
+  - Its first line says it is a toy.
+  - A position, 11 sliders, an optional real player to start from, and Reset.
+  - A "Your player" summary and the two games' lists. A name opens that player's page.
+- **The toy is measured in the real space:** Mahrez rebuilt from his own percentiles finds Mahrez
+  first, at distance ~0. Left off, his place goes to Mané and Morales, his own page's lookalikes.
+  This is also why a starting player is excluded: at distance ~0 he squashed every other
+  closeness bar to nothing.
+- All sliders at 50 (the median forward) gives Floyd Ayité (Bastia) and Makenzy Doniak (San
+  Diego Wave).
+- **Verified:** the full suite passes (new tests in test_profile.py and test_app_smoke.py, the page
+  in the every-page smoke). A real-browser screenshot of the page, local.
+- **Live: a second half-updated deploy.** The new page threw an `ImportError` on `build_your_own`
+  (CI green; Mahrez's page fine) until Guilherme rebooted the app again. Second time in one
+  day, so it is an open problem, not bad luck (ML_TOOLING.md; first item in CLAUDE.md's next steps).

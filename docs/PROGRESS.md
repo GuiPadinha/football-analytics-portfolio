@@ -32,7 +32,17 @@ Guilherme: "status, next steps e procede".
   the tables), one 2.6 MB HTML. CI job `dbt-docs` (after `warehouse`, pushes only) deploys it to
   https://guipadinha.github.io/football-analytics-portfolio/; Pages enabled in the repo settings (source: GitHub Actions). `exposures.yml`: the app,
   depending on the three `app_data` sources it reads. Limit: CI has no raw layer, so those
-  models show SQL and lineage, no column catalog.
+  models show SQL and lineage, no column catalog. Live and checked (200, lineage graph renders).
+- **Step 5, the app reads the marts:** `src/warehouse_tables.py` reads `player_per90_outfield`
+  and `_goalkeepers` from `$FAP_CACHE_DIR/warehouse.duckdb`, drops the key columns and sorts as
+  pandas' groupby; `app_data._build_combined_tables(from_warehouse=True)`, with `--from-pandas`
+  as the escape hatch; duckdb==2.0.0 in requirements-dev. The goalkeeper mart now names its
+  columns in pandas' order (save_pct after minutes). Against pandas, nine leagues: same rows and
+  order, rates within 1e-9. Rebuilt `app_data/`: 3,794 players, 2,911 market values, **every
+  cluster equal**, `findings.json` byte-identical, largest change 1.4e-14. Build ~68 s (was 3–5
+  min). The exposure now depends on the two marts. `tests/test_warehouse_tables.py`: 4 tests.
+  Corrected before writing it down: Leverkusen *is* landed; the xG tables stay in pandas because
+  the SQL shot-feature parity covers the Premier League only.
 
 ---
 
@@ -123,34 +133,9 @@ Guilherme said "resume"; this was item 1 of the agreed order.
 
 ---
 
-## 2026-11-12 (late afternoon) — Build a player (the "Players like Guilherme" toy)
-
-Guilherme picked it after the dbt pilot, and asked to close the session after it.
-- **`profile.build_your_own`:**
-  - Each slider is a standing within the league (0-1). It becomes the group's league-adjusted
-    rate at that quantile, so the built player sits in the lookalikes' own space.
-  - It is ranked by the same `rank_matches`. `_lookalikes` and the new function share
-    `_match_lists`.
-  - Outfield, StatsBomb only. Keepers are refused.
-- **`views/build.py`, "Build a player"** in the top navigation:
-  - Its first line says it is a toy.
-  - A position, 11 sliders, an optional real player to start from, and Reset.
-  - A "Your player" summary and the two games' lists. A name opens that player's page.
-- **The toy is measured in the real space:** Mahrez rebuilt from his own percentiles finds Mahrez
-  first, at distance ~0. Left off, his place goes to Mané and Morales, his own page's lookalikes.
-  This is also why a starting player is excluded: at distance ~0 he squashed every other
-  closeness bar to nothing.
-- All sliders at 50 (the median forward) gives Floyd Ayité (Bastia) and Makenzy Doniak (San
-  Diego Wave).
-- **Verified:** the full suite passes (new tests in test_profile.py and test_app_smoke.py, the page
-  in the every-page smoke). A real-browser screenshot of the page, local.
-- **Live: a second half-updated deploy.** The new page threw an `ImportError` on `build_your_own`
-  (CI green; Mahrez's page fine) until Guilherme rebooted the app again. Second time in one
-  day, so it is an open problem, not bad luck (ML_TOOLING.md; first item in CLAUDE.md's next steps).
-
 ---
 
-Older entries (2026-11-12 afternoon and before): [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md).
+Older entries (2026-11-12 late afternoon and before): [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md).
 
 ---
 

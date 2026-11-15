@@ -29,9 +29,17 @@ market-value pull can't block the rest of the build. (StatsBomb match listings a
 every build either way; they aren't cached.) Only ever resolved for the four men's competitions in
 `market_value.MARKET_VALUE_AS_OF_DATES` — see that module's docstring for why.
 
+StatsBomb per-90 tables from the dbt warehouse (2026-11-15): the counts, minutes and rates of
+the nine StatsBomb leagues are read from the dbt marts (`src/warehouse_tables.py`), built from the
+raw events by `python -m tools.warehouse --persist`. Python keeps what needs a fit: league
+normalisation, K-means, the xG model, and Wyscout (no dbt models). `--from-pandas` rebuilds those
+tables the old way, from the per-match cache, for a machine without the warehouse.
+
 Usage:
-    python -m src.app_data             # everything, minutes, needs the network
-    python -m src.app_data --xg-only   # the xG tables and the Home findings only, seconds
+    python -m tools.warehouse --persist   # first: build the warehouse the tables are read from
+    python -m src.app_data                # everything, minutes, needs the network
+    python -m src.app_data --from-pandas  # the same, the StatsBomb tables built by pandas
+    python -m src.app_data --xg-only      # the xG tables and the Home findings only, seconds
 """
 
 import sys
@@ -53,12 +61,13 @@ from src.similarity import (
     fit_kmeans,
     normalize_within_competition,
 )
+from src.warehouse_tables import connect_warehouse, read_season_per90_tables
 from src.wyscout import WY_GK_PER90_FEATURE_COLUMNS, WY_PER90_FEATURE_COLUMNS, build_wyscout_per90_tables
 
 APP_DATA_DIR = Path(__file__).resolve().parent.parent / "app_data"
 
 
-def _build_combined_tables(datasets=config.SIMILARITY_SETS):
+def _build_combined_tables(datasets=config.SIMILARITY_SETS, from_warehouse=True):
     """Build and concatenate outfield and goalkeeper per-90 tables across the app's pool.
 
     Each dataset contributes its own season's minutes/actions (per-90 rates don't carry across
@@ -70,8 +79,13 @@ def _build_combined_tables(datasets=config.SIMILARITY_SETS):
     Both tables come from one pass over each season (`build_season_per90_tables`), which cut
     ~27% off this build (2026-10-02).
 
+    Since 2026-11-15 the tables are read from the dbt marts by default. They equal pandas' within
+    1e-9 (minutes are a float sum added in another order, and the rates inherit the last bits),
+    in the same row order, so the clusters downstream come out the same.
+
     Args:
         datasets (list[config.Dataset]): competitions/seasons to include.
+        from_warehouse (bool): read the dbt marts (default) or build from the per-match cache.
 
     Returns:
         tuple[pandas.DataFrame, pandas.DataFrame]: (outfield, goalkeepers), each the
@@ -79,12 +93,18 @@ def _build_combined_tables(datasets=config.SIMILARITY_SETS):
             `label`) identifying each row's source.
     """
     outfield_frames, goalkeeper_frames = [], []
+    connection = connect_warehouse() if from_warehouse else None
     for dataset in datasets:
-        outfield, goalkeepers = build_season_per90_tables(dataset.comp_id, dataset.season_id)
+        if connection is not None:
+            outfield, goalkeepers = read_season_per90_tables(connection, dataset.comp_id, dataset.season_id)
+        else:
+            outfield, goalkeepers = build_season_per90_tables(dataset.comp_id, dataset.season_id)
         outfield["competition"] = dataset.label
         goalkeepers["competition"] = dataset.label
         outfield_frames.append(outfield)
         goalkeeper_frames.append(goalkeepers)
+    if connection is not None:
+        connection.close()
     return (
         pd.concat(outfield_frames, ignore_index=True),
         pd.concat(goalkeeper_frames, ignore_index=True),
@@ -228,7 +248,7 @@ def rebuild_xg_artifacts(app_data_dir=APP_DATA_DIR):
     return {"xg_table_rows": len(xg_table), "shots": len(flagship_shots), "findings": 4}
 
 
-def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
+def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True, from_warehouse=True):
     """Write the artifacts the app reads: per-90 features, player xG table, shots+xG, market value,
     and the Home page's findings.
 
@@ -239,6 +259,7 @@ def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
             Transfermarkt step entirely; app.py
             already treats a missing/stale `market_value.parquet` as "no data for this player"
             rather than a hard failure.
+        from_warehouse (bool): StatsBomb per-90 tables from the dbt marts (default) or pandas.
 
     Returns:
         dict: row counts per artifact, as a cheap sanity-check summary for the caller.
@@ -247,7 +268,7 @@ def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
     app_data_dir.mkdir(parents=True, exist_ok=True)
 
     shots_train, _ = build_shot_tables()
-    outfield_table, goalkeeper_table = _build_combined_tables()
+    outfield_table, goalkeeper_table = _build_combined_tables(from_warehouse=from_warehouse)
     wyscout_outfield, wyscout_goalkeepers = _build_wyscout_tables()
     clustered = [
         _cluster_position_groups(outfield_table, OUTFIELD_GROUPS, PER90_FEATURE_COLUMNS),
@@ -291,12 +312,13 @@ def build_app_artifacts(app_data_dir=APP_DATA_DIR, with_market_value=True):
 
 
 def main():
-    """CLI entry point: `python -m src.app_data`, or `--xg-only` for just the xG tables."""
+    """CLI entry point: `python -m src.app_data`, `--xg-only` for just the xG tables,
+    `--from-pandas` to build the StatsBomb tables without the warehouse."""
     if "--xg-only" in sys.argv[1:]:
         result = rebuild_xg_artifacts()
         print(f"Wrote app_data/: {result['xg_table_rows']} xG-table rows, {result['shots']} shots, the Home findings.")
         return
-    result = build_app_artifacts()
+    result = build_app_artifacts(from_warehouse="--from-pandas" not in sys.argv[1:])
     print(
         f"Wrote app_data/: {result['players']} players, "
         f"{result['xg_table_rows']} xG-table rows, {result['shots']} shots, "

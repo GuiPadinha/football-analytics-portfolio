@@ -20,7 +20,10 @@ the conclusions-first redesign of 2026-10), 9 ongoing; 5b–7 not started. Histo
    and the per-90 player tables (all nine StatsBomb leagues, 2,170 players) built in SQL equal
    the pandas ones. Step 2 done (2026-11-15): `int_player_match_actions` is incremental by
    match (`python -m tools.warehouse --persist`). Steps 3–4 done (2026-11-15): dbt docs on
-   GitHub Pages (CI job `dbt-docs`), the app as an exposure. Next: step 5, the app reads the marts.
+   GitHub Pages (CI job `dbt-docs`, https://guipadinha.github.io/football-analytics-portfolio/),
+   the app as an exposure. Step 5 done (2026-11-15): `src.app_data` reads the StatsBomb per-90
+   tables from the marts (`src/warehouse_tables.py`; build `tools.warehouse --persist` first, or
+   use `--from-pandas`). Optional step 6: the xG model trained from the SQL shot features.
    Splitting `src/similarity.py` (1,200 lines: extraction, per-90, clustering) belongs here: its
    extraction half is what moves to SQL.
 2. **Half-updated deploys:** fixed in code on 2026-11-14 (`src/freshness.py`; ML_TOOLING.md), not
@@ -99,6 +102,7 @@ src/
   metrics.py         ← writes metrics.json
   pipeline.py        ← headless rebuild: data → models → outputs → manifest/metrics
   app_data.py        ← writes app_data/*.parquet for the app (`python -m src.app_data`)
+  warehouse_tables.py ← reads the dbt per-90 marts (persisted DuckDB) as app_data.py's StatsBomb tables
   freshness.py       ← app.py's stale-module guard: after a deploy, re-import changed shared code
 app_data/                ← precomputed Parquet the app reads (small, committed)
 notebooks/               ← 01 exploration, 02 xG model, 03 similarity (the teaching surface)

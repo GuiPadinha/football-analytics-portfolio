@@ -55,7 +55,8 @@ rebuilding every output PNG/manifest/metric.
 | `manifest.py` | `config`, `data_loader` | `pipeline.py` |
 | `metrics.py` | `config`, `models`, `similarity` | `pipeline.py` |
 | `pipeline.py` | `config`, `features`, `manifest`, `metrics`, `models`, `similarity`, `visualisation` | `app_data.py` (reuses its constants + shot-table cache); also the entry point `python -m src.pipeline` |
-| `app_data.py` | `config`, `market_value`, `models`, `pipeline`, `similarity` | — (top-level entry point, `python -m src.app_data`) |
+| `app_data.py` | `config`, `market_value`, `models`, `pipeline`, `similarity`, `warehouse_tables` | — (top-level entry point, `python -m src.app_data`) |
+| `warehouse_tables.py` | `data_loader` (cache dir); duckdb, imported inside its function | `app_data.py`: the StatsBomb per-90 tables come from the dbt marts since 2026-11-15 (`--from-pandas` for the old path) |
 | `freshness.py` | — | `app.py` (first import: drops stale `src.*`/`views.*` modules after a deploy) |
 | `app.py` + `views/*.py` (repo root) | `freshness`, `profile`, `narrative`, `findings` data, `presentation`, `similarity` | — (`streamlit run app.py`; reads `app_data/`, never downloads; no matplotlib) |
 

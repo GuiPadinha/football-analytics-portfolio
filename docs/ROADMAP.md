@@ -462,6 +462,11 @@ Guilherme's decision yet).
   5. **The app reads the dbt marts** (added by Guilherme, 2026-11-15): `app_data/` comes out of
      the marts instead of pandas, so the warehouse feeds the product rather than shadowing it.
      The exposure then depends on refs to the marts.
+     **✅ Done 2026-11-15** for the StatsBomb per-90 tables (`src/warehouse_tables.py`): no
+     cluster or Home finding changed. Left in Python: the xG tables (SQL shot-feature parity is
+     checked on the Premier League only, not on Leverkusen, the model's other training season),
+     Wyscout (no dbt models), and normalisation/clustering by design. Possible step 6: train the
+     xG model from `int_shot_features` after a Leverkusen parity test.
   Then update the README's "The dbt layer" and CLAUDE.md's "Next session".
 - **LLM scout reports next to the rule-based text.** Precomputed offline (no API key in the app),
   one per player, then checked automatically: every number an LLM sentence quotes must match the

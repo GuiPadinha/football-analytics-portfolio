@@ -19,6 +19,10 @@ mplsoccer==1.6.1
 # future seaborn release can't silently break the radar/pitch plots (and the deployed app).
 seaborn==0.13.2
 
+# duckdb: src/app_data.py reads the StatsBomb player tables from the dbt warehouse (a DuckDB file).
+# Same pin as requirements-warehouse.txt, so both read and write the same file format.
+duckdb==2.0.0
+
 jupyter==1.1.1
 pytest==9.1.1
 ruff==0.17.5

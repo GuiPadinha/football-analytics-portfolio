@@ -523,6 +523,15 @@ Key gotchas and lessons — most recent first:
   rows; after `src.landing --force`, `--full-refresh`. The run only went 8 s → 3 s: the filter
   is a `not in` on `match_id`, but the Parquet is partitioned by competition/season, so DuckDB
   still opens every file. At 2,616 matches that's fine; at 50,000 the partitioning would matter.
+- **Swapping a pipeline's source: judge the output downstream, not the bits** (2026-11-15). The
+  app build now reads the per-90 tables from the dbt marts. Against pandas: same rows, same
+  order, same counts, but minutes differ by up to 9e-13 (a float sum added in another order:
+  floating-point addition is not associative) and every rate inherits it. Bit-for-bit equality
+  would mean copying pandas' summation order into SQL: fragile and pointless. The test that
+  matters is what the app shows: all 3,794 clusters equal, `findings.json` byte-identical, the
+  largest change in any column 1.4e-14. Row order mattered more than the bits: K-means' result
+  depends on the order of its input, so the reader sorts as pandas' `groupby` does (player, then
+  team, by code point; DuckDB's default collation agrees, checked on "Pa" < "Pz" < "Pérez" < "pa").
 
 ---
 
