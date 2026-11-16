@@ -124,32 +124,6 @@ Guilherme: "commit e push e procede". The pilot went out as `b509319`; this is t
 
 ---
 
-## 2026-11-14 (evening) — dbt expansion, step 1 pilot: raw events → shot features in SQL
-
-Guilherme said "procede" to a pilot of the landing step. Not committed yet.
-- **Cache check first:** 3,102 matches cached (events + lineups, 11 GB); all 2,616 match ids of
-  `data/manifest.json` are there. The 486 extra are not in the manifest (not looked into).
-- **Landing (`src/landing.py`, `python -m src.landing`):** the cache is pickled pandas, which
-  dbt cannot read. Each match becomes one Parquet file under
-  `$FAP_CACHE_DIR/raw/events/competition_id=…/season_id=…/`. Premier League 2015/16 landed: 380
-  matches, 1,313,773 events, 112 MB, ~1 minute. Flags become booleans, locations lists of
-  floats, nested columns (freeze frames, tactics) JSON strings. 27 "contract" columns are always
-  written, typed, because statsbombpy drops a column from a match where nothing set it.
-- **dbt:** source `raw.events` (a `read_parquet` glob, `union_by_name`), `stg_events` (view),
-  `int_shot_features` (the SQL twin of `features.extract_shot_features`: geometry, flags, assist
-  type by a join to the key pass, score state by two window functions).
-- **Parity:** `assert_shot_features_match_pandas` compares it to `app_data/shots_with_xg.parquet`:
-  9,908 shots, every column equal. `dbt build`: 31 of 31. Negative control: changing the
-  shoot-out filter made the test fail with 5,424 rows.
-- **CI is unchanged:** with no raw layer, `tools/warehouse.py` excludes `source:raw+` and runs
-  the 17 nodes it ran before (checked locally by pointing `FAP_CACHE_DIR` at nothing).
-- **Gotcha (ML_LEARNING_LOG.md):** rounding both sides to 9 decimals is not a float comparison.
-- **Next:** the same for the player table (`similarity.py`'s extraction half, with lineups for
-  minutes), then the incremental model. The xG model itself stays in Python: SQL builds
-  features and aggregates, scikit-learn scores.
-
----
-
 ## Commit Status
 
 Git CLI is used directly (see CLAUDE.md's Session Workflow). This section is only a pointer; check
