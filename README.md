@@ -250,11 +250,10 @@ Altair · dbt + DuckDB · GitHub Actions.
 
 ## What's next
 
-- **The xG model trained from the SQL shot features**, once their parity holds on its second
-  training season (Leverkusen 2023/24) as it does on the Premier League.
-- **A hierarchical finishing model.** One season can't tell a good finisher from a lucky one: 8 of
-  164 Premier League shooters land outside their luck range, about what luck alone predicts.
-  Pooling seasons and players can.
+- **Finishing skill, said honestly.** Pooled over 17 La Liga seasons (`src/finishing.py`), players
+  do differ in finishing, but a forward test (fit on past seasons, predict the next) shows only a
+  small gain, and it vanishes without Messi. Next: publish that result in the app and add more
+  leagues before ranking anyone.
 - **More data and models:** StatsBomb 360 freeze frames (defender positions at each shot) for a
   360-context xG and post-shot xG; current-season men's shots via Understat.
 - **Module C, performance under pressure:** scoped in `docs/MODULES.md`, not started.

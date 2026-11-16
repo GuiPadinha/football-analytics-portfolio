@@ -2319,3 +2319,19 @@ Guilherme said "resume"; this was item 1 of the agreed order.
 Older entries (2026-11-12 late afternoon and before): [PROGRESS_ARCHIVE.md](PROGRESS_ARCHIVE.md).
 
 ---
+
+## 2026-11-14 (later) — Audit and cleanup
+
+Guilherme asked for an audit and refactor before the dbt expansion, and approved the cleanup.
+- **dbt expansion plan recorded** (his notes): ROADMAP.md wild ideas, CLAUDE.md next session.
+- **Dead code removed:** the July scouting blurb (`build_scouting_blurb`, `style_intensity_label`,
+  `SIGNATURE_STATS_BY_POSITION`; the redesign replaced it with `narrative.py`), two orphaned
+  matplotlib charts (`plot_player_radar_comparison`, `plot_diverging_bar`),
+  `GK_PER90_LEAGUE_Z_COLUMNS`, an unused numpy import. Kept: `load_360_frames` (Phase 7),
+  `load_competitions` and `train_calibrated_gbm` (notebooks). A new test replaces the lost
+  label check: every stat a page shows has a label (`STAT_LABELS[stat]` would crash otherwise).
+- **Later the same day:** `docs/PITCH.md` deleted (his call; it was stale and hand-refreshed).
+  Ruff added (`ruff.toml`, pyflakes rules only; a CI step on 3.12; pinned in requirements-dev):
+  it found one redundant import in a test, now fixed.
+
+---

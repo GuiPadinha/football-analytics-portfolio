@@ -8,7 +8,7 @@ Project source of truth. Read this first every session, then load linked docs on
 
 **Where we are:** Phases 0–4 ✅ (4e, new data sources + 360, open since 2026-10-03), 5a ✅
 (2026-11-12, a luck range per player), 8 ✅ ([live app](https://gpfootball-analytics-portfolio.streamlit.app),
-the conclusions-first redesign of 2026-10), 9 ongoing; 5b–7 not started. History:
+the conclusions-first redesign of 2026-10), 9 ongoing; 5b built, not shown in the app; 6–7 not started. History:
 [docs/PROGRESS.md](docs/PROGRESS.md) and PROGRESS_ARCHIVE.md; phases and backlog:
 [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -29,9 +29,11 @@ the conclusions-first redesign of 2026-10), 9 ongoing; 5b–7 not started. Histo
 2. **Half-updated deploys:** fixed in code on 2026-11-14 (`src/freshness.py`; ML_TOOLING.md), not
    yet proven on Cloud. After the next push that changes a shared module, check every new or
    changed page live; if one breaks, reboot (share.streamlit.io, app, ⋮, Reboot) and reopen it.
-3. **Phase 5b** (hierarchical finishing): one season can't separate skill from luck (8 of 164
-   shooters outside their 90% range, 8.1 expected by luck). Pool seasons and players; the 16
-   Barcelona seasons are the test bed. Ideally reads from the dbt marts.
+3. **Phase 5b** (pooled finishing): model and validation built (`src/finishing.py`, 16 Barcelona
+   seasons landed, PROGRESS 2026-11-15/16). Result: tau 0.026 per shot vs teammates, but the
+   forward test's gain (9% less error) disappears without Messi, so no per-player ranking is in
+   the app. **Open decision (Guilherme): publish the negative result in How it works + README
+   (recommended), or show per-player values with a caveat.** Then check every changed page live.
 4. More men's data, if wanted: Understat (Phase 4e list). Wyscout shots rejected for xG on 10-17
    (ML_LEARNING_LOG.md); MPG Stats parked (DATA.md).
 
