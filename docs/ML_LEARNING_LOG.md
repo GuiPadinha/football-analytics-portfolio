@@ -530,7 +530,10 @@ Key gotchas and lessons — most recent first:
   shared layer: the group's mean shift, then each shot's teammates' surplus (leave-one-out, or the
   star is judged against himself). What remained, 0.026 (90% 0.015-0.030), still excludes zero, but
   the shrunken estimate did not predict the other seasons better than the shift alone (26 players).
-  In-sample significance and out-of-sample usefulness are different claims.
+  In-sample significance and out-of-sample usefulness are different claims. A forward test (fit on
+  past seasons, predict the next: 113 player-seasons instead of the split-half's 26) found a small
+  gain, 9% less error, that vanished without Messi (0.00005, interval straddling zero). One
+  outlier can carry a whole aggregate result: always rerun without the biggest contributor.
 - **Swapping a pipeline's source: judge the output downstream, not the bits** (2026-11-15). The
   app build now reads the per-90 tables from the dbt marts. Against pandas: same rows, same
   order, same counts, but minutes differ by up to 9e-13 (a float sum added in another order:

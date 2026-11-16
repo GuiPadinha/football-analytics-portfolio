@@ -208,6 +208,73 @@ def split_half_check(shots, season_column="season_id", min_shots=MIN_SHOTS):
     }
 
 
+def forward_check(shots, season_order, min_shots=MIN_SHOTS, min_next_shots=10,
+                  draws=BOOTSTRAP_DRAWS, seed=BOOTSTRAP_SEED):
+    """Fit on the seasons so far, predict the next one, for every season in turn.
+
+    The split-half used 26 players; this walks forward in time, so every player with enough past
+    shots and some shots the next season is one test row, in every season he qualifies. For each
+    step the past seasons give the group's shift and tau^2 (players with `min_shots`+ shots in
+    the past); the prediction for a player's next-season surplus per shot is the shift (all
+    alike), his raw past rate, or the shift plus his shrunken skill. Squared error is weighted by
+    the next season's shots. Skill is real if the shrunken prediction beats the shift alone, and
+    the interval on that gap comes from resampling the test rows.
+
+    Args:
+        shots (pandas.DataFrame): `player`, `is_goal`, `predicted_xg` (team-adjusted or not) and
+            `season_id`.
+        season_order (list): season ids, oldest first. Ids are not chronological, so the caller
+            says what comes before what.
+        min_shots (int): past shots a player needs to be predicted.
+        min_next_shots (int): shots in the target season for a row to count.
+        draws (int): bootstrap resamples of the test rows.
+        seed (int): fixed for a reproducible interval.
+
+    Returns:
+        dict: `rows`, `mse_shift`, `mse_shrunk`, `mse_raw`, and `gain` (shift minus shrunk, so
+            positive means skill helps) with `gain_low`, `gain_high` (90% interval).
+    """
+    rows = []
+    for step in range(1, len(season_order)):
+        past = shots[shots["season_id"].isin(season_order[:step])]
+        future = shots[shots["season_id"] == season_order[step]]
+        totals = player_totals(past)
+        totals = totals[totals["shots"] >= min_shots]
+        if len(totals) < 2:
+            continue
+        shift = common_shift(totals)
+        shrunk = shrink(totals, estimate_tau_squared(totals))
+        merged = shrunk.merge(player_totals(future), on="player", suffixes=("", "_next"))
+        merged = merged[merged["shots_next"] >= min_next_shots]
+        rows.append(pd.DataFrame({
+            "target": merged["surplus_next"] / merged["shots_next"],
+            "weight": merged["shots_next"],
+            "shift": shift,
+            "shrunk": shift + merged["skill_per_shot"],
+            "raw": merged["surplus"] / merged["shots"],
+        }))
+    table = pd.concat(rows, ignore_index=True)
+
+    def mse(frame, column):
+        return float(np.average((frame["target"] - frame[column]) ** 2, weights=frame["weight"]))
+
+    rng = np.random.default_rng(seed)
+    gains = []
+    for _ in range(draws):
+        sample = table.iloc[rng.integers(0, len(table), len(table))]
+        gains.append(mse(sample, "shift") - mse(sample, "shrunk"))
+    low, high = np.percentile(gains, [5, 95])
+    return {
+        "rows": len(table),
+        "mse_shift": mse(table, "shift"),
+        "mse_shrunk": mse(table, "shrunk"),
+        "mse_raw": mse(table, "raw"),
+        "gain": mse(table, "shift") - mse(table, "shrunk"),
+        "gain_low": float(low),
+        "gain_high": float(high),
+    }
+
+
 def score_shots(shots, train_shots):
     """xG for every shot, never from a model that saw that shot's match.
 

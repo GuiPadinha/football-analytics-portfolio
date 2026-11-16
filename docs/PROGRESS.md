@@ -76,6 +76,14 @@ Guilherme: "status, next steps e procede".
   estimate does **not** beat the group shift alone (MSE 0.00176 vs 0.00158; raw 0.00214). So: skill
   spread is there in-sample, and no gain predicting the other seasons, with 26 players. Not
   shown in the app until that is settled.
+- **Phase 5b, forward test (`forward_check`, 2026-11-16):** fit on the seasons so far, predict
+  the next, for every season in turn (113 player-seasons, 30+ past shots, 10+ next). Squared
+  error, shift alone vs shift + shrunken skill (gain = shift minus shrunk, 90% bootstrap):
+  all La Liga, team-adjusted **gain 0.00027 (0.00001 to 0.00052)**, a 9% error cut, the interval
+  just off zero; raw xG without the team adjustment 0.00018 (-0.00008 to 0.00043); Barcelona only
+  0.00028 (0.00001 to 0.00057); **without Messi 0.00005 (-0.00020 to 0.00031)**. Reading: some
+  persistent finishing skill, and nearly all the detectable part is one player. No per-player
+  ranking in the app on this; the decision is Guilherme's (plan file, "Open decision").
 
 ---
 

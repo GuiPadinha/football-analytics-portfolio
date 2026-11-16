@@ -11,6 +11,7 @@ import pandas as pd
 from src.finishing import (
     bootstrap_tau_squared,
     estimate_tau_squared,
+    forward_check,
     player_totals,
     shrink,
     split_half_check,
@@ -90,3 +91,13 @@ def test_team_adjustment_leaves_the_shooters_own_shots_out():
     assert adjusted.iloc[0] == 0.5 + (-0.2)  # B's surplus per shot is -0.2
     assert adjusted.iloc[2] == 0.2 + 0.5  # A's is +0.5
     assert adjusted.iloc[4] == 0.3  # C has no teammate shots
+
+
+def test_the_forward_check_sees_real_skill_and_not_imaginary_skill():
+    """Seasons are 0..3 in order; with real skill the shrunken prediction must win, without it not."""
+    real, _ = simulate(tau=0.03, players=300, shots_each=240, seasons=4, seed=3)
+    gain = forward_check(real, [0, 1, 2, 3], draws=200)
+    assert gain["gain_low"] > 0
+    none, _ = simulate(tau=0.0, players=300, shots_each=240, seasons=4, seed=4)
+    nothing = forward_check(none, [0, 1, 2, 3], draws=200)
+    assert nothing["gain_low"] <= 0 <= nothing["gain_high"] or nothing["gain_high"] < 0.0002
